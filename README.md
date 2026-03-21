@@ -274,8 +274,14 @@ bgp_test_framework/
 │   ├── unit/              # Unit tests
 │   └── functional/        # Functional tests
 ├── config.yaml            # Example configuration
-├── rfc4271.txt            # RFC 4271 source
-├── rfc4272.txt            # RFC 4272 source
+├── rfc1105.txt            # RFC 1105 (BGP v1, obsolete)
+├── rfc1163.txt            # RFC 1163 (BGP-2, obsolete)
+├── rfc1267.txt            # RFC 1267 (BGP-3, obsolete)
+├── rfc1771.txt            # RFC 1771 (BGP-4, obsolete)
+├── rfc2918.txt            # RFC 2918 (Route Refresh)
+├── rfc3065.txt            # RFC 3065 (AS Confederations)
+├── rfc4271.txt            # RFC 4271 (BGP-4)
+├── rfc4272.txt            # RFC 4272 (BGP Security)
 ├── pyproject.toml         # Project configuration
 └── README.md
 ```
@@ -286,6 +292,10 @@ bgp_test_framework/
 - [RFC 4272 - BGP Security Vulnerabilities Analysis](https://www.rfc-editor.org/rfc/rfc4272)
 - [RFC 2918 - Route Refresh Capability for BGP-4](https://www.rfc-editor.org/rfc/rfc2918)
 - [RFC 3065 - Autonomous System Confederations for BGP](https://www.rfc-editor.org/rfc/rfc3065)
+- [RFC 1105 - BGP (obsolete)](https://www.rfc-editor.org/rfc/rfc1105)
+- [RFC 1163 - BGP-2 (obsolete)](https://www.rfc-editor.org/rfc/rfc1163)
+- [RFC 1267 - BGP-3 (obsolete)](https://www.rfc-editor.org/rfc/rfc1267)
+- [RFC 1771 - BGP-4 (obsolete)](https://www.rfc-editor.org/rfc/rfc1771)
 
 ## License
 
