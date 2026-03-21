@@ -1,6 +1,6 @@
 # BGPv4 Adversarial Test Framework
 
-A comprehensive adversarial testing framework for BGPv4 implementations based on RFC 4271 and RFC 4272 specifications.
+A comprehensive adversarial testing framework for BGP v1 to v4 implementations based on RFC specifications.
 
 ## Intended Use
 
