@@ -1,6 +1,6 @@
 # BGPv4 Adversarial Test Framework
 
-A comprehensive adversarial testing framework for BGPv4 implementations based on RFC 4271 specifications.
+A comprehensive adversarial testing framework for BGPv4 implementations based on RFC 4271 and RFC 4272 specifications.
 
 ## Overview
 
@@ -12,11 +12,14 @@ This framework provides automated testing capabilities to identify vulnerabiliti
 - Path attribute validation (RFC 4271 Section 5)
 - Finite State Machine behavior (RFC 4271 Section 8)
 - Timing and Keepalive behavior (RFC 4271 Section 4.4, 10)
-- Security considerations (RFC 4271 Section 6)
+- Route aggregation (RFC 4271 Section 9.2.2)
+- Decision process (RFC 4271 Section 9.1)
+- Security considerations (RFC 4271 Section 6, RFC 4272)
 
 ## Features
 
-- **Comprehensive Test Coverage**: Tests based on RFC 4271 requirements
+- **Comprehensive Test Coverage**: Tests based on RFC 4271 and RFC 4272 requirements
+- **Security Vulnerability Testing**: Tests for BGP security attacks from RFC 4272
 - **Configurable Testing**: YAML configuration for complex test scenarios
 - **Multiple Output Formats**: JSON and YAML report generation
 - **Detailed Reporting**: Pass/fail status with expected vs actual behavior
@@ -124,6 +127,30 @@ Tests for timing behavior per RFC 4271 Section 10:
 Tests for security considerations per RFC 4271 Section 6:
 - SEC-001: Connection Collision Detection
 - SEC-002: BGP Identifier Collision
+- SEC-006: TCP RST Injection
+- SEC-008: AS_PATH Shortening Attack
+- SEC-009: False Route Origination
+- SEC-010: NEXT_HOP Manipulation
+- SEC-011: ORIGIN Attribute Manipulation
+- SEC-012: LOCAL_PREF Manipulation
+- SEC-014: Route Withdrawal Replay
+- SEC-016: ATOMIC_AGGREGATE Manipulation
+- SEC-019: Invalid AS_PATH Leftmost AS
+
+### route_aggregation
+Tests for route aggregation per RFC 4271 Section 9.2.2:
+- AGG-001: AS_SET Sorting
+- AGG-002: Aggregation Without AS_SET
+- AGG-005: ATOMIC_AGGREGATE Restriction
+- AGG-006: Complex AS_PATH Aggregation
+
+### decision_process
+Tests for BGP decision process per RFC 4271 Section 9.1:
+- DEC-001: Route Selection - Highest LOCAL_PREF
+- DEC-002: Route Selection - Shortest AS_PATH
+- DEC-003: Route Selection - ORIGIN Priority
+- DEC-008: Route Resolvability
+- DEC-010: AS_PATH with Own AS Loop
 
 ## Configuration File
 
@@ -229,15 +256,17 @@ pytest tests/
 bgp_test_framework/
 ├── src/bgp_test_framework/
 │   ├── __init__.py
-│   ├── constants.py       # RFC 4271 constants
+│   ├── constants.py       # RFC 4271/4272 constants
 │   ├── messages.py        # BGP message parsing/building
-│   ├── tests.py           # Test case definitions
+│   ├── tests.py           # Test case definitions (100+ tests)
 │   ├── runner.py          # Test execution engine
 │   └── cli.py             # CLI entry point
 ├── tests/
 │   ├── unit/              # Unit tests
 │   └── functional/        # Functional tests
 ├── config.yaml            # Example configuration
+├── rfc4271.txt            # RFC 4271 source
+├── rfc4272.txt            # RFC 4272 source
 ├── pyproject.toml         # Project configuration
 └── README.md
 ```
@@ -246,6 +275,8 @@ bgp_test_framework/
 
 - [RFC 4271 - A Border Gateway Protocol 4 (BGP-4)](https://www.rfc-editor.org/rfc/rfc4271)
 - [RFC 4272 - BGP Security Vulnerabilities Analysis](https://www.rfc-editor.org/rfc/rfc4272)
+- [RFC 2918 - Route Refresh Capability for BGP-4](https://www.rfc-editor.org/rfc/rfc2918)
+- [RFC 3065 - Autonomous System Confederations for BGP](https://www.rfc-editor.org/rfc/rfc3065)
 
 ## License
 
