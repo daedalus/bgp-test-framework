@@ -40,6 +40,10 @@ from .tests import (
     SecurityTests,
     RouteAggregationTests,
     DecisionProcessTests,
+    KeepaliveMessageTests,  # noqa: F401
+    NotificationMessageTests,  # noqa: F401
+    VersionNegotiationTests,  # noqa: F401
+    ConnectionCollisionTests,  # noqa: F401
 )
 
 
@@ -1038,6 +1042,10 @@ Examples:
             "security",
             "route_aggregation",
             "decision_process",
+            "keepalive_message",
+            "notification_message",
+            "version_negotiation",
+            "connection_collision",
         ],
         help="Test categories to run",
     )

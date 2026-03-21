@@ -103,6 +103,11 @@ class TestPathAttributeTypes:
         assert PATH_ATTRIBUTE_TYPES["LOCAL_PREF"] == 5
         assert PATH_ATTRIBUTE_TYPES["ATOMIC_AGGREGATE"] == 6
         assert PATH_ATTRIBUTE_TYPES["AGGREGATOR"] == 7
+        assert PATH_ATTRIBUTE_TYPES["ORIGINATOR_ID"] == 9
+        assert PATH_ATTRIBUTE_TYPES["CLUSTER_LIST"] == 10
+        assert PATH_ATTRIBUTE_TYPES["MP_REACH_NLRI"] == 14
+        assert PATH_ATTRIBUTE_TYPES["MP_UNREACH_NLRI"] == 15
+        assert PATH_ATTRIBUTE_TYPES["AS4_AGGREGATOR"] == 18
 
 
 class TestNotificationErrorCodes:
@@ -156,12 +161,21 @@ class TestAFIValues:
     def test_afi_values(self):
         assert AFI_VALUES["IPv4"] == 1
         assert AFI_VALUES["IPv6"] == 2
+        assert AFI_VALUES["NSAP"] == 3
+        assert AFI_VALUES["ISO"] == 5
+        assert AFI_VALUES["BGP_LS"] == 16388
+        assert AFI_VALUES["BGP_LS_VPN"] == 16389
 
 
 class TestSAFIValues:
     def test_safi_values(self):
         assert SAFI_VALUES["UNICAST"] == 1
         assert SAFI_VALUES["MULTICAST"] == 2
+        assert SAFI_VALUES["UNICAST_MULTICAST"] == 3
+        assert SAFI_VALUES["MPLS_VPN"] == 128
+        assert SAFI_VALUES["MPLS_LABEL"] == 132
+        assert SAFI_VALUES["BGP_LS"] == 133
+        assert SAFI_VALUES["BGP_LS_VPN"] == 140
 
 
 class TestCapabilityCodes:

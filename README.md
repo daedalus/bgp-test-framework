@@ -166,6 +166,33 @@ Tests for AS confederations per RFC 3065:
 - CONFED-003: Confederation Identifier Loop Detection
 - CONFED-004: Member-AS Loop Detection
 
+### keepalive_message
+Tests for KEEPALIVE message handling per RFC 4271 Section 4.4:
+- KA-001: KEEPALIVE in Wrong State
+- KA-002: KEEPALIVE Wrong Length
+- KA-004: KEEPALIVE in Connect State
+- KA-005: KEEPALIVE in OpenSent State
+
+### notification_message
+Tests for NOTIFICATION message handling per RFC 4271 Section 4.5 and 6.4:
+- NOT-001: NOTIFICATION in Idle State
+- NOT-002: NOTIFICATION Message Too Short
+- NOT-005: Cease Notification
+
+### version_negotiation
+Tests for BGP version negotiation per RFC 4271 Section 7:
+- VN-001: BGP Version 1
+- VN-002: BGP Version 2
+- VN-003: BGP Version 3
+- VN-004: BGP Version 0
+- VN-005: BGP Version 5 (Future)
+
+### connection_collision
+Tests for BGP connection collision detection per RFC 4271 Section 6.8:
+- COL-001: Simultaneous Connection Open
+- COL-002: Same BGP Identifier
+- COL-003: Higher BGP Identifier Wins
+
 ## Configuration File
 
 Example YAML configuration:

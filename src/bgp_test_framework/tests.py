@@ -25,14 +25,20 @@ class TestCategory(Enum):
     MESSAGE_HEADER = "message_header"
     OPEN_MESSAGE = "open_message"
     UPDATE_MESSAGE = "update_message"
-    KEEPALIVE = "keepalive"
-    NOTIFICATION = "notification"
+    KEEPALIVE_MESSAGE = "keepalive_message"
+    NOTIFICATION_MESSAGE = "notification_message"
     FSM = "fsm"
     TIMING = "timing"
     ATTRIBUTE = "attribute"
     SECURITY = "security"
     ROUTE_AGGREGATION = "route_aggregation"
     DECISION_PROCESS = "decision_process"
+    VERSION_NEGOTIATION = "version_negotiation"
+    CONNECTION_COLLISION = "connection_collision"
+    MULTIPROTOCOL = "multiprotocol"
+    ROUTE_REFLECTION = "route_reflection"
+    BGP_LS = "bgp_ls"
+    CONFEDERATION = "confederation"
 
 
 @dataclass
@@ -1313,5 +1319,288 @@ class DecisionProcessTests:
                 name="AS_PATH with Own AS Loop",
                 category=TestCategory.DECISION_PROCESS,
                 description="Routes with own AS in path should be rejected - RFC 4271 Section 9.1.2",
+            ),
+        ]
+
+
+class KeepaliveMessageTests:
+    @staticmethod
+    def get_tests() -> List[TestCase]:
+        return [
+            TestCase(
+                test_id="KA-001",
+                name="KEEPALIVE in Wrong State",
+                category=TestCategory.KEEPALIVE_MESSAGE,
+                description="Send KEEPALIVE before OPEN - RFC 4271 Section 4.4",
+            ),
+            TestCase(
+                test_id="KA-002",
+                name="KEEPALIVE Wrong Length",
+                category=TestCategory.KEEPALIVE_MESSAGE,
+                description="Send KEEPALIVE with length != 19 - RFC 4271 Section 4.4",
+            ),
+            TestCase(
+                test_id="KA-003",
+                name="KEEPALIVE with Data",
+                category=TestCategory.KEEPALIVE_MESSAGE,
+                description="Send KEEPALIVE with non-empty data - RFC 4271 Section 4.4",
+            ),
+            TestCase(
+                test_id="KA-004",
+                name="KEEPALIVE in Connect State",
+                category=TestCategory.KEEPALIVE_MESSAGE,
+                description="Send KEEPALIVE in Connect state - RFC 4271 Section 8.2",
+            ),
+            TestCase(
+                test_id="KA-005",
+                name="KEEPALIVE in OpenSent State",
+                category=TestCategory.KEEPALIVE_MESSAGE,
+                description="Send KEEPALIVE in OpenSent state prematurely - RFC 4271 Section 8.2",
+            ),
+            TestCase(
+                test_id="KA-006",
+                name="KEEPALIVE Rate Limit Exceeded",
+                category=TestCategory.KEEPALIVE_MESSAGE,
+                description="Send excessive KEEPALIVEs - RFC 4271 Section 4.4",
+            ),
+        ]
+
+
+class NotificationMessageTests:
+    @staticmethod
+    def get_tests() -> List[TestCase]:
+        return [
+            TestCase(
+                test_id="NOT-001",
+                name="NOTIFICATION in Idle State",
+                category=TestCategory.NOTIFICATION_MESSAGE,
+                description="Send NOTIFICATION in Idle state - RFC 4271 Section 6.4",
+            ),
+            TestCase(
+                test_id="NOT-002",
+                name="NOTIFICATION Message Too Short",
+                category=TestCategory.NOTIFICATION_MESSAGE,
+                description="Send NOTIFICATION with length < 21 - RFC 4271 Section 4.5",
+            ),
+            TestCase(
+                test_id="NOT-003",
+                name="NOTIFICATION Unknown Error Code",
+                category=TestCategory.NOTIFICATION_MESSAGE,
+                description="Send NOTIFICATION with unknown error code - RFC 4271 Section 6.4",
+            ),
+            TestCase(
+                test_id="NOT-004",
+                name="NOTIFICATION with Invalid Subcode",
+                category=TestCategory.NOTIFICATION_MESSAGE,
+                description="Send NOTIFICATION with invalid subcode for error code - RFC 4271 Section 6.4",
+            ),
+            TestCase(
+                test_id="NOT-005",
+                name="Cease Notification",
+                category=TestCategory.NOTIFICATION_MESSAGE,
+                description="Send Cease NOTIFICATION - RFC 4271 Section 6.7",
+            ),
+            TestCase(
+                test_id="NOT-006",
+                name="NOTIFICATION with Reserved Error Code",
+                category=TestCategory.NOTIFICATION_MESSAGE,
+                description="Send NOTIFICATION with reserved error code 7 - RFC 4271 Section 6",
+            ),
+        ]
+
+
+class VersionNegotiationTests:
+    @staticmethod
+    def get_tests() -> List[TestCase]:
+        return [
+            TestCase(
+                test_id="VN-001",
+                name="BGP Version 1",
+                category=TestCategory.VERSION_NEGOTIATION,
+                description="Send OPEN with version 1 - RFC 4271 Section 7",
+            ),
+            TestCase(
+                test_id="VN-002",
+                name="BGP Version 2",
+                category=TestCategory.VERSION_NEGOTIATION,
+                description="Send OPEN with version 2 - RFC 4271 Section 7",
+            ),
+            TestCase(
+                test_id="VN-003",
+                name="BGP Version 3",
+                category=TestCategory.VERSION_NEGOTIATION,
+                description="Send OPEN with version 3 - RFC 4271 Section 7",
+            ),
+            TestCase(
+                test_id="VN-004",
+                name="BGP Version 0",
+                category=TestCategory.VERSION_NEGOTIATION,
+                description="Send OPEN with version 0 - RFC 4271 Section 7",
+            ),
+            TestCase(
+                test_id="VN-005",
+                name="BGP Version 5",
+                category=TestCategory.VERSION_NEGOTIATION,
+                description="Send OPEN with future version 5 - RFC 4271 Section 7",
+            ),
+            TestCase(
+                test_id="VN-006",
+                name="BGP Version 255",
+                category=TestCategory.VERSION_NEGOTIATION,
+                description="Send OPEN with max version 255 - RFC 4271 Section 7",
+            ),
+        ]
+
+
+class ConnectionCollisionTests:
+    @staticmethod
+    def get_tests() -> List[TestCase]:
+        return [
+            TestCase(
+                test_id="COL-001",
+                name="Simultaneous Connection Open",
+                category=TestCategory.CONNECTION_COLLISION,
+                description="Both sides open connection simultaneously - RFC 4271 Section 6.8",
+            ),
+            TestCase(
+                test_id="COL-002",
+                name="Same BGP Identifier",
+                category=TestCategory.CONNECTION_COLLISION,
+                description="Connect with same BGP ID as peer - RFC 4271 Section 6.8",
+            ),
+            TestCase(
+                test_id="COL-003",
+                name="Higher BGP Identifier Wins",
+                category=TestCategory.CONNECTION_COLLISION,
+                description="Collision resolution prefers higher BGP ID - RFC 4271 Section 6.8",
+            ),
+            TestCase(
+                test_id="COL-004",
+                name="Collision in OpenConfirm State",
+                category=TestCategory.CONNECTION_COLLISION,
+                description="Connection collision in OpenConfirm - RFC 4271 Section 6.8",
+            ),
+        ]
+
+
+class MultiprotocolTests:
+    @staticmethod
+    def get_tests() -> List[TestCase]:
+        return [
+            TestCase(
+                test_id="MP-001",
+                name="MP_REACH_NLRI Invalid AFI",
+                category=TestCategory.MULTIPROTOCOL,
+                description="Send MP_REACH_NLRI with invalid AFI - RFC 4760",
+            ),
+            TestCase(
+                test_id="MP-002",
+                name="MP_REACH_NLRI Invalid SAFI",
+                category=TestCategory.MULTIPROTOCOL,
+                description="Send MP_REACH_NLRI with invalid SAFI - RFC 4760",
+            ),
+            TestCase(
+                test_id="MP-003",
+                name="MP_UNREACH_NLRI Invalid AFI",
+                category=TestCategory.MULTIPROTOCOL,
+                description="Send MP_UNREACH_NLRI with invalid AFI - RFC 4760",
+            ),
+            TestCase(
+                test_id="MP-004",
+                name="MP_REACH_NLRI IPv6",
+                category=TestCategory.MULTIPROTOCOL,
+                description="Send MP_REACH_NLRI with IPv6 (AFI=2) - RFC 4760",
+            ),
+            TestCase(
+                test_id="MP-005",
+                name="MP_REACH_NLRI VPNv4",
+                category=TestCategory.MULTIPROTOCOL,
+                description="Send MP_REACH_NLRI with VPNv4 - RFC 4364",
+            ),
+            TestCase(
+                test_id="MP-006",
+                name="MP_REACH_NLRI Next Hop Length Error",
+                category=TestCategory.MULTIPROTOCOL,
+                description="Send MP_REACH_NLRI with invalid NH length - RFC 4760",
+            ),
+            TestCase(
+                test_id="MP-007",
+                name="MP_REACH_NLRI Reserved SNPA",
+                category=TestCategory.MULTIPROTOCOL,
+                description="Send MP_REACH_NLRI with reserved SNPA - RFC 4760",
+            ),
+            TestCase(
+                test_id="MP-008",
+                name="MP_REACH_NLRI Without Capability",
+                category=TestCategory.MULTIPROTOCOL,
+                description="Send MP_REACH_NLRI without multiprotocol capability - RFC 4760",
+            ),
+        ]
+
+
+class RouteReflectionTests:
+    @staticmethod
+    def get_tests() -> List[TestCase]:
+        return [
+            TestCase(
+                test_id="RR-001",
+                name="ORIGINATOR_ID Loop Detection",
+                category=TestCategory.ROUTE_REFLECTION,
+                description="Route with own ORIGINATOR_ID should be discarded - RFC 4456",
+            ),
+            TestCase(
+                test_id="RR-002",
+                name="CLUSTER_LIST Loop Detection",
+                category=TestCategory.ROUTE_REFLECTION,
+                description="Route with own Cluster ID in CLUSTER_LIST - RFC 4456",
+            ),
+            TestCase(
+                test_id="RR-003",
+                name="ORIGINATOR_ID Format",
+                category=TestCategory.ROUTE_REFLECTION,
+                description="ORIGINATOR_ID must be 4 bytes - RFC 4456",
+            ),
+            TestCase(
+                test_id="RR-004",
+                test_name="CLUSTER_LIST Length Error",
+                category=TestCategory.ROUTE_REFLECTION,
+                description="CLUSTER_LIST length not multiple of 4 - RFC 4456",
+            ),
+            TestCase(
+                test_id="RR-005",
+                name="ORIGINATOR_ID Zero",
+                category=TestCategory.ROUTE_REFLECTION,
+                description="ORIGINATOR_ID of 0.0.0.0 is invalid - RFC 4456",
+            ),
+        ]
+
+
+class BGPSecurityTests:
+    @staticmethod
+    def get_tests() -> List[TestCase]:
+        return [
+            TestCase(
+                test_id="SEC-021",
+                name="AS4_AGGREGATOR Attribute",
+                category=TestCategory.SECURITY,
+                description="AS4_AGGREGATOR for 4-byte AS support - RFC 4893",
+            ),
+            TestCase(
+                test_id="SEC-022",
+                name="AS4_AGGREGATOR vs AGGREGATOR Conflict",
+                category=TestCategory.SECURITY,
+                description="AS4_AGGREGATOR and AGGREGATOR must match - RFC 4893",
+            ),
+            TestCase(
+                test_id="SEC-023",
+                name="Private AS in AS_PATH",
+                category=TestCategory.SECURITY,
+                description="Private AS numbers should be stripped - RFC 1930",
+            ),
+            TestCase(
+                test_id="SEC-024",
+                name="AS_PATH Prepending Validation",
+                category=TestCategory.SECURITY,
+                description="Validate AS_PATH prepending semantics - RFC 4271",
             ),
         ]

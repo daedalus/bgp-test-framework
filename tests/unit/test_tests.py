@@ -192,17 +192,24 @@ class TestSecurityTests:
 
 class TestTestCategories:
     def test_all_categories_defined(self):
-        assert len(TestCategory) == 11
+        assert len(TestCategory) == 20
         assert TestCategory.MESSAGE_HEADER.value == "message_header"
         assert TestCategory.OPEN_MESSAGE.value == "open_message"
         assert TestCategory.UPDATE_MESSAGE.value == "update_message"
         assert TestCategory.ATTRIBUTE.value == "attribute"
         assert TestCategory.FSM.value == "fsm"
         assert TestCategory.TIMING.value == "timing"
-        assert TestCategory.NOTIFICATION.value == "notification"
         assert TestCategory.SECURITY.value == "security"
         assert TestCategory.ROUTE_AGGREGATION.value == "route_aggregation"
         assert TestCategory.DECISION_PROCESS.value == "decision_process"
+        assert TestCategory.KEEPALIVE_MESSAGE.value == "keepalive_message"
+        assert TestCategory.NOTIFICATION_MESSAGE.value == "notification_message"
+        assert TestCategory.VERSION_NEGOTIATION.value == "version_negotiation"
+        assert TestCategory.CONNECTION_COLLISION.value == "connection_collision"
+        assert TestCategory.MULTIPROTOCOL.value == "multiprotocol"
+        assert TestCategory.ROUTE_REFLECTION.value == "route_reflection"
+        assert TestCategory.BGP_LS.value == "bgp_ls"
+        assert TestCategory.CONFEDERATION.value == "confederation"
 
 
 class TestNotificationErrorCodes:

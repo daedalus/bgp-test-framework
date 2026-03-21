@@ -538,3 +538,33 @@ def create_inter_as_metric_attribute(metric: int) -> PathAttribute:
         0x80,
         struct.pack("!H", metric),
     )
+
+
+def create_mp_reach_nlri_attribute(
+    afi: int, safi: int, next_hop: bytes, nlri: bytes
+) -> PathAttribute:
+    data = struct.pack("!HBB", afi, 0, safi)
+    data += struct.pack("!B", len(next_hop)) + next_hop
+    data += bytes([0])
+    data += nlri
+    return PathAttribute(PATH_ATTRIBUTE_TYPES["MP_REACH_NLRI"], 0x80, data)
+
+
+def create_mp_unreach_nlri_attribute(afi: int, safi: int, withdrawn_routes: bytes) -> PathAttribute:
+    data = struct.pack("!HBB", afi, 0, safi) + withdrawn_routes
+    return PathAttribute(PATH_ATTRIBUTE_TYPES["MP_UNREACH_NLRI"], 0x80, data)
+
+
+def create_originator_id_attribute(bgp_id: int) -> PathAttribute:
+    return PathAttribute(PATH_ATTRIBUTE_TYPES["ORIGINATOR_ID"], 0x40, struct.pack("!I", bgp_id))
+
+
+def create_cluster_list_attribute(cluster_ids: List[int]) -> PathAttribute:
+    data = b"".join(struct.pack("!I", cid) for cid in cluster_ids)
+    return PathAttribute(PATH_ATTRIBUTE_TYPES["CLUSTER_LIST"], 0x40, data)
+
+
+def create_as4_aggregator_attribute(as_number: int, router_id: int) -> PathAttribute:
+    return PathAttribute(
+        PATH_ATTRIBUTE_TYPES["AS4_AGGREGATOR"], 0xC0, struct.pack("!I", as_number) + struct.pack("!I", router_id)
+    )
