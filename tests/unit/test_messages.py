@@ -10,10 +10,12 @@ from bgp_test_framework.messages import (
     BGPUpdateMessage,
     BGPKeepaliveMessage,
     BGPNotificationMessage,
+    BGPRouteRefreshMessage,
     PathAttribute,
     build_open_message,
     build_notification_message,
     build_keepalive_message,
+    build_route_refresh_message,
     create_origin_attribute,
     create_as_path_attribute,
     create_next_hop_attribute,
@@ -204,6 +206,7 @@ class TestMessageTypes:
         assert MESSAGE_TYPES["UPDATE"] == 2
         assert MESSAGE_TYPES["NOTIFICATION"] == 3
         assert MESSAGE_TYPES["KEEPALIVE"] == 4
+        assert MESSAGE_TYPES["ROUTE_REFRESH"] == 5
 
     def test_origin_types(self):
         assert ORIGIN_TYPES["IGP"] == 0
@@ -213,3 +216,46 @@ class TestMessageTypes:
     def test_as_path_segment_types(self):
         assert AS_PATH_SEGMENT_TYPES["AS_SET"] == 1
         assert AS_PATH_SEGMENT_TYPES["AS_SEQUENCE"] == 2
+
+
+class TestBGPRouteRefreshMessage:
+    def test_route_refresh_message_serialize(self):
+        msg = BGPRouteRefreshMessage(afi=1, safi=1)
+        data = msg.serialize()
+        assert len(data) == 23
+        assert data[0:16] == MARKER
+        assert data[16:18] == struct.pack("!H", 23)
+        assert data[18] == MESSAGE_TYPES["ROUTE_REFRESH"]
+        assert data[19:21] == struct.pack("!H", 1)
+        assert data[21] == 0
+        assert data[22] == 1
+
+    def test_route_refresh_message_parse(self):
+        msg = BGPRouteRefreshMessage(afi=1, safi=1)
+        data = msg.serialize()
+        parsed = BGPRouteRefreshMessage.parse(data[19:])
+        assert parsed.afi == 1
+        assert parsed.safi == 1
+        assert parsed.reserved == 0
+
+    def test_route_refresh_message_ipv6(self):
+        msg = BGPRouteRefreshMessage(afi=2, safi=1)
+        data = msg.serialize()
+        parsed = BGPRouteRefreshMessage.parse(data[19:])
+        assert parsed.afi == 2
+        assert parsed.safi == 1
+
+
+class TestRouteRefreshBuilder:
+    def test_build_route_refresh_message(self):
+        msg = build_route_refresh_message(afi=1, safi=1)
+        assert len(msg) == 23
+        assert msg[18] == MESSAGE_TYPES["ROUTE_REFRESH"]
+        assert msg[19:21] == struct.pack("!H", 1)
+        assert msg[22] == 1
+
+    def test_build_route_refresh_message_ipv6(self):
+        msg = build_route_refresh_message(afi=2, safi=2)
+        assert len(msg) == 23
+        assert msg[19:21] == struct.pack("!H", 2)
+        assert msg[22] == 2

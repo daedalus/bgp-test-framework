@@ -63,13 +63,15 @@ class TestConfiguration:
     delay_between_tests: float
     retry_count: int
     verbose: bool
+    debug: bool
     output_format: str
     output_file: Optional[str]
 
 
 class BGPLogger:
-    def __init__(self, verbose: bool = False):
+    def __init__(self, verbose: bool = False, debug: bool = False):
         self.verbose = verbose
+        self.debug = debug
         self.entries: List[Dict[str, Any]] = []
 
     def log(self, level: str, message: str, details: Optional[Dict] = None):
@@ -78,9 +80,20 @@ class BGPLogger:
             entry["details"] = details
         self.entries.append(entry)
 
-        if self.verbose or level in ["ERROR", "CRITICAL"]:
+        if self.debug:
             log_func = getattr(logger, level.lower(), logger.info)
             log_func(message)
+        elif self.verbose or level in ["ERROR", "CRITICAL"]:
+            log_func = getattr(logger, level.lower(), logger.info)
+            log_func(message)
+
+    def debug_log(self, message: str, details: Optional[Dict] = None):
+        if self.debug:
+            entry = {"timestamp": time.time(), "level": "DEBUG", "message": message}
+            if details:
+                entry["details"] = details
+            self.entries.append(entry)
+            logger.debug(message)
 
     def get_log(self) -> List[Dict[str, Any]]:
         return self.entries
@@ -90,10 +103,12 @@ class TestRunner:
     def __init__(self, config: TestConfiguration):
         self.config = config
         self.framework: Optional[BGPTestFramework] = None
-        self.logger = BGPLogger(config.verbose)
+        self.logger = BGPLogger(config.verbose, config.debug)
         self.results: List[TestResult] = []
 
     def _create_framework(self) -> BGPTestFramework:
+        target = f"{self.config.target_host}:{self.config.target_port}"
+        self.logger.debug_log(f"Creating framework for {target}")
         return BGPTestFramework(
             target_host=self.config.target_host,
             target_port=self.config.target_port,
@@ -254,8 +269,10 @@ class TestRunner:
     def _send_malformed_open(self, modifier) -> Optional[bytes]:
         framework = self._create_framework()
         if not framework.connect():
+            self.logger.debug_log("TCP connection failed")
             return None
 
+        self.logger.debug_log("TCP connection established, sending malformed OPEN")
         msg = build_open_message(
             self.config.source_as,
             self.config.hold_time,
@@ -270,8 +287,10 @@ class TestRunner:
     def _send_open_message(self, length: int) -> Optional[bytes]:
         framework = self._create_framework()
         if not framework.connect():
+            self.logger.debug_log("TCP connection failed for OPEN message")
             return None
 
+        self.logger.debug_log(f"Sending OPEN message with length {length}")
         msg = build_open_message(self.config.source_as)
         malformed = (
             MARKER[:16] + struct.pack("!HB", length, 1) + msg[19:][: length - 19]
@@ -284,8 +303,10 @@ class TestRunner:
     def _send_update_message(self, length: int) -> Optional[bytes]:
         framework = self._create_framework()
         if not framework.connect():
+            self.logger.debug_log("TCP connection failed for UPDATE message")
             return None
 
+        self.logger.debug_log(f"Sending UPDATE message with length {length}")
         msg = MARKER + struct.pack("!HB", length, 2) + b"\x00" * (length - 19)
         framework.send_raw(msg)
         response = framework.receive_raw()
@@ -295,8 +316,10 @@ class TestRunner:
     def _send_raw_message(self, msg_func) -> Optional[bytes]:
         framework = self._create_framework()
         if not framework.connect():
+            self.logger.debug_log("TCP connection failed for raw message")
             return None
 
+        self.logger.debug_log("Sending raw BGP message")
         msg = msg_func()
         framework.send_raw(msg)
         response = framework.receive_raw()
@@ -358,8 +381,10 @@ class TestRunner:
     def _send_open_with_version(self, version: int) -> Optional[bytes]:
         framework = self._create_framework()
         if not framework.connect():
+            self.logger.debug_log(f"TCP connection failed for version {version}")
             return None
 
+        self.logger.debug_log(f"Sending OPEN with version {version}")
         bgp_id = struct.unpack("!I", socket.inet_aton(self.config.bgp_id))[0]
         data = struct.pack("!BHHI", version, self.config.source_as, 180, bgp_id)
         data += struct.pack("!B", 0)
@@ -372,8 +397,10 @@ class TestRunner:
     def _send_open_with_hold_time(self, hold_time: int) -> Optional[bytes]:
         framework = self._create_framework()
         if not framework.connect():
+            self.logger.debug_log(f"TCP connection failed for hold_time {hold_time}")
             return None
 
+        self.logger.debug_log(f"Sending OPEN with hold_time {hold_time}")
         bgp_id = struct.unpack("!I", socket.inet_aton(self.config.bgp_id))[0]
         data = struct.pack("!BHHI", 4, self.config.source_as, hold_time, bgp_id)
         data += struct.pack("!B", 0)
@@ -386,8 +413,10 @@ class TestRunner:
     def _send_open_with_bgp_id(self, bgp_id: str) -> Optional[bytes]:
         framework = self._create_framework()
         if not framework.connect():
+            self.logger.debug_log(f"TCP connection failed for bgp_id {bgp_id}")
             return None
 
+        self.logger.debug_log(f"Sending OPEN with BGP ID {bgp_id}")
         bgp_id_val = struct.unpack("!I", socket.inet_aton(bgp_id))[0]
         data = struct.pack("!BHHI", 4, self.config.source_as, 180, bgp_id_val)
         data += struct.pack("!B", 0)
@@ -465,8 +494,10 @@ class TestRunner:
     def _send_update_without_origin(self) -> Optional[bytes]:
         framework = self._create_framework()
         if not framework.connect():
+            self.logger.debug_log("TCP connection failed for UPDATE without ORIGIN")
             return None
 
+        self.logger.debug_log("Sending UPDATE without ORIGIN attribute")
         msg = self._build_update_with_attrs(
             [
                 create_as_path_attribute([self.config.source_as]),
@@ -481,8 +512,10 @@ class TestRunner:
     def _send_update_without_aspath(self) -> Optional[bytes]:
         framework = self._create_framework()
         if not framework.connect():
+            self.logger.debug_log("TCP connection failed for UPDATE without AS_PATH")
             return None
 
+        self.logger.debug_log("Sending UPDATE without AS_PATH attribute")
         msg = self._build_update_with_attrs(
             [
                 create_origin_attribute(ORIGIN_TYPES["IGP"]),
@@ -497,8 +530,10 @@ class TestRunner:
     def _send_update_without_nexthop(self) -> Optional[bytes]:
         framework = self._create_framework()
         if not framework.connect():
+            self.logger.debug_log("TCP connection failed for UPDATE without NEXT_HOP")
             return None
 
+        self.logger.debug_log("Sending UPDATE without NEXT_HOP attribute")
         msg = self._build_update_with_attrs(
             [
                 create_origin_attribute(ORIGIN_TYPES["IGP"]),
@@ -513,8 +548,12 @@ class TestRunner:
     def _send_update_with_invalid_origin(self) -> Optional[bytes]:
         framework = self._create_framework()
         if not framework.connect():
+            self.logger.debug_log(
+                "TCP connection failed for UPDATE with invalid ORIGIN"
+            )
             return None
 
+        self.logger.debug_log("Sending UPDATE with invalid ORIGIN value")
         invalid_origin = PathAttribute(PATH_ATTRIBUTE_TYPES["ORIGIN"], 0x40, bytes([3]))
         msg = self._build_update_with_attrs(
             [
@@ -531,8 +570,12 @@ class TestRunner:
     def _send_update_with_malformed_aspath(self) -> Optional[bytes]:
         framework = self._create_framework()
         if not framework.connect():
+            self.logger.debug_log(
+                "TCP connection failed for UPDATE with malformed AS_PATH"
+            )
             return None
 
+        self.logger.debug_log("Sending UPDATE with malformed AS_PATH")
         malformed_aspath = PathAttribute(
             PATH_ATTRIBUTE_TYPES["AS_PATH"], 0x40, bytes([2, 10]) + b"\x00" * 5
         )
@@ -551,8 +594,12 @@ class TestRunner:
     def _send_update_with_invalid_nexthop(self) -> Optional[bytes]:
         framework = self._create_framework()
         if not framework.connect():
+            self.logger.debug_log(
+                "TCP connection failed for UPDATE with invalid NEXT_HOP"
+            )
             return None
 
+        self.logger.debug_log("Sending UPDATE with invalid NEXT_HOP (0.0.0.0)")
         msg = self._build_update_with_attrs(
             [
                 create_origin_attribute(ORIGIN_TYPES["IGP"]),
@@ -568,8 +615,12 @@ class TestRunner:
     def _send_update_with_attr_length_error(self) -> Optional[bytes]:
         framework = self._create_framework()
         if not framework.connect():
+            self.logger.debug_log(
+                "TCP connection failed for UPDATE with attr length error"
+            )
             return None
 
+        self.logger.debug_log("Sending UPDATE with attribute length error")
         wrong_length_origin = PathAttribute(
             PATH_ATTRIBUTE_TYPES["ORIGIN"], 0x40, bytes([0, 0])
         )
@@ -588,8 +639,12 @@ class TestRunner:
     def _send_update_with_duplicate_attr(self) -> Optional[bytes]:
         framework = self._create_framework()
         if not framework.connect():
+            self.logger.debug_log(
+                "TCP connection failed for UPDATE with duplicate attr"
+            )
             return None
 
+        self.logger.debug_log("Sending UPDATE with duplicate attribute")
         msg = self._build_update_with_attrs(
             [
                 create_origin_attribute(ORIGIN_TYPES["IGP"]),
@@ -625,6 +680,10 @@ class TestRunner:
         return msg
 
     def run_all_tests(self) -> List[TestResult]:
+        self.logger.debug_log(
+            f"Starting test run - categories: {self.config.test_categories}, "
+            f"test_ids: {self.config.test_ids}"
+        )
         all_results = []
 
         category_handlers = {
@@ -645,6 +704,9 @@ class TestRunner:
         return all_results
 
     def get_summary(self) -> Dict[str, Any]:
+        self.logger.debug_log(
+            f"Generating summary for {len(self.results)} test results"
+        )
         total = len(self.results)
         passed = sum(1 for r in self.results if r.passed)
         failed = total - passed
@@ -739,6 +801,7 @@ def create_config_from_args(args) -> TestConfiguration:
         delay_between_tests=args.delay,
         retry_count=args.retry,
         verbose=args.verbose,
+        debug=args.debug,
         output_format=args.format,
         output_file=args.output,
     )
@@ -751,9 +814,10 @@ def main():
         epilog="""
 Examples:
   %(prog)s --target 192.168.1.1 --as-number 65001
-  %(prog)s --target 10.0.0.1 --port 179 --as-number 65001 --categories message_header open_message
+  %(prog)s --target 10.0.0.1 --port 179 --as-number 65001
+  %(prog)s --target 10.0.0.1 --categories message_header open_message
   %(prog)s --target 192.168.1.1 --config config.yaml
-  %(prog)s --target 192.168.1.1 --test-ids MH-001 MH-002 MH-003 --output results.json
+  %(prog)s --target 192.168.1.1 --test-ids MH-001 MH-002 MH-003
         """,
     )
 
@@ -803,8 +867,13 @@ Examples:
         "--format", choices=["json", "yaml"], default="json", help="Output format"
     )
     parser.add_argument("--verbose", "-v", action="store_true", help="Verbose output")
+    parser.add_argument("--debug", "-d", action="store_true", help="Debug output")
 
     args = parser.parse_args()
+
+    if args.debug:
+        logging.getLogger().setLevel(logging.DEBUG)
+        logger.debug("Debug mode enabled")
 
     if args.config:
         config_dict = load_config(args.config)
@@ -813,9 +882,8 @@ Examples:
 
     config = create_config_from_args(args)
 
-    logger.info(
-        f"Starting BGPv4 adversarial tests against {config.target_host}:{config.target_port}"
-    )
+    target = f"{config.target_host}:{config.target_port}"
+    logger.info(f"Starting BGPv4 adversarial tests against {target}")
     logger.info(f"Source AS: {config.source_as}")
 
     runner = TestRunner(config)

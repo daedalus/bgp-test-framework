@@ -74,6 +74,7 @@ bgp-test --target 192.168.1.1 --categories message_header open_message
 | `--output`, `-o` | Output file for results |
 | `--format` | Output format (json/yaml) |
 | `--verbose`, `-v` | Verbose output |
+| `--debug`, `-d` | Debug output |
 
 ## Test Categories
 
@@ -184,6 +185,7 @@ retry_count: 1
 output: "results.json"
 format: "json"
 verbose: true
+debug: false
 ```
 
 ## Output Format

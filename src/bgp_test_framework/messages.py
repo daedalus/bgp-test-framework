@@ -180,6 +180,35 @@ class BGPNotificationMessage:
         return cls(error_code, error_subcode, notification_data)
 
 
+class BGPRouteRefreshMessage:
+    def __init__(self, afi: int, safi: int, reserved: int = 0):
+        self.afi = afi
+        self.safi = safi
+        self.reserved = reserved
+
+    def serialize(self) -> bytes:
+        data = struct.pack("!HBB", self.afi, self.reserved, self.safi)
+        return BGPMessage(MESSAGE_TYPES["ROUTE_REFRESH"], data).serialize()
+
+    @classmethod
+    def parse(cls, data: bytes) -> "BGPRouteRefreshMessage":
+        if len(data) < 4:
+            raise ValueError("ROUTE_REFRESH message too short")
+
+        offset = 0
+        if len(data) >= 19 and data[0:16] == MARKER:
+            offset = 19
+
+        if len(data) - offset < 4:
+            raise ValueError("ROUTE_REFRESH message too short")
+
+        afi = struct.unpack("!H", data[offset : offset + 2])[0]
+        reserved = data[offset + 2]
+        safi = data[offset + 3]
+
+        return cls(afi, safi, reserved)
+
+
 class PathAttribute:
     def __init__(self, attr_type: int, flags: int, value: bytes):
         self.attr_type = attr_type
@@ -314,6 +343,11 @@ def build_notification_message(
 
 def build_keepalive_message() -> bytes:
     msg = BGPKeepaliveMessage()
+    return msg.serialize()
+
+
+def build_route_refresh_message(afi: int, safi: int, reserved: int = 0) -> bytes:
+    msg = BGPRouteRefreshMessage(afi, safi, reserved)
     return msg.serialize()
 
 

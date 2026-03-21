@@ -43,6 +43,7 @@ class TestMessageTypes:
         assert MESSAGE_TYPES["UPDATE"] == 2
         assert MESSAGE_TYPES["NOTIFICATION"] == 3
         assert MESSAGE_TYPES["KEEPALIVE"] == 4
+        assert MESSAGE_TYPES["ROUTE_REFRESH"] == 5
 
     def test_type_names_consistency(self):
         for name, code in MESSAGE_TYPES.items():

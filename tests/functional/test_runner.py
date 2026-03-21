@@ -2,11 +2,7 @@
 Functional tests for BGP Test Runner
 """
 
-import os
-import sys
 from unittest.mock import Mock, patch
-
-sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", "..", "src"))
 
 from bgp_test_framework.runner import TestRunner, TestConfiguration, BGPLogger
 from bgp_test_framework.tests import TestCategory, TestResult
@@ -51,6 +47,7 @@ class TestTestConfiguration:
             delay_between_tests=0.5,
             retry_count=1,
             verbose=False,
+            debug=False,
             output_format="json",
             output_file="results.json",
         )
@@ -72,10 +69,12 @@ class TestTestConfiguration:
             delay_between_tests=0.5,
             retry_count=1,
             verbose=False,
+            debug=False,
             output_format="json",
             output_file=None,
         )
         assert config.verbose is False
+        assert config.debug is False
         assert config.output_file is None
 
 
@@ -115,6 +114,7 @@ class TestTestRunner:
             delay_between_tests=0.5,
             retry_count=1,
             verbose=False,
+            debug=False,
             output_format="json",
             output_file=None,
         )
@@ -138,6 +138,7 @@ class TestTestRunner:
             delay_between_tests=0.5,
             retry_count=1,
             verbose=False,
+            debug=False,
             output_format="json",
             output_file=None,
         )
@@ -162,6 +163,7 @@ class TestTestRunner:
             delay_between_tests=0.5,
             retry_count=1,
             verbose=False,
+            debug=False,
             output_format="json",
             output_file=None,
         )
@@ -212,6 +214,7 @@ class TestTestRunner:
             delay_between_tests=0.5,
             retry_count=1,
             verbose=False,
+            debug=False,
             output_format="json",
             output_file=None,
         )
@@ -249,6 +252,7 @@ class TestCommandLineParsing:
         args.delay = 0.5
         args.retry = 1
         args.verbose = False
+        args.debug = False
         args.format = "json"
         args.output = None
         args.config = None
