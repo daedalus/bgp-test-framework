@@ -22,6 +22,10 @@ from bgp_test_framework.constants import (
     SAFI_VALUES,
     CAPABILITY_CODES,
     BGP_FSM_STATES,
+    BGP_VERSIONS,
+    LINK_TYPES_RFC1105,
+    DIRECTION_TYPES_RFC1105,
+    LEGACY_PATH_ATTRIBUTE_TYPES_RFC1163,
 )
 
 
@@ -182,6 +186,40 @@ class TestBGPFSMStates:
         assert BGP_FSM_STATES["OpenSent"] == 3
         assert BGP_FSM_STATES["OpenConfirm"] == 4
         assert BGP_FSM_STATES["Established"] == 5
+
+
+class TestBGPVersions:
+    def test_bgp_versions(self):
+        assert BGP_VERSIONS["BGP_V1"] == 1
+        assert BGP_VERSIONS["BGP_V2"] == 2
+        assert BGP_VERSIONS["BGP_V3"] == 3
+        assert BGP_VERSIONS["BGP_V4"] == 4
+
+
+class TestLegacyLinkTypesRFC1105:
+    def test_link_types(self):
+        assert LINK_TYPES_RFC1105["INTERNAL"] == 0
+        assert LINK_TYPES_RFC1105["UP"] == 1
+        assert LINK_TYPES_RFC1105["DOWN"] == 2
+        assert LINK_TYPES_RFC1105["H_LINK"] == 3
+
+
+class TestLegacyDirectionTypesRFC1105:
+    def test_direction_types(self):
+        assert DIRECTION_TYPES_RFC1105["UP"] == 1
+        assert DIRECTION_TYPES_RFC1105["DOWN"] == 2
+        assert DIRECTION_TYPES_RFC1105["H_LINK"] == 3
+        assert DIRECTION_TYPES_RFC1105["EGP_LINK"] == 4
+        assert DIRECTION_TYPES_RFC1105["INCOMPLETE"] == 5
+
+
+class TestLegacyPathAttributeTypesRFC1163:
+    def test_legacy_attribute_types(self):
+        assert LEGACY_PATH_ATTRIBUTE_TYPES_RFC1163["ORIGIN"] == 1
+        assert LEGACY_PATH_ATTRIBUTE_TYPES_RFC1163["AS_PATH"] == 2
+        assert LEGACY_PATH_ATTRIBUTE_TYPES_RFC1163["NEXT_HOP"] == 3
+        assert LEGACY_PATH_ATTRIBUTE_TYPES_RFC1163["UNREACHABLE"] == 4
+        assert LEGACY_PATH_ATTRIBUTE_TYPES_RFC1163["INTER_AS_METRIC"] == 5
 
     def test_fsm_state_count(self):
         assert len(BGP_FSM_STATES) == 6

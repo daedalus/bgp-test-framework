@@ -22,6 +22,11 @@ from bgp_test_framework.messages import (
     create_confed_sequence_attribute,
     create_confed_set_attribute,
     create_confed_sequence_with_as_sequence,
+    build_legacy_open_message_v1,
+    build_legacy_open_message_v2,
+    build_legacy_open_message_v3,
+    create_unreachable_attribute,
+    create_inter_as_metric_attribute,
     BGPHeaderParser,
 )
 from bgp_test_framework.constants import (
@@ -30,6 +35,9 @@ from bgp_test_framework.constants import (
     ORIGIN_TYPES,
     AS_PATH_SEGMENT_TYPES,
     AS_CONFED_PATH_SEGMENT_TYPES,
+    BGP_VERSIONS,
+    LINK_TYPES_RFC1105,
+    LEGACY_PATH_ATTRIBUTE_TYPES_RFC1163,
 )
 
 
@@ -291,4 +299,55 @@ class TestConfederationAttributes:
         confed_data_len = 1 + 1 + 2 * 2
         assert data[confed_data_len] == AS_PATH_SEGMENT_TYPES["AS_SEQUENCE"]
         assert data[confed_data_len + 1] == 2
+
+
+class TestBGPLegacyVersions:
+    def test_bgp_versions_defined(self):
+        assert BGP_VERSIONS["BGP_V1"] == 1
+        assert BGP_VERSIONS["BGP_V2"] == 2
+        assert BGP_VERSIONS["BGP_V3"] == 3
+        assert BGP_VERSIONS["BGP_V4"] == 4
+
+    def test_link_types_rfc1105(self):
+        assert LINK_TYPES_RFC1105["INTERNAL"] == 0
+        assert LINK_TYPES_RFC1105["UP"] == 1
+        assert LINK_TYPES_RFC1105["DOWN"] == 2
+        assert LINK_TYPES_RFC1105["H_LINK"] == 3
+
+    def test_legacy_open_v1_format(self):
+        msg = build_legacy_open_message_v1(my_as=65001, link_type=0)
+        assert len(msg) >= 19
+        assert msg[0:16] == MARKER
+        assert msg[19] == BGP_VERSIONS["BGP_V1"]
+
+    def test_legacy_open_v2_format(self):
+        msg = build_legacy_open_message_v2(my_as=65001, hold_time=180)
+        assert len(msg) >= 19
+        assert msg[0:16] == MARKER
+        assert msg[19] == BGP_VERSIONS["BGP_V2"]
+
+    def test_legacy_open_v3_format(self):
+        msg = build_legacy_open_message_v3(my_as=65001, hold_time=180, bgp_id=0x0A000001)
+        assert len(msg) >= 19
+        assert msg[0:16] == MARKER
+        assert msg[19] == BGP_VERSIONS["BGP_V3"]
+
+
+class TestLegacyPathAttributes:
+    def test_legacy_path_attribute_types(self):
+        assert LEGACY_PATH_ATTRIBUTE_TYPES_RFC1163["ORIGIN"] == 1
+        assert LEGACY_PATH_ATTRIBUTE_TYPES_RFC1163["AS_PATH"] == 2
+        assert LEGACY_PATH_ATTRIBUTE_TYPES_RFC1163["NEXT_HOP"] == 3
+        assert LEGACY_PATH_ATTRIBUTE_TYPES_RFC1163["UNREACHABLE"] == 4
+        assert LEGACY_PATH_ATTRIBUTE_TYPES_RFC1163["INTER_AS_METRIC"] == 5
+
+    def test_create_unreachable_attribute(self):
+        attr = create_unreachable_attribute()
+        assert attr.attr_type == LEGACY_PATH_ATTRIBUTE_TYPES_RFC1163["UNREACHABLE"]
+        assert attr.value == b""
+
+    def test_create_inter_as_metric_attribute(self):
+        attr = create_inter_as_metric_attribute(100)
+        assert attr.attr_type == LEGACY_PATH_ATTRIBUTE_TYPES_RFC1163["INTER_AS_METRIC"]
+        assert attr.value == struct.pack("!H", 100)
 

@@ -13,6 +13,8 @@ from .constants import (
     AS_CONFED_PATH_SEGMENT_TYPES,
     PATH_ATTRIBUTE_FLAGS,
     PATH_ATTRIBUTE_TYPES,
+    BGP_VERSIONS,
+    LEGACY_PATH_ATTRIBUTE_TYPES_RFC1163,
 )
 
 
@@ -491,3 +493,48 @@ def create_confed_sequence_with_as_sequence(
         [AS_PATH_SEGMENT_TYPES["AS_SEQUENCE"], len(external_as_numbers)]
     ) + b"".join(struct.pack("!H", asn) for asn in external_as_numbers)
     return PathAttribute(PATH_ATTRIBUTE_TYPES["AS_PATH"], 0x40, confed_data + as_data)
+
+
+def build_legacy_open_message_v1(
+    my_as: int, link_type: int = 0, auth_data: bytes = b""
+) -> bytes:
+    data = struct.pack("!HBB", my_as, link_type, 0) + auth_data
+    header = (
+        MARKER
+        + struct.pack("!HB", 8 + len(data), MESSAGE_TYPES["OPEN"])
+        + struct.pack("!B", 1)
+    )
+    header += struct.pack("!H", 0)
+    return header + data
+
+
+def build_legacy_open_message_v2(
+    my_as: int, hold_time: int = 180, auth_code: int = 0, auth_data: bytes = b""
+) -> bytes:
+    data = struct.pack("!BHH", BGP_VERSIONS["BGP_V2"], my_as, hold_time)
+    data += bytes([auth_code]) + auth_data
+    return MARKER + struct.pack("!HB", 10 + len(data), MESSAGE_TYPES["OPEN"]) + data
+
+
+def build_legacy_open_message_v3(
+    my_as: int,
+    hold_time: int = 180,
+    bgp_id: int = 0,
+    auth_code: int = 0,
+    auth_data: bytes = b"",
+) -> bytes:
+    data = struct.pack("!BHHI", BGP_VERSIONS["BGP_V3"], my_as, hold_time, bgp_id)
+    data += bytes([auth_code]) + auth_data
+    return MARKER + struct.pack("!HB", 10 + len(data), MESSAGE_TYPES["OPEN"]) + data
+
+
+def create_unreachable_attribute() -> PathAttribute:
+    return PathAttribute(LEGACY_PATH_ATTRIBUTE_TYPES_RFC1163["UNREACHABLE"], 0x40, b"")
+
+
+def create_inter_as_metric_attribute(metric: int) -> PathAttribute:
+    return PathAttribute(
+        LEGACY_PATH_ATTRIBUTE_TYPES_RFC1163["INTER_AS_METRIC"],
+        0x80,
+        struct.pack("!H", metric),
+    )
