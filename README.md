@@ -153,6 +153,13 @@ Tests for BGP decision process per RFC 4271 Section 9.1:
 - DEC-008: Route Resolvability
 - DEC-010: AS_PATH with Own AS Loop
 
+### confederation
+Tests for AS confederations per RFC 3065:
+- CONFED-001: AS_CONFED_SEQUENCE Path Attribute
+- CONFED-002: AS_CONFED_SET Path Attribute
+- CONFED-003: Confederation Identifier Loop Detection
+- CONFED-004: Member-AS Loop Detection
+
 ## Configuration File
 
 Example YAML configuration:

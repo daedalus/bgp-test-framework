@@ -10,6 +10,7 @@ from bgp_test_framework.constants import (
     MESSAGE_MIN_LENGTHS,
     ORIGIN_TYPES,
     AS_PATH_SEGMENT_TYPES,
+    AS_CONFED_PATH_SEGMENT_TYPES,
     PATH_ATTRIBUTE_FLAGS,
     PATH_ATTRIBUTE_TYPES,
     NOTIFICATION_ERROR_CODES,
@@ -164,6 +165,13 @@ class TestCapabilityCodes:
         assert CAPABILITY_CODES["MULTIPROTOCOL_EXTENSIONS"] == 1
         assert CAPABILITY_CODES["ROUTE_REFRESH"] == 2
         assert CAPABILITY_CODES["FOUR_OCTET_AS_NUMBER"] == 65
+        assert CAPABILITY_CODES["AS_CONFEDERATION"] == 4
+
+
+class TestASConfedPathSegmentTypes:
+    def test_confed_segment_types(self):
+        assert AS_CONFED_PATH_SEGMENT_TYPES["AS_CONFED_SEQUENCE"] == 3
+        assert AS_CONFED_PATH_SEGMENT_TYPES["AS_CONFED_SET"] == 4
 
 
 class TestBGPFSMStates:

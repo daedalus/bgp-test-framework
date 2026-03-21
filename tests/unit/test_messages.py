@@ -19,6 +19,9 @@ from bgp_test_framework.messages import (
     create_origin_attribute,
     create_as_path_attribute,
     create_next_hop_attribute,
+    create_confed_sequence_attribute,
+    create_confed_set_attribute,
+    create_confed_sequence_with_as_sequence,
     BGPHeaderParser,
 )
 from bgp_test_framework.constants import (
@@ -26,6 +29,7 @@ from bgp_test_framework.constants import (
     PATH_ATTRIBUTE_TYPES,
     ORIGIN_TYPES,
     AS_PATH_SEGMENT_TYPES,
+    AS_CONFED_PATH_SEGMENT_TYPES,
 )
 
 
@@ -259,3 +263,32 @@ class TestRouteRefreshBuilder:
         assert len(msg) == 23
         assert msg[19:21] == struct.pack("!H", 2)
         assert msg[22] == 2
+
+
+class TestConfederationAttributes:
+    def test_create_confed_sequence_attribute(self):
+        attr = create_confed_sequence_attribute([65001, 65002, 65003])
+        assert attr.attr_type == PATH_ATTRIBUTE_TYPES["AS_PATH"]
+        data = attr.value
+        assert data[0] == AS_CONFED_PATH_SEGMENT_TYPES["AS_CONFED_SEQUENCE"]
+        assert data[1] == 3
+
+    def test_create_confed_set_attribute(self):
+        attr = create_confed_set_attribute([65001, 65002])
+        assert attr.attr_type == PATH_ATTRIBUTE_TYPES["AS_PATH"]
+        data = attr.value
+        assert data[0] == AS_CONFED_PATH_SEGMENT_TYPES["AS_CONFED_SET"]
+        assert data[1] == 2
+
+    def test_create_confed_sequence_with_as_sequence(self):
+        attr = create_confed_sequence_with_as_sequence(
+            [65001, 65002], [100, 200]
+        )
+        assert attr.attr_type == PATH_ATTRIBUTE_TYPES["AS_PATH"]
+        data = attr.value
+        assert data[0] == AS_CONFED_PATH_SEGMENT_TYPES["AS_CONFED_SEQUENCE"]
+        assert data[1] == 2
+        confed_data_len = 1 + 1 + 2 * 2
+        assert data[confed_data_len] == AS_PATH_SEGMENT_TYPES["AS_SEQUENCE"]
+        assert data[confed_data_len + 1] == 2
+

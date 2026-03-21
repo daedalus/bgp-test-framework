@@ -10,6 +10,7 @@ from .constants import (
     MARKER,
     MESSAGE_TYPES,
     AS_PATH_SEGMENT_TYPES,
+    AS_CONFED_PATH_SEGMENT_TYPES,
     PATH_ATTRIBUTE_FLAGS,
     PATH_ATTRIBUTE_TYPES,
 )
@@ -464,3 +465,29 @@ def create_invalid_segment_type_aspath(
 
 def create_duplicate_attribute(attr: PathAttribute) -> bytes:
     return attr.serialize() + attr.serialize()
+
+
+def create_confed_sequence_attribute(member_as_numbers: List[int]) -> PathAttribute:
+    data = bytes(
+        [AS_CONFED_PATH_SEGMENT_TYPES["AS_CONFED_SEQUENCE"], len(member_as_numbers)]
+    ) + b"".join(struct.pack("!H", asn) for asn in member_as_numbers)
+    return PathAttribute(PATH_ATTRIBUTE_TYPES["AS_PATH"], 0x40, data)
+
+
+def create_confed_set_attribute(member_as_numbers: List[int]) -> PathAttribute:
+    data = bytes(
+        [AS_CONFED_PATH_SEGMENT_TYPES["AS_CONFED_SET"], len(member_as_numbers)]
+    ) + b"".join(struct.pack("!H", asn) for asn in member_as_numbers)
+    return PathAttribute(PATH_ATTRIBUTE_TYPES["AS_PATH"], 0x40, data)
+
+
+def create_confed_sequence_with_as_sequence(
+    member_as_numbers: List[int], external_as_numbers: List[int]
+) -> PathAttribute:
+    confed_data = bytes(
+        [AS_CONFED_PATH_SEGMENT_TYPES["AS_CONFED_SEQUENCE"], len(member_as_numbers)]
+    ) + b"".join(struct.pack("!H", asn) for asn in member_as_numbers)
+    as_data = bytes(
+        [AS_PATH_SEGMENT_TYPES["AS_SEQUENCE"], len(external_as_numbers)]
+    ) + b"".join(struct.pack("!H", asn) for asn in external_as_numbers)
+    return PathAttribute(PATH_ATTRIBUTE_TYPES["AS_PATH"], 0x40, confed_data + as_data)
