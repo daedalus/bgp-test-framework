@@ -2,6 +2,12 @@
 
 A comprehensive adversarial testing framework for BGPv4 implementations based on RFC 4271 and RFC 4272 specifications.
 
+## Intended Use
+
+This tool is designed as an RFC compliance testing utility for researchers and network engineers evaluating BGP implementation conformance. While it includes tests for security-related protocol behaviors, it is primarily intended to assist in compliance verification and protocol analysis rather than security auditing or penetration testing activities.
+
+**Caveat**: This is an RFC compliance testing tool. It may assist security researchers in evaluating BGP implementations, but security assessment is not its primary purpose, and it is not intended for use in penetration testing activities.
+
 ## Overview
 
 This framework provides automated testing capabilities to identify vulnerabilities and protocol violations in BGPv4 implementations. It includes tests for:
