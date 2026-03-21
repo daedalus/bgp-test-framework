@@ -1,0 +1,38 @@
+# BGPv4 Adversarial Test Framework Configuration
+# Based on RFC 4271
+
+# Target Configuration
+target: "192.168.1.1"
+port: 179
+source_as: 65001
+source_ip: "10.0.0.1"
+bgp_id: "10.0.0.1"
+hold_time: 180
+timeout: 5.0
+
+# Test Selection
+# Available categories: message_header, open_message, update_message, 
+#                     attribute, fsm, timing, security
+test_categories:
+  - message_header
+  - open_message
+  - update_message
+
+# Specific test IDs to run (overrides categories if specified)
+# test_ids:
+#   - MH-001
+#   - MH-002
+#   - OP-001
+
+# Test Behavior
+delay_between_tests: 0.5
+retry_count: 1
+
+# Output Configuration
+output: "bgp_test_results.json"
+format: "json"
+verbose: false
+
+# Advanced Options
+# connection_retry_time: 120
+# keepalive_time: 30
