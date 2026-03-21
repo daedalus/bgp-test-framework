@@ -99,6 +99,162 @@ class BGPLogger:
         return self.entries
 
 
+class ComplianceMetrics:
+    COMPLIANCE_GRADE_THRESHOLDS = {
+        "A": 95.0,
+        "B": 85.0,
+        "C": 70.0,
+        "D": 50.0,
+        "F": 0.0,
+    }
+
+    SEVERITY_LEVELS = {
+        "CRITICAL": 10,
+        "HIGH": 7,
+        "MEDIUM": 4,
+        "LOW": 2,
+        "INFO": 1,
+    }
+
+    @staticmethod
+    def calculate_compliance_score(total: int, passed: int) -> float:
+        if total == 0:
+            return 0.0
+        return (passed / total) * 100.0
+
+    @classmethod
+    def get_compliance_grade(cls, score: float) -> str:
+        if score >= cls.COMPLIANCE_GRADE_THRESHOLDS["A"]:
+            return "A"
+        elif score >= cls.COMPLIANCE_GRADE_THRESHOLDS["B"]:
+            return "B"
+        elif score >= cls.COMPLIANCE_GRADE_THRESHOLDS["C"]:
+            return "C"
+        elif score >= cls.COMPLIANCE_GRADE_THRESHOLDS["D"]:
+            return "D"
+        return "F"
+
+    @staticmethod
+    def get_severity_level(test_id: str) -> str:
+        if test_id.startswith("MH-"):
+            return "CRITICAL"
+        elif test_id.startswith("OM-"):
+            return "HIGH"
+        elif test_id.startswith("UM-"):
+            return "HIGH"
+        elif test_id.startswith("AT-"):
+            return "MEDIUM"
+        elif test_id.startswith("FSM-"):
+            return "HIGH"
+        elif test_id.startswith("TM-"):
+            return "MEDIUM"
+        elif test_id.startswith("SEC-"):
+            return "CRITICAL"
+        elif test_id.startswith("RA-"):
+            return "MEDIUM"
+        elif test_id.startswith("DEC-"):
+            return "LOW"
+        return "INFO"
+
+    @staticmethod
+    def calculate_severity_score(failed_tests: List[TestResult]) -> Dict[str, int]:
+        severity_counts: Dict[str, int] = {
+            level: 0 for level in ComplianceMetrics.SEVERITY_LEVELS
+        }
+        for result in failed_tests:
+            severity = ComplianceMetrics.get_severity_level(result.test_id)
+            severity_counts[severity] += 1
+        return severity_counts
+
+    @staticmethod
+    def calculate_severity_weighted_score(
+        total: int, passed: int, failed_tests: List[TestResult]
+    ) -> float:
+        if total == 0:
+            return 0.0
+
+        max_score = sum(
+            ComplianceMetrics.SEVERITY_LEVELS[
+                ComplianceMetrics.get_severity_level(r.test_id)
+            ]
+            for r in failed_tests
+        ) + (ComplianceMetrics.SEVERITY_LEVELS["INFO"] * passed if passed > 0 else 0)
+
+        failed_score = sum(
+            ComplianceMetrics.SEVERITY_LEVELS[
+                ComplianceMetrics.get_severity_level(r.test_id)
+            ]
+            for r in failed_tests
+        )
+
+        if max_score == 0:
+            return 100.0
+
+        return ((max_score - failed_score) / max_score) * 100.0
+
+    @staticmethod
+    def get_rfc_section_compliance(
+        results: List[TestResult],
+    ) -> Dict[str, Dict[str, Any]]:
+        rfc_sections = {
+            "RFC 4271 Section 4.1": "message_header",
+            "RFC 4271 Section 4.2": "open_message",
+            "RFC 4271 Section 4.3": "update_message",
+            "RFC 4271 Section 5": "attribute",
+            "RFC 4271 Section 8": "fsm",
+            "RFC 4271 Section 4.4": "timing",
+            "RFC 4271 Section 6": "security",
+            "RFC 4271 Section 9.2": "route_aggregation",
+            "RFC 4271 Section 9.1": "decision_process",
+        }
+
+        compliance: Dict[str, Dict[str, Any]] = {}
+        for section, category in rfc_sections.items():
+            section_results = [r for r in results if r.category.value == category]
+            total = len(section_results)
+            passed_count = sum(1 for r in section_results if r.passed)
+            score = ComplianceMetrics.calculate_compliance_score(total, passed_count)
+
+            compliance[section] = {
+                "total": total,
+                "passed": passed_count,
+                "failed": total - passed_count,
+                "score": score,
+                "grade": ComplianceMetrics.get_compliance_grade(score),
+            }
+
+        return compliance
+
+    @staticmethod
+    def generate_compliance_report(results: List[TestResult]) -> Dict[str, Any]:
+        total = len(results)
+        passed = sum(1 for r in results if r.passed)
+        failed = total - passed
+        score = ComplianceMetrics.calculate_compliance_score(total, passed)
+        failed_tests = [r for r in results if not r.passed]
+
+        return {
+            "compliance_score": round(score, 2),
+            "compliance_grade": ComplianceMetrics.get_compliance_grade(score),
+            "total_tests": total,
+            "tests_passed": passed,
+            "tests_failed": failed,
+            "pass_rate": f"{score:.1f}%",
+            "severity_distribution": ComplianceMetrics.calculate_severity_score(
+                failed_tests
+            ),
+            "weighted_score": round(
+                ComplianceMetrics.calculate_severity_weighted_score(
+                    total, passed, failed_tests
+                ),
+                2,
+            ),
+            "rfc_section_compliance": ComplianceMetrics.get_rfc_section_compliance(
+                results
+            ),
+        }
+
+
 class TestRunner:
     def __init__(self, config: TestConfiguration):
         self.config = config
@@ -722,6 +878,8 @@ class TestRunner:
             else:
                 by_category[cat]["failed"] += 1
 
+        compliance_report = ComplianceMetrics.generate_compliance_report(self.results)
+
         return {
             "total": total,
             "passed": passed,
@@ -730,25 +888,51 @@ class TestRunner:
             "by_category": by_category,
             "target": f"{self.config.target_host}:{self.config.target_port}",
             "source_as": self.config.source_as,
+            "compliance": compliance_report,
         }
 
     def generate_report(self) -> str:
         summary = self.get_summary()
+        compliance = summary.get("compliance", {})
         lines = [
             "=" * 80,
-            "BGPv4 Adversarial Test Report",
+            "BGPv4 RFC Compliance Test Report",
             "=" * 80,
             f"Target: {summary['target']}",
             f"Source AS: {summary['source_as']}",
+            "-" * 80,
+            "Compliance Summary:",
+            f"  Compliance Score: {compliance.get('compliance_score', 0):.2f}%",
+            f"  Compliance Grade: {compliance.get('compliance_grade', 'N/A')}",
+            f"  Weighted Score: {compliance.get('weighted_score', 0):.2f}%",
             "-" * 80,
             f"Total Tests: {summary['total']}",
             f"Passed: {summary['passed']}",
             f"Failed: {summary['failed']}",
             f"Pass Rate: {summary['pass_rate']}",
-            "-" * 80,
-            "Results by Category:",
         ]
 
+        severity = compliance.get("severity_distribution", {})
+        if severity:
+            lines.append("-" * 80)
+            lines.append("Severity Distribution of Failures:")
+            for level in ["CRITICAL", "HIGH", "MEDIUM", "LOW", "INFO"]:
+                count = severity.get(level, 0)
+                if count > 0:
+                    lines.append(f"  {level}: {count}")
+
+        lines.append("-" * 80)
+        lines.append("RFC Section Compliance:")
+        rfc_compliance = compliance.get("rfc_section_compliance", {})
+        for section, stats in rfc_compliance.items():
+            if stats["total"] > 0:
+                lines.append(
+                    f"  {section}: {stats['score']:.1f}% (Grade: {stats['grade']}) "
+                    f"[{stats['passed']}/{stats['total']}]"
+                )
+
+        lines.append("-" * 80)
+        lines.append("Results by Category:")
         for cat, stats in summary["by_category"].items():
             lines.append(f"  {cat}: {stats['passed']}/{stats['total']} passed")
 

@@ -4,7 +4,12 @@ Functional tests for BGP Test Runner
 
 from unittest.mock import Mock, patch
 
-from bgp_test_framework.runner import TestRunner, TestConfiguration, BGPLogger
+from bgp_test_framework.runner import (
+    TestRunner,
+    TestConfiguration,
+    BGPLogger,
+    ComplianceMetrics,
+)
 from bgp_test_framework.tests import TestCategory, TestResult
 
 
@@ -230,7 +235,9 @@ class TestTestRunner:
             ),
         ]
         report = runner.generate_report()
-        assert "BGPv4 Adversarial Test Report" in report
+        assert "BGPv4 RFC Compliance Test Report" in report
+        assert "Compliance Score:" in report
+        assert "Compliance Grade:" in report
         assert "MH-001" in report
         assert "PASS" in report
 
@@ -302,3 +309,134 @@ class TestIntegrationScenarios:
         filtered = [(tid, cat) for tid, cat in all_tests if tid in target_ids]
         assert len(filtered) == 2
         assert all(tid in target_ids for tid, _ in filtered)
+
+
+class TestComplianceMetrics:
+    def test_calculate_compliance_score(self):
+        assert ComplianceMetrics.calculate_compliance_score(100, 95) == 95.0
+        assert ComplianceMetrics.calculate_compliance_score(10, 10) == 100.0
+        assert ComplianceMetrics.calculate_compliance_score(10, 0) == 0.0
+        assert ComplianceMetrics.calculate_compliance_score(0, 0) == 0.0
+
+    def test_get_compliance_grade(self):
+        assert ComplianceMetrics.get_compliance_grade(100) == "A"
+        assert ComplianceMetrics.get_compliance_grade(95) == "A"
+        assert ComplianceMetrics.get_compliance_grade(94) == "B"
+        assert ComplianceMetrics.get_compliance_grade(85) == "B"
+        assert ComplianceMetrics.get_compliance_grade(84) == "C"
+        assert ComplianceMetrics.get_compliance_grade(70) == "C"
+        assert ComplianceMetrics.get_compliance_grade(69) == "D"
+        assert ComplianceMetrics.get_compliance_grade(50) == "D"
+        assert ComplianceMetrics.get_compliance_grade(49) == "F"
+        assert ComplianceMetrics.get_compliance_grade(0) == "F"
+
+    def test_get_severity_level(self):
+        assert ComplianceMetrics.get_severity_level("MH-001") == "CRITICAL"
+        assert ComplianceMetrics.get_severity_level("OM-001") == "HIGH"
+        assert ComplianceMetrics.get_severity_level("UM-001") == "HIGH"
+        assert ComplianceMetrics.get_severity_level("AT-001") == "MEDIUM"
+        assert ComplianceMetrics.get_severity_level("FSM-001") == "HIGH"
+        assert ComplianceMetrics.get_severity_level("TM-001") == "MEDIUM"
+        assert ComplianceMetrics.get_severity_level("SEC-001") == "CRITICAL"
+        assert ComplianceMetrics.get_severity_level("RA-001") == "MEDIUM"
+        assert ComplianceMetrics.get_severity_level("DEC-001") == "LOW"
+        assert ComplianceMetrics.get_severity_level("OTHER-001") == "INFO"
+
+    def test_calculate_severity_score(self):
+        failed = [
+            TestResult(
+                "MH-001",
+                "Test 1",
+                TestCategory.MESSAGE_HEADER,
+                False,
+                "Expected",
+                "Actual",
+            ),
+            TestResult(
+                "SEC-001",
+                "Test 2",
+                TestCategory.SECURITY,
+                False,
+                "Expected",
+                "Actual",
+            ),
+        ]
+        severity = ComplianceMetrics.calculate_severity_score(failed)
+        assert severity["CRITICAL"] == 2
+        assert severity["HIGH"] == 0
+        assert severity["MEDIUM"] == 0
+
+    def test_calculate_severity_weighted_score(self):
+        failed = [
+            TestResult(
+                "MH-001",
+                "Test 1",
+                TestCategory.MESSAGE_HEADER,
+                False,
+                "Expected",
+                "Actual",
+            ),
+        ]
+        score = ComplianceMetrics.calculate_severity_weighted_score(10, 9, failed)
+        assert score > 0 and score <= 100
+
+    def test_get_rfc_section_compliance(self):
+        results = [
+            TestResult(
+                "MH-001",
+                "Test 1",
+                TestCategory.MESSAGE_HEADER,
+                True,
+                "Expected",
+                "Actual",
+            ),
+            TestResult(
+                "MH-002",
+                "Test 2",
+                TestCategory.MESSAGE_HEADER,
+                False,
+                "Expected",
+                "Actual",
+            ),
+        ]
+        compliance = ComplianceMetrics.get_rfc_section_compliance(results)
+        assert "RFC 4271 Section 4.1" in compliance
+        assert compliance["RFC 4271 Section 4.1"]["total"] == 2
+        assert compliance["RFC 4271 Section 4.1"]["passed"] == 1
+        assert compliance["RFC 4271 Section 4.1"]["failed"] == 1
+
+    def test_generate_compliance_report(self):
+        results = [
+            TestResult(
+                "MH-001",
+                "Test 1",
+                TestCategory.MESSAGE_HEADER,
+                True,
+                "Expected",
+                "Actual",
+            ),
+            TestResult(
+                "MH-002",
+                "Test 2",
+                TestCategory.MESSAGE_HEADER,
+                False,
+                "Expected",
+                "Actual",
+            ),
+            TestResult(
+                "OM-001",
+                "Test 3",
+                TestCategory.OPEN_MESSAGE,
+                True,
+                "Expected",
+                "Actual",
+            ),
+        ]
+        report = ComplianceMetrics.generate_compliance_report(results)
+        assert report["total_tests"] == 3
+        assert report["tests_passed"] == 2
+        assert report["tests_failed"] == 1
+        assert report["compliance_score"] > 0
+        assert "compliance_grade" in report
+        assert "severity_distribution" in report
+        assert "rfc_section_compliance" in report
