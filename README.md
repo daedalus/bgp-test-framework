@@ -1,4 +1,4 @@
-# BGPv4 Adversarial Test Framework
+# BGP Adversarial Test Framework
 
 A comprehensive adversarial testing framework for BGP v1 to v4 implementations based on RFC specifications.
 
