@@ -646,6 +646,35 @@ Tests for Route Refresh Capability per RFC 2918:
 - RFR-009: Route Refresh AFI/SAFI Not Advertised
 - RFR-010: Route Refresh End-of-RIB
 
+### mpls_labels
+Tests for MPLS Label Distribution in BGP per RFC 3107:
+- LABEL-001: MPLS Label in MP_REACH_NLRI SAFI-4
+- LABEL-002: MPLS Label 3-Byte Encoding
+- LABEL-003: MPLS Label Stack Depth
+- LABEL-004: MPLS Label Reserved Range 0-15
+- LABEL-005: MPLS Label Implicit NULL
+- LABEL-006: MPLS Label Withdrawal Value
+- LABEL-007: MPLS Label Next Hop Self
+- LABEL-008: MPLS Label Preservation on Redistribute
+- LABEL-009: MPLS Label NLRI Length Field
+- LABEL-010: MPLS Label Capability Advertisement
+
+### nopeer
+Tests for NOPEER Community per RFC 3765:
+- NOPEER-001: NOPEER Community Value (0xFFFFFF04)
+- NOPEER-002: NOPEER Route Scope Control
+- NOPEER-003: NOPEER vs NO_EXPORT Comparison
+- NOPEER-004: NOPEER Well-Known Transitive
+- NOPEER-005: NOPEER Filtering Implementation
+
+### route_oscillation
+Tests for BGP Route Oscillation Conditions per RFC 3345:
+- OSCIL-001: Type I Oscillation with Route Reflection
+- OSCIL-002: Type I Oscillation with Confederation
+- OSCIL-003: MED Non-Deterministic Ordering
+- OSCIL-004: Type II Oscillation Conditions
+- OSCIL-005: MED Comparison Same AS Only
+
 ## References
 
 - [RFC 4271 - A Border Gateway Protocol 4 (BGP-4)](https://www.rfc-editor.org/rfc/rfc4271)
@@ -668,6 +697,8 @@ Tests for Route Refresh Capability per RFC 2918:
 - [RFC 4364 - BGP/MPLS IP Virtual Private Networks (VPNs)](https://www.rfc-editor.org/rfc/rfc4364)
 - [RFC 2842 - Capabilities Advertisement with BGP-4](https://www.rfc-editor.org/rfc/rfc2842)
 - [RFC 5492 - Extensions to BGP-4 for Capabilities Advertisement](https://www.rfc-editor.org/rfc/rfc5492)
+- [RFC 3107 - Carrying Label Information in BGP-4](https://www.rfc-editor.org/rfc/rfc3107)
+- [RFC 3765 - NOPEER Community for BGP Route Scope Control](https://www.rfc-editor.org/rfc/rfc3765)
 - [RFC 1105 - BGP (obsolete)](https://www.rfc-editor.org/rfc/rfc1105)
 - [RFC 1163 - BGP-2 (obsolete)](https://www.rfc-editor.org/rfc/rfc1163)
 - [RFC 1267 - BGP-3 (obsolete)](https://www.rfc-editor.org/rfc/rfc1267)

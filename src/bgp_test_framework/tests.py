@@ -51,6 +51,9 @@ class TestCategory(Enum):
     VPN = "vpn"
     CAPABILITIES = "capabilities"
     ROUTE_REFRESH = "route_refresh"
+    MPLS_LABELS = "mpls_labels"
+    NOPEER = "nopeer"
+    ROUTE_OSCILLATION = "route_oscillation"
 
 
 @dataclass
@@ -2414,5 +2417,146 @@ class RouteRefreshTests:
                 name="Route Refresh End-of-RIB",
                 category=TestCategory.ROUTE_REFRESH,
                 description="End-of-RIB marker after Route Refresh - RFC 2918",
+            ),
+        ]
+
+
+class MPLSLabelTests:
+    @staticmethod
+    def get_tests() -> List[TestCase]:
+        return [
+            TestCase(
+                test_id="LABEL-001",
+                name="MPLS Label in MP_REACH_NLRI SAFI-4",
+                category=TestCategory.MPLS_LABELS,
+                description="MP_REACH_NLRI with SAFI=4 for label distribution - RFC 3107",
+            ),
+            TestCase(
+                test_id="LABEL-002",
+                name="MPLS Label 3-Byte Encoding",
+                category=TestCategory.MPLS_LABELS,
+                description="Label encoded as 3 octets: 20-bit value + BOS bit - RFC 3107 Section 3",
+            ),
+            TestCase(
+                test_id="LABEL-003",
+                name="MPLS Label Stack Depth",
+                category=TestCategory.MPLS_LABELS,
+                description="Multiple labels for label stack encoding - RFC 3107 Section 3",
+            ),
+            TestCase(
+                test_id="LABEL-004",
+                name="MPLS Label Reserved Range 0-15",
+                category=TestCategory.MPLS_LABELS,
+                description="Labels 0-15 are reserved per RFC 3032 - RFC 3107",
+            ),
+            TestCase(
+                test_id="LABEL-005",
+                name="MPLS Label Implicit NULL",
+                category=TestCategory.MPLS_LABELS,
+                description="Label 3 is Implicit NULL - RFC 3107",
+            ),
+            TestCase(
+                test_id="LABEL-006",
+                name="MPLS Label Withdrawal Value",
+                category=TestCategory.MPLS_LABELS,
+                description="Withdrawal NLRI label set to 0x800000 - RFC 3107 Section 3",
+            ),
+            TestCase(
+                test_id="LABEL-007",
+                name="MPLS Label Next Hop Self",
+                category=TestCategory.MPLS_LABELS,
+                description="Label assigned by Next Hop router - RFC 3107 Section 3",
+            ),
+            TestCase(
+                test_id="LABEL-008",
+                name="MPLS Label Preservation on Redistribute",
+                category=TestCategory.MPLS_LABELS,
+                description="Labels must not change unless Next Hop changes - RFC 3107 Section 3",
+            ),
+            TestCase(
+                test_id="LABEL-009",
+                name="MPLS Label NLRI Length Field",
+                category=TestCategory.MPLS_LABELS,
+                description="Length field indicates prefix bits plus label bits - RFC 3107 Section 3",
+            ),
+            TestCase(
+                test_id="LABEL-010",
+                name="MPLS Label Capability Advertisement",
+                category=TestCategory.MPLS_LABELS,
+                description="MP_EXT capability required for label SAFI - RFC 3107 Section 5",
+            ),
+        ]
+
+
+class NOPEERCommunityTests:
+    @staticmethod
+    def get_tests() -> List[TestCase]:
+        return [
+            TestCase(
+                test_id="NOPEER-001",
+                name="NOPEER Community Value",
+                category=TestCategory.NOPEER,
+                description="NOPEER well-known community value 0xFFFFFF04 - RFC 3765 Section 4",
+            ),
+            TestCase(
+                test_id="NOPEER-002",
+                name="NOPEER Route Scope Control",
+                category=TestCategory.NOPEER,
+                description="NOPEER restricts advertisement to bilateral peers - RFC 3765 Section 2",
+            ),
+            TestCase(
+                test_id="NOPEER-003",
+                name="NOPEER vs NO_EXPORT Comparison",
+                category=TestCategory.NOPEER,
+                description="NOPEER allows advertisement to provider but not peer - RFC 3765",
+            ),
+            TestCase(
+                test_id="NOPEER-004",
+                name="NOPEER Well-Known Transitive",
+                category=TestCategory.NOPEER,
+                description="NOPEER is well-known and transitive - RFC 3765 Section 2",
+            ),
+            TestCase(
+                test_id="NOPEER-005",
+                name="NOPEER Filtering Implementation",
+                category=TestCategory.NOPEER,
+                description="Receiving AS may filter based on peering relationship - RFC 3765 Section 2",
+            ),
+        ]
+
+
+class RouteOscillationTests:
+    @staticmethod
+    def get_tests() -> List[TestCase]:
+        return [
+            TestCase(
+                test_id="OSCIL-001",
+                name="Type I Oscillation with Route Reflection",
+                category=TestCategory.ROUTE_OSCILLATION,
+                description="Type I churn requires single-level RR + MED - RFC 3345 Section 2.1",
+            ),
+            TestCase(
+                test_id="OSCIL-002",
+                name="Type I Oscillation with Confederation",
+                category=TestCategory.ROUTE_OSCILLATION,
+                description="Type I churn with AS confederations - RFC 3345 Section 2.2",
+            ),
+            TestCase(
+                test_id="OSCIL-003",
+                name="MED Non-Deterministic Ordering",
+                category=TestCategory.ROUTE_OSCILLATION,
+                description="Non-deterministic path ordering can cause loops - RFC 3345 Section 2",
+            ),
+            TestCase(
+                test_id="OSCIL-004",
+                name="Type II Oscillation Conditions",
+                category=TestCategory.ROUTE_OSCILLATION,
+                description="Type II oscillation conditions - RFC 3345 Section 3",
+            ),
+            TestCase(
+                test_id="OSCIL-005",
+                name="MED Comparison Same AS Only",
+                category=TestCategory.ROUTE_OSCILLATION,
+                description="MED comparable only between routes from same neighboring AS - RFC 3345",
             ),
         ]
