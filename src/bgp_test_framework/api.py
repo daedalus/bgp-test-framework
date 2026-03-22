@@ -48,6 +48,16 @@ from .tests import (
     ExtendedMessageTests,
     ORFFilteringTests,
     DynamicCapabilityTests,
+    CommunitiesTests,
+    LargeCommunitiesTests,
+    RouteFlapDampingTests,
+    ASNumberTests,
+    VPNTests,
+    CapabilitiesTests,
+    RouteRefreshTests,
+    MPLSLabelTests,
+    NOPEERCommunityTests,
+    RouteOscillationTests,
 )
 from .runner import TestConfiguration, TestRunner, ComplianceMetrics
 
@@ -95,6 +105,16 @@ class BGPTestHarness:
         "extended_messages": ExtendedMessageTests,
         "orf_filtering": ORFFilteringTests,
         "dynamic_capability": DynamicCapabilityTests,
+        "communities": CommunitiesTests,
+        "large_communities": LargeCommunitiesTests,
+        "route_flap_damping": RouteFlapDampingTests,
+        "as_number": ASNumberTests,
+        "vpn": VPNTests,
+        "capabilities": CapabilitiesTests,
+        "route_refresh": RouteRefreshTests,
+        "mpls_labels": MPLSLabelTests,
+        "nopeer": NOPEERCommunityTests,
+        "route_oscillation": RouteOscillationTests,
     }
 
     def __init__(self, config: BGPTestConfig):

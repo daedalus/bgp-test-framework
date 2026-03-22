@@ -55,6 +55,12 @@ from .tests import (
     LargeCommunitiesTests,  # noqa: F401
     RouteFlapDampingTests,  # noqa: F401
     ASNumberTests,  # noqa: F401
+    VPNTests,  # noqa: F401
+    CapabilitiesTests,  # noqa: F401
+    RouteRefreshTests,  # noqa: F401
+    MPLSLabelTests,  # noqa: F401
+    NOPEERCommunityTests,  # noqa: F401
+    RouteOscillationTests,  # noqa: F401
 )
 
 
