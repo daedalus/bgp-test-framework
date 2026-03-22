@@ -397,44 +397,22 @@ bgp_test_framework/
 │   ├── messages.py        # BGP message parsing/building
 │   ├── tests.py           # Test case definitions (210+ tests)
 │   ├── runner.py          # Test execution engine
-│   ├── api.py            # Programmatic API
+│   ├── api.py             # Programmatic API
 │   └── cli.py             # CLI entry point
 ├── tests/
 │   ├── unit/              # Unit tests
-│   └── functional/        # Functional tests
+│   └── functional/         # Functional tests
+├── RFCs/                  # RFC specification documents
+│   ├── rfc1105.txt        # RFC 1105 (BGP v1, obsolete)
+│   ├── rfc1163.txt        # RFC 1163 (BGP-2, obsolete)
+│   ├── rfc1267.txt        # RFC 1267 (BGP-3, obsolete)
+│   ├── rfc1771.txt        # RFC 1771 (BGP-4, obsolete)
+│   ├── rfc2918.txt        # RFC 2918 (Route Refresh)
+│   ├── rfc3065.txt        # RFC 3065 (AS Confederations)
+│   ├── rfc4271.txt        # RFC 4271 (BGP-4)
+│   └── rfc4272.txt        # RFC 4272 (BGP Security)
 ├── config.yaml            # Example configuration
-├── rfc1105.txt            # RFC 1105 (BGP v1, obsolete)
-├── rfc1163.txt            # RFC 1163 (BGP-2, obsolete)
-├── rfc1267.txt            # RFC 1267 (BGP-3, obsolete)
-├── rfc1771.txt            # RFC 1771 (BGP-4, obsolete)
-├── rfc2918.txt           # RFC 2918 (Route Refresh)
-├── rfc3065.txt           # RFC 3065 (AS Confederations)
-├── rfc4271.txt           # RFC 4271 (BGP-4)
-├── rfc4272.txt           # RFC 4272 (BGP Security)
-├── pyproject.toml         # Project configuration
-└── README.md
-```
-bgp_test_framework/
-├── src/bgp_test_framework/
-│   ├── __init__.py
-│   ├── constants.py       # RFC 4271/4272 constants
-│   ├── messages.py        # BGP message parsing/building
-│   ├── tests.py           # Test case definitions (100+ tests)
-│   ├── runner.py          # Test execution engine
-│   └── cli.py             # CLI entry point
-├── tests/
-│   ├── unit/              # Unit tests
-│   └── functional/        # Functional tests
-├── config.yaml            # Example configuration
-├── rfc1105.txt            # RFC 1105 (BGP v1, obsolete)
-├── rfc1163.txt            # RFC 1163 (BGP-2, obsolete)
-├── rfc1267.txt            # RFC 1267 (BGP-3, obsolete)
-├── rfc1771.txt            # RFC 1771 (BGP-4, obsolete)
-├── rfc2918.txt            # RFC 2918 (Route Refresh)
-├── rfc3065.txt            # RFC 3065 (AS Confederations)
-├── rfc4271.txt            # RFC 4271 (BGP-4)
-├── rfc4272.txt            # RFC 4272 (BGP Security)
-├── pyproject.toml         # Project configuration
+├── pyproject.toml        # Project configuration
 └── README.md
 ```
 
