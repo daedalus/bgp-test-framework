@@ -39,6 +39,8 @@ class TestCategory(Enum):
     ROUTE_REFLECTION = "route_reflection"
     BGP_LS = "bgp_ls"
     CONFEDERATION = "confederation"
+    GRACEFUL_RESTART = "graceful_restart"
+    ENHANCED_ROUTE_REFRESH = "enhanced_route_refresh"
 
 
 @dataclass
@@ -1404,6 +1406,30 @@ class DecisionProcessTests:
                 category=TestCategory.DECISION_PROCESS,
                 description="Route policy applied before advertisement - RFC 4271 Section 9.1.3",
             ),
+            TestCase(
+                test_id="DEC-015",
+                name="Phase 1 Degree of Preference",
+                category=TestCategory.DECISION_PROCESS,
+                description="Phase 1 calculates degree of preference for routes - RFC 4271 Section 9.1.1",
+            ),
+            TestCase(
+                test_id="DEC-016",
+                name="Phase 1 Route Selection Trigger",
+                category=TestCategory.DECISION_PROCESS,
+                description="Phase 1 triggered when Adj-RIB-In modified - RFC 4271 Section 9.1.1",
+            ),
+            TestCase(
+                test_id="DEC-017",
+                name="AS_PATH Unfeasible Route Rejection",
+                category=TestCategory.DECISION_PROCESS,
+                description="Unfeasible routes rejected before Phase 1 - RFC 4271 Section 9.1",
+            ),
+            TestCase(
+                test_id="DEC-018",
+                name="Route Aggregation in Phase 3",
+                category=TestCategory.DECISION_PROCESS,
+                description="Routes aggregated in Phase 3 - RFC 4271 Section 9.2.2.2",
+            ),
         ]
 
 
@@ -1686,5 +1712,79 @@ class BGPSecurityTests:
                 name="AS_PATH Prepending Validation",
                 category=TestCategory.SECURITY,
                 description="Validate AS_PATH prepending semantics - RFC 4271",
+            ),
+        ]
+
+
+class GracefulRestartTests:
+    @staticmethod
+    def get_tests() -> List[TestCase]:
+        return [
+            TestCase(
+                test_id="GR-001",
+                name="Graceful Restart Capability",
+                category=TestCategory.GRACEFUL_RESTART,
+                description="OPEN with Graceful Restart capability - RFC 4724",
+            ),
+            TestCase(
+                test_id="GR-002",
+                name="Graceful Restart Timer",
+                category=TestCategory.GRACEFUL_RESTART,
+                description="Routes preserved during restart - RFC 4724 Section 5",
+            ),
+            TestCase(
+                test_id="GR-003",
+                name="End-of-RIB Marker",
+                category=TestCategory.GRACEFUL_RESTART,
+                description="End-of-RIB marker sent after initial update - RFC 4724",
+            ),
+            TestCase(
+                test_id="GR-004",
+                name="Graceful Restart State",
+                category=TestCategory.GRACEFUL_RESTART,
+                description="Peer in restarting state preserves routes - RFC 4724 Section 4",
+            ),
+            TestCase(
+                test_id="GR-005",
+                name="Graceful Restart AFI/SAFI",
+                category=TestCategory.GRACEFUL_RESTART,
+                description="Graceful Restart with specific AFI/SAFI - RFC 4724",
+            ),
+        ]
+
+
+class EnhancedRouteRefreshTests:
+    @staticmethod
+    def get_tests() -> List[TestCase]:
+        return [
+            TestCase(
+                test_id="ERR-001",
+                name="Enhanced Route Refresh Capability",
+                category=TestCategory.ENHANCED_ROUTE_REFRESH,
+                description="OPEN with Enhanced Route Refresh capability - RFC 7313",
+            ),
+            TestCase(
+                test_id="ERR-002",
+                name="Outbound Route Refresh",
+                category=TestCategory.ENHANCED_ROUTE_REFRESH,
+                description="Outbound Route Refresh request - RFC 7313 Section 3",
+            ),
+            TestCase(
+                test_id="ERR-003",
+                name="Inbound Route Refresh",
+                category=TestCategory.ENHANCED_ROUTE_REFRESH,
+                description="Inbound Route Refresh with ORF - RFC 7313 Section 4",
+            ),
+            TestCase(
+                test_id="ERR-004",
+                name="Route Refresh with ORF Prefix",
+                category=TestCategory.ENHANCED_ROUTE_REFRESH,
+                description="Route Refresh with ORF prefix entries - RFC 7313",
+            ),
+            TestCase(
+                test_id="ERR-005",
+                name="Route Refresh AFI/SAFI",
+                category=TestCategory.ENHANCED_ROUTE_REFRESH,
+                description="Route Refresh with specific AFI/SAFI - RFC 7313",
             ),
         ]

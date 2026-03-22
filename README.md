@@ -63,6 +63,61 @@ bgp-test --target 192.168.1.1 --test-ids MH-001 MH-002 MH-003
 bgp-test --target 192.168.1.1 --categories message_header open_message
 ```
 
+## Programmatic API
+
+The framework provides a Python API for programmatic testing:
+
+```python
+from bgp_test_framework.api import run_bgp_tests, BGPTestHarness, BGPTestConfig
+
+# Quick start - run all tests
+result = run_bgp_tests("192.168.1.1", 65001)
+print(f"Compliance Score: {result['compliance_score']}%")
+print(f"Grade: {result['compliance_grade']}")
+
+# Run specific categories
+result = run_bgp_tests(
+    "192.168.1.1",
+    65001,
+    categories=["message_header", "open_message"]
+)
+
+# Use the test harness for more control
+config = BGPTestConfig(
+    target_host="192.168.1.1",
+    source_as=65001,
+    hold_time=180
+)
+harness = BGPTestHarness(config)
+tests = harness.get_all_tests("message_header")
+results = harness.run_category("message_header")
+report = harness.get_compliance_report(results)
+```
+
+### Message Builder API
+
+Build BGP messages programmatically:
+
+```python
+from bgp_test_framework.api import BGPMessageBuilder
+
+# Build messages
+open_msg = BGPMessageBuilder.create_open(my_as=65001, hold_time=180)
+keepalive = BGPMessageBuilder.create_keepalive()
+notification = BGPMessageBuilder.create_notification(1, 1)
+route_refresh = BGPMessageBuilder.create_route_refresh(afi=1, safi=1)
+
+# Build path attributes
+origin = BGPMessageBuilder.create_origin_attribute("IGP")
+as_path = BGPMessageBuilder.create_as_path_attribute([65001, 65002])
+next_hop = BGPMessageBuilder.create_next_hop_attribute("192.168.1.1")
+
+# Build multiprotocol attributes
+mp_reach = BGPMessageBuilder.create_mp_reach(2, 1, b"\xc0\xa8\x01\x01", nlri)
+originator_id = BGPMessageBuilder.create_originator_id(0x0A000001)
+cluster_list = BGPMessageBuilder.create_cluster_list([1, 2, 3])
+```
+
 ## Command Line Options
 
 | Option | Description |
@@ -94,6 +149,22 @@ Tests for BGP message header validation per RFC 4271 Section 4.1 and 6.1:
 - MH-010: UPDATE Message Length Too Short
 - MH-011: KEEPALIVE Message Wrong Length
 - MH-012: NOTIFICATION Message Length Too Short
+
+### graceful_restart
+Tests for Graceful Restart per RFC 4724:
+- GR-001: Graceful Restart Capability
+- GR-002: Graceful Restart Timer
+- GR-003: End-of-RIB Marker
+- GR-004: Graceful Restart State
+- GR-005: Graceful Restart AFI/SAFI
+
+### enhanced_route_refresh
+Tests for Enhanced Route Refresh per RFC 7313:
+- ERR-001: Enhanced Route Refresh Capability
+- ERR-002: Outbound Route Refresh
+- ERR-003: Inbound Route Refresh
+- ERR-004: Route Refresh with ORF Prefix
+- ERR-005: Route Refresh AFI/SAFI
 
 ### open_message
 Tests for OPEN message handling per RFC 4271 Section 4.2 and 6.2:
@@ -300,6 +371,30 @@ bgp_test_framework/
 │   ├── __init__.py
 │   ├── constants.py       # RFC 4271/4272 constants
 │   ├── messages.py        # BGP message parsing/building
+│   ├── tests.py           # Test case definitions (150+ tests)
+│   ├── runner.py          # Test execution engine
+│   ├── api.py            # Programmatic API
+│   └── cli.py             # CLI entry point
+├── tests/
+│   ├── unit/              # Unit tests
+│   └── functional/        # Functional tests
+├── config.yaml            # Example configuration
+├── rfc1105.txt            # RFC 1105 (BGP v1, obsolete)
+├── rfc1163.txt            # RFC 1163 (BGP-2, obsolete)
+├── rfc1267.txt            # RFC 1267 (BGP-3, obsolete)
+├── rfc1771.txt            # RFC 1771 (BGP-4, obsolete)
+├── rfc2918.txt           # RFC 2918 (Route Refresh)
+├── rfc3065.txt           # RFC 3065 (AS Confederations)
+├── rfc4271.txt           # RFC 4271 (BGP-4)
+├── rfc4272.txt           # RFC 4272 (BGP Security)
+├── pyproject.toml         # Project configuration
+└── README.md
+```
+bgp_test_framework/
+├── src/bgp_test_framework/
+│   ├── __init__.py
+│   ├── constants.py       # RFC 4271/4272 constants
+│   ├── messages.py        # BGP message parsing/building
 │   ├── tests.py           # Test case definitions (100+ tests)
 │   ├── runner.py          # Test execution engine
 │   └── cli.py             # CLI entry point
@@ -325,6 +420,11 @@ bgp_test_framework/
 - [RFC 4272 - BGP Security Vulnerabilities Analysis](https://www.rfc-editor.org/rfc/rfc4272)
 - [RFC 2918 - Route Refresh Capability for BGP-4](https://www.rfc-editor.org/rfc/rfc2918)
 - [RFC 3065 - Autonomous System Confederations for BGP](https://www.rfc-editor.org/rfc/rfc3065)
+- [RFC 4724 - Graceful Restart Mechanism for BGP](https://www.rfc-editor.org/rfc/rfc4724)
+- [RFC 7313 - Enhanced Route Refresh Capability for BGP-4](https://www.rfc-editor.org/rfc/rfc7313)
+- [RFC 4760 - Multiprotocol Extensions for BGP-4](https://www.rfc-editor.org/rfc/rfc4760)
+- [RFC 4456 - Route Reflection](https://www.rfc-editor.org/rfc/rfc4456)
+- [RFC 4893 - BGP Support for Four-Octet AS Number Space](https://www.rfc-editor.org/rfc/rfc4893)
 - [RFC 1105 - BGP (obsolete)](https://www.rfc-editor.org/rfc/rfc1105)
 - [RFC 1163 - BGP-2 (obsolete)](https://www.rfc-editor.org/rfc/rfc1163)
 - [RFC 1267 - BGP-3 (obsolete)](https://www.rfc-editor.org/rfc/rfc1267)
