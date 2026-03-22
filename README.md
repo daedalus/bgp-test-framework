@@ -609,6 +609,43 @@ Tests for Multiprotocol Extensions per RFC 2858:
 - MP-007: MP_REACH_NLRI Reserved SNPA
 - MP-008: MP_REACH_NLRI Without Capability
 
+### vpn
+Tests for BGP/MPLS VPNs per RFC 2547 and RFC 4364:
+- VPN-001: Route Distinguisher Type 0 Format
+- VPN-002: Route Distinguisher Type 1 Format
+- VPN-003: Route Distinguisher Type 2 Format
+- VPN-004: VPN-IPv4 Address Encoding
+- VPN-005: Route Target Extended Community
+- VPN-006: Site of Origin Extended Community
+- VPN-007: VPN Route With MPLS Label
+- VPN-008: VPN-IPv4 AFI/SAFI Encoding
+- VPN-009: VPN Route Distribution via IBGP
+- VPN-010: Multiple Route Targets
+
+### capabilities
+Tests for Capability Advertisement per RFC 2842:
+- CAP-001: Multiple Capabilities in Single OPEN
+- CAP-002: Reserved Capability Code 0
+- CAP-003: Capability with Wrong Length
+- CAP-004: Duplicate Capability Codes
+- CAP-005: Unsupported Capability Subcode
+- CAP-006: Unknown Capability Code Handling
+- CAP-007: Private Use Capability Codes
+- CAP-008: 4-Byte AS Capability Code 65
+
+### route_refresh
+Tests for Route Refresh Capability per RFC 2918:
+- RFR-001: Route Refresh Message Format
+- RFR-002: Route Refresh with AFI/SAFI
+- RFR-003: Route Refresh for IPv4 Unicast
+- RFR-004: Route Refresh for IPv6 Unicast
+- RFR-005: Route Refresh with Route Target ORF
+- RFR-006: Route Refresh Response
+- RFR-007: Route Refresh Without Capability
+- RFR-008: Multiple Route Refresh Requests
+- RFR-009: Route Refresh AFI/SAFI Not Advertised
+- RFR-010: Route Refresh End-of-RIB
+
 ## References
 
 - [RFC 4271 - A Border Gateway Protocol 4 (BGP-4)](https://www.rfc-editor.org/rfc/rfc4271)
@@ -627,6 +664,10 @@ Tests for Multiprotocol Extensions per RFC 2858:
 - [RFC 2439 - BGP Route Flap Damping](https://www.rfc-editor.org/rfc/rfc2439)
 - [RFC 3345 - Border Gateway Protocol Route Flap Damping](https://www.rfc-editor.org/rfc/rfc3345)
 - [RFC 6996 - Private Autonomous System (AS) Numbers for BGP](https://www.rfc-editor.org/rfc/rfc6996)
+- [RFC 2547 - BGP/MPLS IP Virtual Private Networks (VPNs)](https://www.rfc-editor.org/rfc/rfc2547)
+- [RFC 4364 - BGP/MPLS IP Virtual Private Networks (VPNs)](https://www.rfc-editor.org/rfc/rfc4364)
+- [RFC 2842 - Capabilities Advertisement with BGP-4](https://www.rfc-editor.org/rfc/rfc2842)
+- [RFC 5492 - Extensions to BGP-4 for Capabilities Advertisement](https://www.rfc-editor.org/rfc/rfc5492)
 - [RFC 1105 - BGP (obsolete)](https://www.rfc-editor.org/rfc/rfc1105)
 - [RFC 1163 - BGP-2 (obsolete)](https://www.rfc-editor.org/rfc/rfc1163)
 - [RFC 1267 - BGP-3 (obsolete)](https://www.rfc-editor.org/rfc/rfc1267)

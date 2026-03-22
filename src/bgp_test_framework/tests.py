@@ -48,6 +48,9 @@ class TestCategory(Enum):
     LARGE_COMMUNITIES = "large_communities"
     ROUTE_FLAP_DAMPING = "route_flap_damping"
     AS_NUMBER = "as_number"
+    VPN = "vpn"
+    CAPABILITIES = "capabilities"
+    ROUTE_REFRESH = "route_refresh"
 
 
 @dataclass
@@ -2053,7 +2056,7 @@ class LargeCommunitiesTests:
             ),
             TestCase(
                 test_id="LCOMM-005",
-                test_name="Large Community Reserved AS in Global Admin",
+                name="Large Community Reserved AS in Global Admin",
                 category=TestCategory.LARGE_COMMUNITIES,
                 description="Large Community with reserved AS (0, 65535, 4294967295) - RFC 8092",
             ),
@@ -2220,5 +2223,196 @@ class ASNumberTests:
                 name="Private AS Removal on EBGP",
                 category=TestCategory.AS_NUMBER,
                 description="Private AS numbers stripped on EBGP - RFC 1930",
+            ),
+        ]
+
+
+class VPNTests:
+    @staticmethod
+    def get_tests() -> List[TestCase]:
+        return [
+            TestCase(
+                test_id="VPN-001",
+                name="Route Distinguisher Type 0 Format",
+                category=TestCategory.VPN,
+                description="RD Type 0: 2-byte ASN + 4-byte assigned number - RFC 4364 Section 4.1",
+            ),
+            TestCase(
+                test_id="VPN-002",
+                name="Route Distinguisher Type 1 Format",
+                category=TestCategory.VPN,
+                description="RD Type 1: IPv4 address + 2-byte assigned number - RFC 4364 Section 4.1",
+            ),
+            TestCase(
+                test_id="VPN-003",
+                name="Route Distinguisher Type 2 Format",
+                category=TestCategory.VPN,
+                description="RD Type 2: 4-byte ASN + 2-byte assigned number - RFC 4364 Section 4.1",
+            ),
+            TestCase(
+                test_id="VPN-004",
+                name="VPN-IPv4 Address Encoding",
+                category=TestCategory.VPN,
+                description="VPN-IPv4 address is 12 bytes: 8-byte RD + 4-byte IPv4 - RFC 4364 Section 4.1",
+            ),
+            TestCase(
+                test_id="VPN-005",
+                name="Route Target Extended Community",
+                category=TestCategory.VPN,
+                description="Route Target as Extended Community (type 0x0002) - RFC 4364 Section 4.2.1",
+            ),
+            TestCase(
+                test_id="VPN-006",
+                name="Site of Origin Extended Community",
+                category=TestCategory.VPN,
+                description="Site of Origin (SOO) Extended Community (type 0x0003) - RFC 4364 Section 6",
+            ),
+            TestCase(
+                test_id="VPN-007",
+                name="VPN Route With MPLS Label",
+                category=TestCategory.VPN,
+                description="MP_REACH_NLRI with MPLS label for VPN - RFC 4364 Section 4.2.2",
+            ),
+            TestCase(
+                test_id="VPN-008",
+                name="VPN-IPv4 AFI/SAFI Encoding",
+                category=TestCategory.VPN,
+                description="VPN-IPv4 AFI=1, SAFI=128 in MP_REACH_NLRI - RFC 2547",
+            ),
+            TestCase(
+                test_id="VPN-009",
+                name="VPN Route Distribution via IBGP",
+                category=TestCategory.VPN,
+                description="VPN routes distributed via IBGP with Route Distinguisher - RFC 2547 Section 3",
+            ),
+            TestCase(
+                test_id="VPN-010",
+                name="Multiple Route Targets",
+                category=TestCategory.VPN,
+                description="VPN route can have multiple Route Target attributes - RFC 4364 Section 4.2.1",
+            ),
+        ]
+
+
+class CapabilitiesTests:
+    @staticmethod
+    def get_tests() -> List[TestCase]:
+        return [
+            TestCase(
+                test_id="CAP-001",
+                name="Multiple Capabilities in Single OPEN",
+                category=TestCategory.CAPABILITIES,
+                description="OPEN message with multiple capability parameters - RFC 2842 Section 2",
+            ),
+            TestCase(
+                test_id="CAP-002",
+                name="Reserved Capability Code 0",
+                category=TestCategory.CAPABILITIES,
+                description="OPEN with capability code 0 (reserved) - RFC 2842 Section 4",
+            ),
+            TestCase(
+                test_id="CAP-003",
+                name="Capability with Wrong Length",
+                category=TestCategory.CAPABILITIES,
+                description="Capability TLV with length mismatch - RFC 2842 Section 2",
+            ),
+            TestCase(
+                test_id="CAP-004",
+                name="Duplicate Capability Codes",
+                category=TestCategory.CAPABILITIES,
+                description="OPEN with duplicate capability codes - RFC 2842 Section 2",
+            ),
+            TestCase(
+                test_id="CAP-005",
+                name="Unsupported Capability Subcode",
+                category=TestCategory.CAPABILITIES,
+                description="OPEN with unsupported capability - RFC 2842 Section 3",
+                expected_error_code=NOTIFICATION_ERROR_CODES["OPEN_MESSAGE_ERROR"],
+                expected_error_subcode=7,
+            ),
+            TestCase(
+                test_id="CAP-006",
+                name="Unknown Capability Code Handling",
+                category=TestCategory.CAPABILITIES,
+                description="OPEN with unknown capability code - RFC 5492 Section 3",
+            ),
+            TestCase(
+                test_id="CAP-007",
+                name="Private Use Capability Codes",
+                category=TestCategory.CAPABILITIES,
+                description="Capability codes 128-255 reserved for private use - RFC 2842 Section 4",
+            ),
+            TestCase(
+                test_id="CAP-008",
+                name="4-Byte AS Capability Code 65",
+                category=TestCategory.CAPABILITIES,
+                description="4-byte AS Number capability (code 65) - RFC 4893",
+            ),
+        ]
+
+
+class RouteRefreshTests:
+    @staticmethod
+    def get_tests() -> List[TestCase]:
+        return [
+            TestCase(
+                test_id="RFR-001",
+                name="Route Refresh Message Format",
+                category=TestCategory.ROUTE_REFRESH,
+                description="Route Refresh message structure per RFC 2918 Section 3",
+            ),
+            TestCase(
+                test_id="RFR-002",
+                name="Route Refresh with AFI/SAFI",
+                category=TestCategory.ROUTE_REFRESH,
+                description="Route Refresh for specific AFI/SAFI - RFC 2918 Section 3",
+            ),
+            TestCase(
+                test_id="RFR-003",
+                name="Route Refresh for IPv4 Unicast",
+                category=TestCategory.ROUTE_REFRESH,
+                description="Route Refresh with AFI=1, SAFI=1 - RFC 2918",
+            ),
+            TestCase(
+                test_id="RFR-004",
+                name="Route Refresh for IPv6 Unicast",
+                category=TestCategory.ROUTE_REFRESH,
+                description="Route Refresh with AFI=2, SAFI=1 - RFC 2918",
+            ),
+            TestCase(
+                test_id="RFR-005",
+                name="Route Refresh with Route Target ORF",
+                category=TestCategory.ROUTE_REFRESH,
+                description="Route Refresh with ORF prefix entries - RFC 5291",
+            ),
+            TestCase(
+                test_id="RFR-006",
+                name="Route Refresh Response",
+                category=TestCategory.ROUTE_REFRESH,
+                description="Peer responds to RR with advertised routes - RFC 2918 Section 4",
+            ),
+            TestCase(
+                test_id="RFR-007",
+                name="Route Refresh Without Capability",
+                category=TestCategory.ROUTE_REFRESH,
+                description="Route Refresh sent without capability - RFC 2918",
+            ),
+            TestCase(
+                test_id="RFR-008",
+                name="Multiple Route Refresh Requests",
+                category=TestCategory.ROUTE_REFRESH,
+                description="Multiple Route Refresh requests in sequence - RFC 2918 Section 4",
+            ),
+            TestCase(
+                test_id="RFR-009",
+                name="Route Refresh AFI/SAFI Not Advertised",
+                category=TestCategory.ROUTE_REFRESH,
+                description="Route Refresh for non-advertised AFI/SAFI - RFC 2918 Section 4",
+            ),
+            TestCase(
+                test_id="RFR-010",
+                name="Route Refresh End-of-RIB",
+                category=TestCategory.ROUTE_REFRESH,
+                description="End-of-RIB marker after Route Refresh - RFC 2918",
             ),
         ]
