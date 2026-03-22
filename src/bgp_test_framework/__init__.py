@@ -7,5 +7,5 @@ This framework provides comprehensive adversarial testing capabilities
 for BGPv4 implementations to identify vulnerabilities and protocol violations.
 """
 
-__version__ = "0.1.0.1"
+__version__ = "0.1.0.2"
 __author__ = "Dario Clavijo"
