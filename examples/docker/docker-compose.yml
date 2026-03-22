@@ -1,0 +1,54 @@
+version: '3.8'
+
+services:
+  # BGP Implementation Under Test
+  frr:
+    image: frrouting/frr:latest
+    container_name: bgp-frr
+    hostname: frr
+    restart: unless-stopped
+    sysctls:
+      - net.ipv4.ip_forward=1
+    command: >
+      sh -c "
+        echo 'router bgp 65001' >> /etc/frr/frr.conf &&
+        echo ' bgp router-id 10.0.0.1' >> /etc/frr/frr.conf &&
+        echo ' no bgp ebgp-requires-policy' >> /etc/frr/frr.conf &&
+        echo ' neighbor 172.16.0.2 remote-as 65000' >> /etc/frr/frr.conf &&
+        echo ' !' >> /etc/frr/frr.conf &&
+        echo 'address-family ipv4 unicast' >> /etc/frr/frr.conf &&
+        echo '  network 10.0.0.0/8' >> /etc/frr/frr.conf &&
+        echo ' exit-address-family' >> /etc/frr/frr.conf &&
+        frr &
+        sleep infinity
+      "
+    networks:
+      bgp_net:
+        ipv4_address: 172.16.0.1
+
+  # BGP Test Framework
+  bgp-test:
+    build:
+      context: ../..
+      dockerfile: examples/docker/Dockerfile
+    container_name: bgp-test
+    depends_on:
+      - frr
+    networks:
+      bgp_net:
+        ipv4_address: 172.16.0.2
+    command: >
+      sh -c "
+        echo 'Waiting for FRR to start...' &&
+        sleep 10 &&
+        bgp-test --target 172.16.0.1 --as-number 65000 -v -o /results/report.json
+      "
+    volumes:
+      - ./results:/results
+
+networks:
+  bgp_net:
+    driver: bridge
+    ipam:
+      config:
+        - subnet: 172.16.0.0/24

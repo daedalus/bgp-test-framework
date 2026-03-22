@@ -37,6 +37,125 @@ This framework provides automated testing capabilities to identify vulnerabiliti
 pip install -e .
 ```
 
+## Testing Setup
+
+This framework requires a BGP peer to test against. Below are options for setting up a test environment.
+
+### Option 1: Containerlab (Recommended)
+
+Containerlab provides a quick way to deploy containerized BGP routers:
+
+```bash
+# Install containerlab
+curl -L https://containerlab.dev/install/ | bash
+
+# Create topology file (topology.yml)
+cat > topology.yml << 'EOF'
+name: bgp_test
+topology:
+  kinds:
+    linux:
+      image: frrouting/frr:latest
+  nodes:
+    router1:
+      kind: linux
+      image: frrouting/frr:latest
+      bgp:
+        as: 65001
+        neighbors:
+          - name: router2
+            as: 65002
+    router2:
+      kind: linux
+      image: frrouting/frr:latest
+      bgp:
+        as: 65002
+        neighbors:
+          - name: router1
+            as: 65001
+  links:
+    - endpoints: ["router1:eth1", "router2:eth1"]
+EOF
+
+# Deploy the lab
+containerlab deploy -t topology.yml
+
+# Get router IP
+containerlab inspect -t topology.yml
+
+# Test the framework
+bgp-test --target <router_ip> --as-number 65001
+
+# Destroy the lab when done
+containerlab destroy -t topology.yml
+```
+
+### Option 2: Docker Containers
+
+```bash
+# Run FRR container
+docker run -d --name bgp-peer frrouting/frr:latest
+
+# Enter the container and configure BGP
+docker exec -it bgp-peer vtysh -c "configure terminal"
+docker exec -it bgp-peer vtysh -c "router bgp 65001"
+docker exec -it bgp-peer vtysh -c "neighbor 192.168.1.1 remote-as 65001"
+docker exec -it bgp-peer vtysh -c "end"
+docker exec -it bgp-peer vtysh -c "write memory"
+
+# Get container IP
+docker inspect -f '{{range.NetworkSettings.Networks}}{{.IPAddress}}{{end}}' bgp-peer
+
+# Test
+bgp-test --target <container_ip> --as-number 65001
+```
+
+### Option 3: System Packages (Linux)
+
+```bash
+# Install FRR or BIRD
+sudo apt install frr    # Debian/Ubuntu
+sudo apt install bird    # Alternative
+
+# Configure FRR
+sudo vtysh -c "configure terminal"
+sudo vtysh -c "router bgp 65001"
+sudo vtysh -c "neighbor 192.168.1.1 remote-as 65001"
+sudo vtysh -c "end"
+sudo vtysh -c "write memory"
+
+# Test
+bgp-test --target 127.0.0.1 --as-number 65001
+```
+
+### Option 4: Virtual Machines
+
+Download and install:
+- **FRR**: https://frrouting.org/
+- **BIRD**: https://bird.network.cz/
+- **Cisco CSR1000V**: Commercial option
+- **Juniper vSRX**: Commercial option
+
+### Quick Test Without a BGP Peer
+
+Use the programmatic API to validate message generation:
+
+```python
+from bgp_test_framework.api import BGPMessageBuilder, BGPParser
+
+# Test message building
+msg = BGPMessageBuilder.create_open(my_as=65001)
+parsed = BGPParser.parse_header(msg)
+print(f"Message type: {parsed['type']}")
+
+# Test compliance scoring
+from bgp_test_framework.api import BGPTestHarness, BGPTestConfig
+config = BGPTestConfig(target_host="192.168.1.1", source_as=65001)
+harness = BGPTestHarness(config)
+tests = harness.get_all_tests("message_header")
+print(f"Available tests: {len(tests)}")
+```
+
 ## Quick Start
 
 ### Basic Usage
@@ -402,6 +521,10 @@ bgp_test_framework/
 ├── tests/
 │   ├── unit/              # Unit tests
 │   └── functional/         # Functional tests
+├── examples/              # Example setups
+│   ├── containerlab/       # Containerlab topology
+│   ├── docker/             # Docker Compose setup
+│   └── test_example.py     # Python API example
 ├── RFCs/                  # RFC specification documents
 │   ├── rfc1105.txt        # RFC 1105 (BGP v1, obsolete)
 │   ├── rfc1163.txt        # RFC 1163 (BGP-2, obsolete)

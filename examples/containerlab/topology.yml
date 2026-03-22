@@ -1,0 +1,24 @@
+name: bgp_compliance_test
+topology:
+  kinds:
+    linux:
+      image: frrouting/frr:latest
+  nodes:
+    dut:
+      kind: linux
+      image: frrouting/frr:latest
+      startup-delay: 10
+      bgp:
+        as: 65001
+        router-id: 10.0.0.1
+        neighbors:
+          - name: tester
+            as: 65000
+            passive: true
+    tester:
+      kind: linux
+      image: bgp-test:latest
+      exec:
+        - sleep 5
+  links:
+    - endpoints: ["dut:eth1", "tester:eth1"]
