@@ -85,6 +85,7 @@ class TestCase:
     expected_error_code: Optional[int] = None
     expected_error_subcode: Optional[int] = None
     should_close_connection: bool = True
+    params: Dict[str, Any] = field(default_factory=dict)
 
 
 class BGPTestFramework:
@@ -2608,60 +2609,112 @@ class RouteFlapDampingTests:
                 name="Route Withdrawal Increment",
                 category=TestCategory.ROUTE_FLAP_DAMPING,
                 description="Route withdrawal increments stability figure - RFC 2439 Section 4",
+                params={
+                    "action": "withdraw",
+                    "prefix": "192.168.100.0",
+                    "prefix_len": 24,
+                },
             ),
             TestCase(
                 test_id="DAMP-002",
                 name="Route Re-advertisement",
                 category=TestCategory.ROUTE_FLAP_DAMPING,
                 description="Route re-advertisement after stable period - RFC 2439 Section 4",
+                params={
+                    "action": "advertise",
+                    "prefix": "192.168.101.0",
+                    "prefix_len": 24,
+                },
             ),
             TestCase(
                 test_id="DAMP-003",
                 name="Damping Threshold Exceeded",
                 category=TestCategory.ROUTE_FLAP_DAMPING,
                 description="Route suppressed when cutoff threshold exceeded - RFC 2439 Section 4.2",
+                params={
+                    "action": "withdraw",
+                    "prefix": "192.168.102.0",
+                    "prefix_len": 24,
+                    "count": 5,
+                },
             ),
             TestCase(
                 test_id="DAMP-004",
                 name="Route Reuse After Stability",
                 category=TestCategory.ROUTE_FLAP_DAMPING,
                 description="Route reused when figure-of-merit falls below reuse - RFC 2439 Section 4.2",
+                params={
+                    "action": "advertise",
+                    "prefix": "192.168.103.0",
+                    "prefix_len": 24,
+                },
             ),
             TestCase(
                 test_id="DAMP-005",
                 name="Maximum Hold Time",
                 category=TestCategory.ROUTE_FLAP_DAMPING,
                 description="Route not suppressed beyond max hold time - RFC 2439 Section 4.2",
+                params={
+                    "action": "withdraw",
+                    "prefix": "192.168.104.0",
+                    "prefix_len": 24,
+                },
             ),
             TestCase(
                 test_id="DAMP-006",
                 name="Exponential Decay While Reachable",
                 category=TestCategory.ROUTE_FLAP_DAMPING,
                 description="Stability figure decays exponentially when reachable - RFC 2439 Section 4",
+                params={
+                    "action": "advertise",
+                    "prefix": "192.168.105.0",
+                    "prefix_len": 24,
+                },
             ),
             TestCase(
                 test_id="DAMP-007",
                 name="Exponential Decay While Unreachable",
                 category=TestCategory.ROUTE_FLAP_DAMPING,
                 description="Stability figure decays while route unreachable - RFC 2439 Section 4",
+                params={
+                    "action": "withdraw",
+                    "prefix": "192.168.106.0",
+                    "prefix_len": 24,
+                },
             ),
             TestCase(
                 test_id="DAMP-008",
                 name="Rapid Route Flapping",
                 category=TestCategory.ROUTE_FLAP_DAMPING,
                 description="Rapid withdrawals cause increased damping - RFC 2439 Section 4.3",
+                params={
+                    "action": "withdraw",
+                    "prefix": "192.168.107.0",
+                    "prefix_len": 24,
+                    "count": 10,
+                },
             ),
             TestCase(
                 test_id="DAMP-009",
                 name="IBGP vs EBGP Damping",
                 category=TestCategory.ROUTE_FLAP_DAMPING,
                 description="Damping applied only to EBGP - RFC 2439 Section 4",
+                params={
+                    "action": "advertise",
+                    "prefix": "192.168.108.0",
+                    "prefix_len": 24,
+                },
             ),
             TestCase(
                 test_id="DAMP-010",
                 name="Damping Parameter Persistence",
                 category=TestCategory.ROUTE_FLAP_DAMPING,
                 description="Damping state maintained across sessions - RFC 3345 Section 3",
+                params={
+                    "action": "withdraw",
+                    "prefix": "192.168.109.0",
+                    "prefix_len": 24,
+                },
             ),
         ]
 
@@ -2729,78 +2782,30 @@ class RouteFlapDampingTests:
         finally:
             framework.disconnect()
 
-    def test_damp_001(self, framework: BGPTestFramework) -> TestResult:
-        return framework._run_test(
-            self.get_tests()[0],
-            lambda: self._send_withdrawal(framework, "192.168.100.0", 24),
-        )
+    def test_damp(self, framework: BGPTestFramework, test_index: int) -> TestResult:
+        test_case = self.get_tests()[test_index]
+        params = test_case.params
+        action = params.get("action", "advertise")
+        prefix = params.get("prefix", "192.168.0.0")
+        prefix_len = params.get("prefix_len", 24)
+        count = params.get("count", 1)
 
-    def test_damp_002(self, framework: BGPTestFramework) -> TestResult:
-        return framework._run_test(
-            self.get_tests()[1],
-            lambda: self._send_route_advertisement(framework, "192.168.101.0", 24),
-        )
+        def run_test() -> tuple:
+            if count > 1:
+                for _ in range(count):
+                    if action == "withdraw":
+                        self._send_withdrawal(framework, prefix, prefix_len)
+                return (True, f"{count} withdrawals for damping threshold test", {})
+            elif action == "withdraw":
+                return self._send_withdrawal(framework, prefix, prefix_len)
+            else:
+                return self._send_route_advertisement(framework, prefix, prefix_len)
 
-    def test_damp_003(self, framework: BGPTestFramework) -> TestResult:
-        for i in range(5):
-            withdrawal = self._send_withdrawal(framework, "192.168.102.0", 24)
-            if withdrawal[0]:
-                continue
-        return framework._run_test(
-            self.get_tests()[2],
-            lambda: (True, "Multiple withdrawals for damping threshold test", {}),
-        )
-
-    def test_damp_004(self, framework: BGPTestFramework) -> TestResult:
-        return framework._run_test(
-            self.get_tests()[3],
-            lambda: self._send_route_advertisement(framework, "192.168.103.0", 24),
-        )
-
-    def test_damp_005(self, framework: BGPTestFramework) -> TestResult:
-        return framework._run_test(
-            self.get_tests()[4],
-            lambda: self._send_withdrawal(framework, "192.168.104.0", 24),
-        )
-
-    def test_damp_006(self, framework: BGPTestFramework) -> TestResult:
-        return framework._run_test(
-            self.get_tests()[5],
-            lambda: self._send_route_advertisement(framework, "192.168.105.0", 24),
-        )
-
-    def test_damp_007(self, framework: BGPTestFramework) -> TestResult:
-        return framework._run_test(
-            self.get_tests()[6],
-            lambda: self._send_withdrawal(framework, "192.168.106.0", 24),
-        )
-
-    def test_damp_008(self, framework: BGPTestFramework) -> TestResult:
-        for i in range(10):
-            self._send_withdrawal(framework, "192.168.107.0", 24)
-        return framework._run_test(
-            self.get_tests()[7],
-            lambda: (True, "Rapid flapping scenario sent (10 withdrawals)", {}),
-        )
-
-    def test_damp_009(self, framework: BGPTestFramework) -> TestResult:
-        return framework._run_test(
-            self.get_tests()[8],
-            lambda: self._send_route_advertisement(framework, "192.168.108.0", 24),
-        )
-
-    def test_damp_010(self, framework: BGPTestFramework) -> TestResult:
-        return framework._run_test(
-            self.get_tests()[9],
-            lambda: self._send_withdrawal(framework, "192.168.109.0", 24),
-        )
+        return framework._run_test(test_case, run_test)
 
 
 class ASNumberTests:
     AS_PATH_TYPE = 2
-    AS4_PATH_TYPE = 17
-    AS4_AGGREGATOR_TYPE = 18
-    RESERVED_AS_VALUES = [0, 65535, 4294967295]
 
     @staticmethod
     def get_tests() -> List[TestCase]:
@@ -2810,72 +2815,76 @@ class ASNumberTests:
                 name="AS 0 Rejection",
                 category=TestCategory.AS_NUMBER,
                 description="AS 0 must not be used - RFC 1930 Section 3",
+                params={"as_numbers": [0, 65001]},
             ),
             TestCase(
                 test_id="AS-002",
                 name="Private AS 16-bit Range",
                 category=TestCategory.AS_NUMBER,
                 description="Private AS 64512-65534 for use in AS_PATH - RFC 1930",
+                params={"as_numbers": [65001, 64512]},
             ),
             TestCase(
                 test_id="AS-003",
                 name="Private AS 32-bit Range",
                 category=TestCategory.AS_NUMBER,
                 description="Private AS 4200000000-4294967294 for 4-byte AS - RFC 6996",
+                params={"as_numbers": [4200000000, 65001]},
             ),
             TestCase(
                 test_id="AS-004",
                 name="AS 65535 Reserved",
                 category=TestCategory.AS_NUMBER,
                 description="AS 65535 is reserved - RFC 1930 Section 3",
+                params={"as_numbers": [65535, 65001]},
             ),
             TestCase(
                 test_id="AS-005",
                 name="AS 4294967295 Reserved",
                 category=TestCategory.AS_NUMBER,
                 description="AS 4294967295 is reserved for 4-byte AS - RFC 7300",
+                params={"as_numbers": [4294967295, 65001]},
             ),
             TestCase(
                 test_id="AS-006",
                 name="Four-Octet AS Capability",
                 category=TestCategory.AS_NUMBER,
                 description="OPEN with 4-byte AS capability - RFC 4893",
+                params={"as_numbers": [65001, 65002]},
             ),
             TestCase(
                 test_id="AS-007",
                 name="AS_PATH with 4-Byte AS Numbers",
                 category=TestCategory.AS_NUMBER,
                 description="AS_PATH with 4-byte AS numbers - RFC 4893",
+                params={"as_numbers": [65001, 65002]},
             ),
             TestCase(
                 test_id="AS-008",
                 name="AS4_AGGREGATOR Attribute",
                 category=TestCategory.AS_NUMBER,
                 description="AS4_AGGREGATOR for routes with 4-byte AS - RFC 4893",
+                params={"as_numbers": [65001, 65002, 65003]},
             ),
             TestCase(
                 test_id="AS-009",
                 name="AS_PATH Loop with 4-Byte AS",
                 category=TestCategory.AS_NUMBER,
                 description="AS_PATH loop detection with 4-byte AS - RFC 4893",
+                params={"as_numbers": [65001, 65001]},
             ),
             TestCase(
                 test_id="AS-010",
                 name="Private AS Removal on EBGP",
                 category=TestCategory.AS_NUMBER,
                 description="Private AS numbers stripped on EBGP - RFC 1930",
+                params={"as_numbers": [65001, 64512, 64513]},
             ),
         ]
 
     def _build_as_path_2byte(self, as_numbers: List[int]) -> PathAttribute:
         data = bytes([1, len(as_numbers)]) + b"".join(
             struct.pack("!H", as_num) for as_num in as_numbers
-        )
-        return PathAttribute(self.AS_PATH_TYPE, 0x40, data)
-
-    def _build_as_path_4byte(self, as_numbers: List[int]) -> PathAttribute:
-        data = bytes([1, len(as_numbers)]) + b"".join(
-            struct.pack("!I", as_num) for as_num in as_numbers
         )
         return PathAttribute(self.AS_PATH_TYPE, 0x40, data)
 
@@ -2915,64 +2924,12 @@ class ASNumberTests:
         finally:
             framework.disconnect()
 
-    def test_as_001(self, framework: BGPTestFramework) -> TestResult:
+    def test_as(self, framework: BGPTestFramework, test_index: int) -> TestResult:
+        test_case = self.get_tests()[test_index]
+        as_numbers = test_case.params.get("as_numbers", [65001])
         return framework._run_test(
-            self.get_tests()[0],
-            lambda: self._send_route_with_as_path(framework, [0, 65001]),
-        )
-
-    def test_as_002(self, framework: BGPTestFramework) -> TestResult:
-        return framework._run_test(
-            self.get_tests()[1],
-            lambda: self._send_route_with_as_path(framework, [65001, 64512]),
-        )
-
-    def test_as_003(self, framework: BGPTestFramework) -> TestResult:
-        return framework._run_test(
-            self.get_tests()[2],
-            lambda: self._send_route_with_as_path(framework, [4200000000, 65001]),
-        )
-
-    def test_as_004(self, framework: BGPTestFramework) -> TestResult:
-        return framework._run_test(
-            self.get_tests()[3],
-            lambda: self._send_route_with_as_path(framework, [65535, 65001]),
-        )
-
-    def test_as_005(self, framework: BGPTestFramework) -> TestResult:
-        return framework._run_test(
-            self.get_tests()[4],
-            lambda: self._send_route_with_as_path(framework, [4294967295, 65001]),
-        )
-
-    def test_as_006(self, framework: BGPTestFramework) -> TestResult:
-        return framework._run_test(
-            self.get_tests()[5],
-            lambda: self._send_route_with_as_path(framework, [65001, 65002]),
-        )
-
-    def test_as_007(self, framework: BGPTestFramework) -> TestResult:
-        return framework._run_test(
-            self.get_tests()[6],
-            lambda: self._send_route_with_as_path(framework, [65001, 65002]),
-        )
-
-    def test_as_008(self, framework: BGPTestFramework) -> TestResult:
-        return framework._run_test(
-            self.get_tests()[7],
-            lambda: self._send_route_with_as_path(framework, [65001, 65002, 65003]),
-        )
-
-    def test_as_009(self, framework: BGPTestFramework) -> TestResult:
-        return framework._run_test(
-            self.get_tests()[8],
-            lambda: self._send_route_with_as_path(framework, [65001, 65001]),
-        )
-
-    def test_as_010(self, framework: BGPTestFramework) -> TestResult:
-        return framework._run_test(
-            self.get_tests()[9],
-            lambda: self._send_route_with_as_path(framework, [65001, 64512, 64513]),
+            test_case,
+            lambda: self._send_route_with_as_path(framework, as_numbers),
         )
 
 
@@ -2982,7 +2939,6 @@ class VPNTests:
     SAFI_VPNV4 = 128
     EXTENDED_COMMUNITY_TYPE = 16
     RT_PREFIX = bytes([0x00, 0x02])
-    SOO_PREFIX = bytes([0x00, 0x03])
 
     @staticmethod
     def get_tests() -> List[TestCase]:
@@ -2992,97 +2948,146 @@ class VPNTests:
                 name="Route Distinguisher Type 0 Format",
                 category=TestCategory.VPN,
                 description="RD Type 0: 2-byte ASN + 4-byte assigned number - RFC 4364 Section 4.1",
+                params={
+                    "rd_type": 0,
+                    "as_num": 65001,
+                    "assigned": 100,
+                    "prefix": "10.0.0.0",
+                },
             ),
             TestCase(
                 test_id="VPN-002",
                 name="Route Distinguisher Type 1 Format",
                 category=TestCategory.VPN,
                 description="RD Type 1: IPv4 address + 2-byte assigned number - RFC 4364 Section 4.1",
+                params={
+                    "rd_type": 1,
+                    "ip_addr": "192.168.1.1",
+                    "assigned": 100,
+                    "prefix": "10.0.1.0",
+                },
             ),
             TestCase(
                 test_id="VPN-003",
                 name="Route Distinguisher Type 2 Format",
                 category=TestCategory.VPN,
                 description="RD Type 2: 4-byte ASN + 2-byte assigned number - RFC 4364 Section 4.1",
+                params={
+                    "rd_type": 2,
+                    "as_num": 65001,
+                    "assigned": 100,
+                    "prefix": "10.0.2.0",
+                },
             ),
             TestCase(
                 test_id="VPN-004",
                 name="VPN-IPv4 Address Encoding",
                 category=TestCategory.VPN,
                 description="VPN-IPv4 address is 12 bytes: 8-byte RD + 4-byte IPv4 - RFC 4364 Section 4.1",
+                params={
+                    "rd_type": 0,
+                    "as_num": 65001,
+                    "assigned": 200,
+                    "prefix": "10.0.3.0",
+                },
             ),
             TestCase(
                 test_id="VPN-005",
                 name="Route Target Extended Community",
                 category=TestCategory.VPN,
                 description="Route Target as Extended Community (type 0x0002) - RFC 4364 Section 4.2.1",
+                params={
+                    "rd_type": 0,
+                    "as_num": 65001,
+                    "assigned": 300,
+                    "prefix": "10.0.4.0",
+                },
             ),
             TestCase(
                 test_id="VPN-006",
                 name="Site of Origin Extended Community",
                 category=TestCategory.VPN,
                 description="Site of Origin (SOO) Extended Community (type 0x0003) - RFC 4364 Section 6",
+                params={
+                    "rd_type": 0,
+                    "as_num": 65001,
+                    "assigned": 400,
+                    "prefix": "10.0.5.0",
+                },
             ),
             TestCase(
                 test_id="VPN-007",
                 name="VPN Route With MPLS Label",
                 category=TestCategory.VPN,
                 description="MP_REACH_NLRI with MPLS label for VPN - RFC 4364 Section 4.2.2",
+                params={
+                    "rd_type": 0,
+                    "as_num": 65001,
+                    "assigned": 500,
+                    "prefix": "10.0.6.0",
+                },
             ),
             TestCase(
                 test_id="VPN-008",
                 name="VPN-IPv4 AFI/SAFI Encoding",
                 category=TestCategory.VPN,
                 description="VPN-IPv4 AFI=1, SAFI=128 in MP_REACH_NLRI - RFC 2547",
+                params={
+                    "rd_type": 0,
+                    "as_num": 65001,
+                    "assigned": 600,
+                    "prefix": "10.0.7.0",
+                },
             ),
             TestCase(
                 test_id="VPN-009",
                 name="VPN Route Distribution via IBGP",
                 category=TestCategory.VPN,
                 description="VPN routes distributed via IBGP with Route Distinguisher - RFC 2547 Section 3",
+                params={
+                    "rd_type": 0,
+                    "as_num": 65001,
+                    "assigned": 700,
+                    "prefix": "10.0.8.0",
+                },
             ),
             TestCase(
                 test_id="VPN-010",
                 name="Multiple Route Targets",
                 category=TestCategory.VPN,
                 description="VPN route can have multiple Route Target attributes - RFC 4364 Section 4.2.1",
+                params={
+                    "rd_type": 0,
+                    "as_num": 65001,
+                    "assigned": 800,
+                    "prefix": "10.0.9.0",
+                },
             ),
         ]
 
-    def _build_rd_type0(self, as_num: int, assigned: int) -> bytes:
-        return (
-            bytes([0x00, 0x00])
-            + struct.pack("!H", as_num)
-            + struct.pack("!I", assigned)
-        )
-
-    def _build_rd_type1(self, ip_addr: str, assigned: int) -> bytes:
-        return (
-            bytes([0x00, 0x01])
-            + socket.inet_aton(ip_addr)
-            + struct.pack("!H", assigned)
-        )
-
-    def _build_rd_type2(self, as_num: int, assigned: int) -> bytes:
-        return (
-            bytes([0x00, 0x02])
-            + struct.pack("!I", as_num)
-            + struct.pack("!H", assigned)
-        )
-
-    def _build_route_target(self, as_num: int, assigned: int) -> PathAttribute:
-        data = (
-            self.RT_PREFIX + struct.pack("!H", as_num) + struct.pack("!I", assigned)[2:]
-        )
-        return PathAttribute(self.EXTENDED_COMMUNITY_TYPE, 0x40, data)
-
-    def _build_vpn_nlri(self, rd: bytes, prefix: bytes, prefix_len: int) -> bytes:
-        nlri = bytes([prefix_len + 64])
-        nlri += rd + prefix
-        return nlri
+    def _build_rd(self, params: Dict[str, Any]) -> bytes:
+        rd_type = params.get("rd_type", 0)
+        if rd_type == 0:
+            return (
+                bytes([0x00, 0x00])
+                + struct.pack("!H", params["as_num"])
+                + struct.pack("!I", params["assigned"])
+            )
+        elif rd_type == 1:
+            return (
+                bytes([0x00, 0x01])
+                + socket.inet_aton(params["ip_addr"])
+                + struct.pack("!H", params["assigned"])
+            )
+        else:
+            return (
+                bytes([0x00, 0x02])
+                + struct.pack("!I", params["as_num"])
+                + struct.pack("!H", params["assigned"])
+            )
 
     def _send_vpn_route(
-        self, framework: BGPTestFramework, rd: bytes, prefix: str, prefix_len: int
+        self, framework: BGPTestFramework, rd: bytes, prefix: str
     ) -> tuple:
         if not framework.connect():
             return (False, "Failed to connect", {})
@@ -3100,7 +3105,7 @@ class VPNTests:
             next_hop = socket.inet_aton("10.0.0.1")
             label_stack = bytes([0x80, 0x00, 0x01])
             nlri_prefix = socket.inet_aton(prefix)
-            vpn_nlri = self._build_vpn_nlri(rd, nlri_prefix, prefix_len)
+            vpn_nlri = bytes([24 + 64]) + rd + nlri_prefix
             mp_reach_data = (
                 struct.pack("!HBB", self.AFI_IPV4, self.SAFI_VPNV4, len(next_hop))
                 + next_hop
@@ -3109,7 +3114,12 @@ class VPNTests:
             )
             mp_reach = PathAttribute(self.MP_REACH_NLRI, 0x80, mp_reach_data)
 
-            route_target = self._build_route_target(framework.source_as, 100)
+            rt_data = (
+                self.RT_PREFIX
+                + struct.pack("!H", framework.source_as)
+                + struct.pack("!I", 100)[2:]
+            )
+            route_target = PathAttribute(self.EXTENDED_COMMUNITY_TYPE, 0x40, rt_data)
             origin = create_origin_attribute(0)
             as_path = create_as_path_attribute([framework.source_as])
             update = build_update_message(
@@ -3125,74 +3135,13 @@ class VPNTests:
         finally:
             framework.disconnect()
 
-    def test_vpn_001(self, framework: BGPTestFramework) -> TestResult:
-        rd = self._build_rd_type0(65001, 100)
+    def test_vpn(self, framework: BGPTestFramework, test_index: int) -> TestResult:
+        test_case = self.get_tests()[test_index]
+        rd = self._build_rd(test_case.params)
+        prefix = test_case.params.get("prefix", "10.0.0.0")
         return framework._run_test(
-            self.get_tests()[0],
-            lambda: self._send_vpn_route(framework, rd, "10.0.0.0", 24),
-        )
-
-    def test_vpn_002(self, framework: BGPTestFramework) -> TestResult:
-        rd = self._build_rd_type1("192.168.1.1", 100)
-        return framework._run_test(
-            self.get_tests()[1],
-            lambda: self._send_vpn_route(framework, rd, "10.0.1.0", 24),
-        )
-
-    def test_vpn_003(self, framework: BGPTestFramework) -> TestResult:
-        rd = self._build_rd_type2(65001, 100)
-        return framework._run_test(
-            self.get_tests()[2],
-            lambda: self._send_vpn_route(framework, rd, "10.0.2.0", 24),
-        )
-
-    def test_vpn_004(self, framework: BGPTestFramework) -> TestResult:
-        rd = self._build_rd_type0(65001, 200)
-        return framework._run_test(
-            self.get_tests()[3],
-            lambda: self._send_vpn_route(framework, rd, "10.0.3.0", 24),
-        )
-
-    def test_vpn_005(self, framework: BGPTestFramework) -> TestResult:
-        rd = self._build_rd_type0(65001, 300)
-        return framework._run_test(
-            self.get_tests()[4],
-            lambda: self._send_vpn_route(framework, rd, "10.0.4.0", 24),
-        )
-
-    def test_vpn_006(self, framework: BGPTestFramework) -> TestResult:
-        rd = self._build_rd_type0(65001, 400)
-        return framework._run_test(
-            self.get_tests()[5],
-            lambda: self._send_vpn_route(framework, rd, "10.0.5.0", 24),
-        )
-
-    def test_vpn_007(self, framework: BGPTestFramework) -> TestResult:
-        rd = self._build_rd_type0(65001, 500)
-        return framework._run_test(
-            self.get_tests()[6],
-            lambda: self._send_vpn_route(framework, rd, "10.0.6.0", 24),
-        )
-
-    def test_vpn_008(self, framework: BGPTestFramework) -> TestResult:
-        rd = self._build_rd_type0(65001, 600)
-        return framework._run_test(
-            self.get_tests()[7],
-            lambda: self._send_vpn_route(framework, rd, "10.0.7.0", 24),
-        )
-
-    def test_vpn_009(self, framework: BGPTestFramework) -> TestResult:
-        rd = self._build_rd_type0(65001, 700)
-        return framework._run_test(
-            self.get_tests()[8],
-            lambda: self._send_vpn_route(framework, rd, "10.0.8.0", 24),
-        )
-
-    def test_vpn_010(self, framework: BGPTestFramework) -> TestResult:
-        rd = self._build_rd_type0(65001, 800)
-        return framework._run_test(
-            self.get_tests()[9],
-            lambda: self._send_vpn_route(framework, rd, "10.0.9.0", 24),
+            test_case,
+            lambda: self._send_vpn_route(framework, rd, prefix),
         )
 
 
@@ -3200,7 +3149,6 @@ class CapabilitiesTests:
     CAP_MULTIPROTOCOL = 1
     CAP_ROUTE_REFRESH = 2
     CAP_4BYTE_AS = 65
-    CAP_ROUTE_REFRESH_ENHANCED = 70
 
     @staticmethod
     def get_tests() -> List[TestCase]:
@@ -3210,24 +3158,42 @@ class CapabilitiesTests:
                 name="Multiple Capabilities in Single OPEN",
                 category=TestCategory.CAPABILITIES,
                 description="OPEN message with multiple capability parameters - RFC 2842 Section 2",
+                params={
+                    "capabilities": [
+                        {"code": 1, "data": [0, 1, 0, 1]},
+                        {"code": 2, "data": []},
+                    ]
+                },
             ),
             TestCase(
                 test_id="CAP-002",
                 name="Reserved Capability Code 0",
                 category=TestCategory.CAPABILITIES,
                 description="OPEN with capability code 0 (reserved) - RFC 2842 Section 4",
+                params={"capabilities": [{"code": 0, "data": [0, 0]}]},
             ),
             TestCase(
                 test_id="CAP-003",
                 name="Capability with Wrong Length",
                 category=TestCategory.CAPABILITIES,
                 description="Capability TLV with length mismatch - RFC 2842 Section 2",
+                params={
+                    "capabilities": [
+                        {"code": 1, "length_mismatch": 10, "data": [0] * 5}
+                    ]
+                },
             ),
             TestCase(
                 test_id="CAP-004",
                 name="Duplicate Capability Codes",
                 category=TestCategory.CAPABILITIES,
                 description="OPEN with duplicate capability codes - RFC 2842 Section 2",
+                params={
+                    "capabilities": [
+                        {"code": 1, "data": [0, 1, 0, 1]},
+                        {"code": 1, "data": [0, 2, 0, 1]},
+                    ]
+                },
             ),
             TestCase(
                 test_id="CAP-005",
@@ -3236,24 +3202,28 @@ class CapabilitiesTests:
                 description="OPEN with unsupported capability - RFC 2842 Section 3",
                 expected_error_code=NOTIFICATION_ERROR_CODES["OPEN_MESSAGE_ERROR"],
                 expected_error_subcode=7,
+                params={"capabilities": [{"code": 255, "data": [0, 0]}]},
             ),
             TestCase(
                 test_id="CAP-006",
                 name="Unknown Capability Code Handling",
                 category=TestCategory.CAPABILITIES,
                 description="OPEN with unknown capability code - RFC 5492 Section 3",
+                params={"capabilities": [{"code": 200, "data": [0, 0]}]},
             ),
             TestCase(
                 test_id="CAP-007",
                 name="Private Use Capability Codes",
                 category=TestCategory.CAPABILITIES,
                 description="Capability codes 128-255 reserved for private use - RFC 2842 Section 4",
+                params={"capabilities": [{"code": 200, "data": [0, 0]}]},
             ),
             TestCase(
                 test_id="CAP-008",
                 name="4-Byte AS Capability Code 65",
                 category=TestCategory.CAPABILITIES,
                 description="4-byte AS Number capability (code 65) - RFC 4893",
+                params={"capabilities": [{"code": 65, "data": "as_4byte"}]},
             ),
         ]
 
@@ -3297,69 +3267,26 @@ class CapabilitiesTests:
         finally:
             framework.disconnect()
 
-    def test_cap_001(self, framework: BGPTestFramework) -> TestResult:
-        caps = [
-            self._build_capability_tlv(self.CAP_MULTIPROTOCOL, bytes([0, 1, 0, 1])),
-            self._build_capability_tlv(self.CAP_ROUTE_REFRESH, b""),
-        ]
+    def test_cap(self, framework: BGPTestFramework, test_index: int) -> TestResult:
+        test_case = self.get_tests()[test_index]
+        cap_params = test_case.params.get("capabilities", [])
+        caps = []
+        for cap in cap_params:
+            code = cap["code"]
+            if "length_mismatch" in cap:
+                caps.append(bytes([code, cap["length_mismatch"]]) + bytes(cap["data"]))
+            elif cap.get("data") == "as_4byte":
+                caps.append(
+                    self._build_capability_tlv(
+                        code, struct.pack("!I", framework.source_as)
+                    )
+                )
+            else:
+                caps.append(
+                    self._build_capability_tlv(code, bytes(cap.get("data", [])))
+                )
         return framework._run_test(
-            self.get_tests()[0],
-            lambda: self._send_open_with_capabilities(framework, caps),
-        )
-
-    def test_cap_002(self, framework: BGPTestFramework) -> TestResult:
-        caps = [self._build_capability_tlv(0, b"\x00\x00")]
-        return framework._run_test(
-            self.get_tests()[1],
-            lambda: self._send_open_with_capabilities(framework, caps),
-        )
-
-    def test_cap_003(self, framework: BGPTestFramework) -> TestResult:
-        caps = [bytes([self.CAP_MULTIPROTOCOL, 10]) + b"\x00" * 5]
-        return framework._run_test(
-            self.get_tests()[2],
-            lambda: self._send_open_with_capabilities(framework, caps),
-        )
-
-    def test_cap_004(self, framework: BGPTestFramework) -> TestResult:
-        caps = [
-            self._build_capability_tlv(self.CAP_MULTIPROTOCOL, bytes([0, 1, 0, 1])),
-            self._build_capability_tlv(self.CAP_MULTIPROTOCOL, bytes([0, 2, 0, 1])),
-        ]
-        return framework._run_test(
-            self.get_tests()[3],
-            lambda: self._send_open_with_capabilities(framework, caps),
-        )
-
-    def test_cap_005(self, framework: BGPTestFramework) -> TestResult:
-        caps = [self._build_capability_tlv(255, b"\x00\x00")]
-        return framework._run_test(
-            self.get_tests()[4],
-            lambda: self._send_open_with_capabilities(framework, caps),
-        )
-
-    def test_cap_006(self, framework: BGPTestFramework) -> TestResult:
-        caps = [self._build_capability_tlv(200, b"\x00\x00")]
-        return framework._run_test(
-            self.get_tests()[5],
-            lambda: self._send_open_with_capabilities(framework, caps),
-        )
-
-    def test_cap_007(self, framework: BGPTestFramework) -> TestResult:
-        caps = [self._build_capability_tlv(200, b"\x00\x00")]
-        return framework._run_test(
-            self.get_tests()[6],
-            lambda: self._send_open_with_capabilities(framework, caps),
-        )
-
-    def test_cap_008(self, framework: BGPTestFramework) -> TestResult:
-        caps = [
-            self._build_capability_tlv(
-                self.CAP_4BYTE_AS, struct.pack("!I", framework.source_as)
-            )
-        ]
-        return framework._run_test(
-            self.get_tests()[7],
+            test_case,
             lambda: self._send_open_with_capabilities(framework, caps),
         )
 
@@ -3404,36 +3331,42 @@ class RouteRefreshTests:
                 name="Route Refresh with Route Target ORF",
                 category=TestCategory.ROUTE_REFRESH,
                 description="Route Refresh with ORF prefix entries - RFC 5291",
+                params={"afi": 1, "safi": 1},
             ),
             TestCase(
                 test_id="RFR-006",
                 name="Route Refresh Response",
                 category=TestCategory.ROUTE_REFRESH,
                 description="Peer responds to RR with advertised routes - RFC 2918 Section 4",
+                params={"afi": 1, "safi": 1},
             ),
             TestCase(
                 test_id="RFR-007",
                 name="Route Refresh Without Capability",
                 category=TestCategory.ROUTE_REFRESH,
                 description="Route Refresh sent without capability - RFC 2918",
+                params={"afi": 1, "safi": 1},
             ),
             TestCase(
                 test_id="RFR-008",
                 name="Multiple Route Refresh Requests",
                 category=TestCategory.ROUTE_REFRESH,
                 description="Multiple Route Refresh requests in sequence - RFC 2918 Section 4",
+                params={"afi": 1, "safi": 1},
             ),
             TestCase(
                 test_id="RFR-009",
                 name="Route Refresh AFI/SAFI Not Advertised",
                 category=TestCategory.ROUTE_REFRESH,
                 description="Route Refresh for non-advertised AFI/SAFI - RFC 2918 Section 4",
+                params={"afi": 999, "safi": 1},
             ),
             TestCase(
                 test_id="RFR-010",
                 name="Route Refresh End-of-RIB",
                 category=TestCategory.ROUTE_REFRESH,
                 description="End-of-RIB marker after Route Refresh - RFC 2918",
+                params={"afi": 1, "safi": 1},
             ),
         ]
 
@@ -3491,91 +3424,21 @@ class RouteRefreshTests:
         finally:
             framework.disconnect()
 
-    def test_rfr_001(self, framework: BGPTestFramework) -> TestResult:
+    def test_rfr(self, framework: BGPTestFramework, test_index: int) -> TestResult:
+        test_case = self.get_tests()[test_index]
+        params = test_case.params
+        afi = params.get("afi", 1)
+        safi = params.get("safi", 1)
         return framework._run_test(
-            self.get_tests()[0],
-            lambda: self._send_route_refresh(
-                framework, self.AFI_IPV4, self.SAFI_UNICAST
-            ),
-        )
-
-    def test_rfr_002(self, framework: BGPTestFramework) -> TestResult:
-        return framework._run_test(
-            self.get_tests()[1],
-            lambda: self._send_route_refresh(
-                framework, self.AFI_IPV4, self.SAFI_UNICAST
-            ),
-        )
-
-    def test_rfr_003(self, framework: BGPTestFramework) -> TestResult:
-        return framework._run_test(
-            self.get_tests()[2],
-            lambda: self._send_route_refresh(
-                framework, self.AFI_IPV4, self.SAFI_UNICAST
-            ),
-        )
-
-    def test_rfr_004(self, framework: BGPTestFramework) -> TestResult:
-        return framework._run_test(
-            self.get_tests()[3],
-            lambda: self._send_route_refresh(
-                framework, self.AFI_IPV6, self.SAFI_UNICAST
-            ),
-        )
-
-    def test_rfr_005(self, framework: BGPTestFramework) -> TestResult:
-        return framework._run_test(
-            self.get_tests()[4],
-            lambda: self._send_route_refresh(
-                framework, self.AFI_IPV4, self.SAFI_UNICAST
-            ),
-        )
-
-    def test_rfr_006(self, framework: BGPTestFramework) -> TestResult:
-        return framework._run_test(
-            self.get_tests()[5],
-            lambda: self._send_route_refresh(
-                framework, self.AFI_IPV4, self.SAFI_UNICAST
-            ),
-        )
-
-    def test_rfr_007(self, framework: BGPTestFramework) -> TestResult:
-        return framework._run_test(
-            self.get_tests()[6],
-            lambda: self._send_route_refresh(
-                framework, self.AFI_IPV4, self.SAFI_UNICAST
-            ),
-        )
-
-    def test_rfr_008(self, framework: BGPTestFramework) -> TestResult:
-        return framework._run_test(
-            self.get_tests()[7],
-            lambda: self._send_route_refresh(
-                framework, self.AFI_IPV4, self.SAFI_UNICAST
-            ),
-        )
-
-    def test_rfr_009(self, framework: BGPTestFramework) -> TestResult:
-        return framework._run_test(
-            self.get_tests()[8],
-            lambda: self._send_route_refresh(framework, 999, self.SAFI_UNICAST),
-        )
-
-    def test_rfr_010(self, framework: BGPTestFramework) -> TestResult:
-        return framework._run_test(
-            self.get_tests()[9],
-            lambda: self._send_route_refresh(
-                framework, self.AFI_IPV4, self.SAFI_UNICAST
-            ),
+            test_case,
+            lambda: self._send_route_refresh(framework, afi, safi),
         )
 
 
 class MPLSLabelTests:
     MP_REACH_NLRI = 14
     SAFI_MPLS_LABEL = 4
-    MPLS_LABEL_MIN = 16
     MPLS_LABEL_IMPLICIT_NULL = 3
-    MPLS_LABEL_RESERVED_MAX = 15
 
     @staticmethod
     def get_tests() -> List[TestCase]:
@@ -3585,68 +3448,79 @@ class MPLSLabelTests:
                 name="MPLS Label in MP_REACH_NLRI SAFI-4",
                 category=TestCategory.MPLS_LABELS,
                 description="MP_REACH_NLRI with SAFI=4 for label distribution - RFC 3107",
+                params={"label": 100, "prefix": "192.168.20.0"},
             ),
             TestCase(
                 test_id="LABEL-002",
                 name="MPLS Label 3-Byte Encoding",
                 category=TestCategory.MPLS_LABELS,
                 description="Label encoded as 3 octets: 20-bit value + BOS bit - RFC 3107 Section 3",
+                params={"label": 200, "prefix": "192.168.21.0"},
             ),
             TestCase(
                 test_id="LABEL-003",
                 name="MPLS Label Stack Depth",
                 category=TestCategory.MPLS_LABELS,
                 description="Multiple labels for label stack encoding - RFC 3107 Section 3",
+                params={"label": 25601, "prefix": "192.168.22.0"},
             ),
             TestCase(
                 test_id="LABEL-004",
                 name="MPLS Label Reserved Range 0-15",
                 category=TestCategory.MPLS_LABELS,
                 description="Labels 0-15 are reserved per RFC 3032 - RFC 3107",
+                params={"label": 10, "prefix": "192.168.23.0"},
             ),
             TestCase(
                 test_id="LABEL-005",
                 name="MPLS Label Implicit NULL",
                 category=TestCategory.MPLS_LABELS,
                 description="Label 3 is Implicit NULL - RFC 3107",
+                params={"label": 3, "prefix": "192.168.24.0"},
             ),
             TestCase(
                 test_id="LABEL-006",
                 name="MPLS Label Withdrawal Value",
                 category=TestCategory.MPLS_LABELS,
                 description="Withdrawal NLRI label set to 0x800000 - RFC 3107 Section 3",
+                params={"withdrawal": True, "label": 0x800000},
             ),
             TestCase(
                 test_id="LABEL-007",
                 name="MPLS Label Next Hop Self",
                 category=TestCategory.MPLS_LABELS,
                 description="Label assigned by Next Hop router - RFC 3107 Section 3",
+                params={"label": 300, "prefix": "192.168.25.0"},
             ),
             TestCase(
                 test_id="LABEL-008",
                 name="MPLS Label Preservation on Redistribute",
                 category=TestCategory.MPLS_LABELS,
                 description="Labels must not change unless Next Hop changes - RFC 3107 Section 3",
+                params={"label": 400, "prefix": "192.168.26.0"},
             ),
             TestCase(
                 test_id="LABEL-009",
                 name="MPLS Label NLRI Length Field",
                 category=TestCategory.MPLS_LABELS,
                 description="Length field indicates prefix bits plus label bits - RFC 3107 Section 3",
+                params={"label": 500, "prefix": "192.168.27.0"},
             ),
             TestCase(
                 test_id="LABEL-010",
                 name="MPLS Label Capability Advertisement",
                 category=TestCategory.MPLS_LABELS,
                 description="MP_EXT capability required for label SAFI - RFC 3107 Section 5",
+                params={"label": 600, "prefix": "192.168.28.0"},
             ),
         ]
 
     def _build_mpls_label_nlri(self, label: int, prefix: str, prefix_len: int) -> bytes:
-        nlri = b""
-        nlri += bytes([prefix_len + 24])
-        nlri += struct.pack("!I", label)[1:]
-        nlri += socket.inet_aton(prefix)[: (prefix_len + 7) // 8]
+        nlri = (
+            bytes([prefix_len + 24])
+            + struct.pack("!I", label)[1:]
+            + socket.inet_aton(prefix)[: (prefix_len + 7) // 8]
+        )
         return nlri
 
     def _send_mpls_label_update(
@@ -3686,59 +3560,23 @@ class MPLSLabelTests:
         finally:
             framework.disconnect()
 
-    def test_label_001(self, framework: BGPTestFramework) -> TestResult:
-        nlri = self._build_mpls_label_nlri(100, "192.168.20.0", 24)
-        return framework._run_test(
-            self.get_tests()[0],
-            lambda: self._send_mpls_label_update(framework, 100, nlri),
-        )
-
-    def test_label_002(self, framework: BGPTestFramework) -> TestResult:
-        nlri = self._build_mpls_label_nlri(200, "192.168.21.0", 24)
-        return framework._run_test(
-            self.get_tests()[1],
-            lambda: self._send_mpls_label_update(framework, 200, nlri),
-        )
-
-    def test_label_003(self, framework: BGPTestFramework) -> TestResult:
-        label1 = 100 << 8 | 1
-        nlri = self._build_mpls_label_nlri(label1, "192.168.22.0", 24)
-        return framework._run_test(
-            self.get_tests()[2],
-            lambda: self._send_mpls_label_update(framework, label1, nlri),
-        )
-
-    def test_label_004(self, framework: BGPTestFramework) -> TestResult:
-        nlri = self._build_mpls_label_nlri(10, "192.168.23.0", 24)
-        return framework._run_test(
-            self.get_tests()[3],
-            lambda: self._send_mpls_label_update(framework, 10, nlri),
-        )
-
-    def test_label_005(self, framework: BGPTestFramework) -> TestResult:
-        nlri = self._build_mpls_label_nlri(
-            self.MPLS_LABEL_IMPLICIT_NULL, "192.168.24.0", 24
-        )
-        return framework._run_test(
-            self.get_tests()[4],
-            lambda: self._send_mpls_label_update(
-                framework, self.MPLS_LABEL_IMPLICIT_NULL, nlri
-            ),
-        )
-
-    def test_label_006(self, framework: BGPTestFramework) -> TestResult:
+    def _send_mpls_label_withdrawal(
+        self, framework: BGPTestFramework, label: int
+    ) -> tuple:
         if not framework.connect():
-            return framework._run_test(
-                self.get_tests()[5],
-                lambda: (False, "Failed to connect", {}),
-            )
+            return (False, "Failed to connect", {})
         try:
+            msg = build_open_message(framework.source_as)
+            framework.send_raw(msg)
+            response = framework.receive_raw()
+            if not response or len(response) < 19:
+                return (True, "No OPEN response", {})
+
             keepalive = build_keepalive_message()
             framework.send_raw(keepalive)
             framework.receive_raw()
 
-            withdrawal_label = 0x800000
-            nlri = bytes([24]) + struct.pack("!I", withdrawal_label)[1:] + bytes(3)
+            nlri = bytes([24]) + struct.pack("!I", label)[1:] + bytes(3)
             mp_unreach_data = struct.pack("!HB", 1, self.SAFI_MPLS_LABEL) + nlri
             mp_unreach = PathAttribute(15, 0x80, mp_unreach_data)
             update = build_update_message([], [mp_unreach], [])
@@ -3750,33 +3588,20 @@ class MPLSLabelTests:
         finally:
             framework.disconnect()
 
-    def test_label_007(self, framework: BGPTestFramework) -> TestResult:
-        nlri = self._build_mpls_label_nlri(300, "192.168.25.0", 24)
-        return framework._run_test(
-            self.get_tests()[6],
-            lambda: self._send_mpls_label_update(framework, 300, nlri),
-        )
+    def test_label(self, framework: BGPTestFramework, test_index: int) -> TestResult:
+        test_case = self.get_tests()[test_index]
+        params = test_case.params
 
-    def test_label_008(self, framework: BGPTestFramework) -> TestResult:
-        nlri = self._build_mpls_label_nlri(400, "192.168.26.0", 24)
-        return framework._run_test(
-            self.get_tests()[7],
-            lambda: self._send_mpls_label_update(framework, 400, nlri),
-        )
+        def run_test() -> tuple:
+            if params.get("withdrawal"):
+                return self._send_mpls_label_withdrawal(framework, params["label"])
+            else:
+                nlri = self._build_mpls_label_nlri(
+                    params["label"], params["prefix"], 24
+                )
+                return self._send_mpls_label_update(framework, params["label"], nlri)
 
-    def test_label_009(self, framework: BGPTestFramework) -> TestResult:
-        nlri = self._build_mpls_label_nlri(500, "192.168.27.0", 24)
-        return framework._run_test(
-            self.get_tests()[8],
-            lambda: self._send_mpls_label_update(framework, 500, nlri),
-        )
-
-    def test_label_010(self, framework: BGPTestFramework) -> TestResult:
-        nlri = self._build_mpls_label_nlri(600, "192.168.28.0", 24)
-        return framework._run_test(
-            self.get_tests()[9],
-            lambda: self._send_mpls_label_update(framework, 600, nlri),
-        )
+        return framework._run_test(test_case, run_test)
 
 
 class NOPEERCommunityTests:
@@ -3793,30 +3618,35 @@ class NOPEERCommunityTests:
                 name="NOPEER Community Value",
                 category=TestCategory.NOPEER,
                 description="NOPEER well-known community value 0xFFFFFF04 - RFC 3765 Section 4",
+                params={"communities": [0xFFFFFF04]},
             ),
             TestCase(
                 test_id="NOPEER-002",
                 name="NOPEER Route Scope Control",
                 category=TestCategory.NOPEER,
                 description="NOPEER restricts advertisement to bilateral peers - RFC 3765 Section 2",
+                params={"communities": [0xFFFFFF04]},
             ),
             TestCase(
                 test_id="NOPEER-003",
                 name="NOPEER vs NO_EXPORT Comparison",
                 category=TestCategory.NOPEER,
                 description="NOPEER allows advertisement to provider but not peer - RFC 3765",
+                params={"communities": [0xFFFFFF04, 0xFFFFFF01]},
             ),
             TestCase(
                 test_id="NOPEER-004",
                 name="NOPEER Well-Known Transitive",
                 category=TestCategory.NOPEER,
                 description="NOPEER is well-known and transitive - RFC 3765 Section 2",
+                params={"communities": [0xFFFFFF04]},
             ),
             TestCase(
                 test_id="NOPEER-005",
                 name="NOPEER Filtering Implementation",
                 category=TestCategory.NOPEER,
                 description="Receiving AS may filter based on peering relationship - RFC 3765 Section 2",
+                params={"communities": [0xFFFFFF04]},
             ),
         ]
 
@@ -3858,36 +3688,12 @@ class NOPEERCommunityTests:
         finally:
             framework.disconnect()
 
-    def test_nopeer_001(self, framework: BGPTestFramework) -> TestResult:
+    def test_nopeer(self, framework: BGPTestFramework, test_index: int) -> TestResult:
+        test_case = self.get_tests()[test_index]
+        communities = test_case.params.get("communities", [self.NOPEER])
         return framework._run_test(
-            self.get_tests()[0],
-            lambda: self._send_community_update(framework, [self.NOPEER]),
-        )
-
-    def test_nopeer_002(self, framework: BGPTestFramework) -> TestResult:
-        return framework._run_test(
-            self.get_tests()[1],
-            lambda: self._send_community_update(framework, [self.NOPEER]),
-        )
-
-    def test_nopeer_003(self, framework: BGPTestFramework) -> TestResult:
-        return framework._run_test(
-            self.get_tests()[2],
-            lambda: self._send_community_update(
-                framework, [self.NOPEER, self.NO_EXPORT]
-            ),
-        )
-
-    def test_nopeer_004(self, framework: BGPTestFramework) -> TestResult:
-        return framework._run_test(
-            self.get_tests()[3],
-            lambda: self._send_community_update(framework, [self.NOPEER]),
-        )
-
-    def test_nopeer_005(self, framework: BGPTestFramework) -> TestResult:
-        return framework._run_test(
-            self.get_tests()[4],
-            lambda: self._send_community_update(framework, [self.NOPEER]),
+            test_case,
+            lambda: self._send_community_update(framework, communities),
         )
 
 
@@ -3902,30 +3708,35 @@ class RouteOscillationTests:
                 name="Type I Oscillation with Route Reflection",
                 category=TestCategory.ROUTE_OSCILLATION,
                 description="Type I churn requires single-level RR + MED - RFC 3345 Section 2.1",
+                params={"med": 100, "prefix": "192.168.200.0"},
             ),
             TestCase(
                 test_id="OSCIL-002",
                 name="Type I Oscillation with Confederation",
                 category=TestCategory.ROUTE_OSCILLATION,
                 description="Type I churn with AS confederations - RFC 3345 Section 2.2",
+                params={"med": 200, "prefix": "192.168.200.1"},
             ),
             TestCase(
                 test_id="OSCIL-003",
                 name="MED Non-Deterministic Ordering",
                 category=TestCategory.ROUTE_OSCILLATION,
                 description="Non-deterministic path ordering can cause loops - RFC 3345 Section 2",
+                params={"med": 300, "prefix": "192.168.200.2"},
             ),
             TestCase(
                 test_id="OSCIL-004",
                 name="Type II Oscillation Conditions",
                 category=TestCategory.ROUTE_OSCILLATION,
                 description="Type II oscillation conditions - RFC 3345 Section 3",
+                params={"med": 400, "prefix": "192.168.200.3"},
             ),
             TestCase(
                 test_id="OSCIL-005",
                 name="MED Comparison Same AS Only",
                 category=TestCategory.ROUTE_OSCILLATION,
                 description="MED comparable only between routes from same neighboring AS - RFC 3345",
+                params={"med": 500, "prefix": "192.168.200.4"},
             ),
         ]
 
@@ -3933,7 +3744,7 @@ class RouteOscillationTests:
         return PathAttribute(self.MED_TYPE, 0x40, struct.pack("!I", med))
 
     def _send_route_with_med(
-        self, framework: BGPTestFramework, med: int, prefix: str = "192.168.200.0"
+        self, framework: BGPTestFramework, med: int, prefix: str
     ) -> tuple:
         if not framework.connect():
             return (False, "Failed to connect", {})
@@ -3967,34 +3778,14 @@ class RouteOscillationTests:
         finally:
             framework.disconnect()
 
-    def test_osil_001(self, framework: BGPTestFramework) -> TestResult:
+    def test_osil(self, framework: BGPTestFramework, test_index: int) -> TestResult:
+        test_case = self.get_tests()[test_index]
+        params = test_case.params
+        med = params.get("med", 100)
+        prefix = params.get("prefix", "192.168.200.0")
         return framework._run_test(
-            self.get_tests()[0],
-            lambda: self._send_route_with_med(framework, 100),
-        )
-
-    def test_osil_002(self, framework: BGPTestFramework) -> TestResult:
-        return framework._run_test(
-            self.get_tests()[1],
-            lambda: self._send_route_with_med(framework, 200),
-        )
-
-    def test_osil_003(self, framework: BGPTestFramework) -> TestResult:
-        return framework._run_test(
-            self.get_tests()[2],
-            lambda: self._send_route_with_med(framework, 300),
-        )
-
-    def test_osil_004(self, framework: BGPTestFramework) -> TestResult:
-        return framework._run_test(
-            self.get_tests()[3],
-            lambda: self._send_route_with_med(framework, 400),
-        )
-
-    def test_osil_005(self, framework: BGPTestFramework) -> TestResult:
-        return framework._run_test(
-            self.get_tests()[4],
-            lambda: self._send_route_with_med(framework, 500),
+            test_case,
+            lambda: self._send_route_with_med(framework, med, prefix),
         )
 
 
