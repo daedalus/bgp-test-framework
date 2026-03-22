@@ -14,6 +14,19 @@ from bgp_test_framework.tests import (
     FSMTests,
     TimingTests,
     SecurityTests,
+    CommunitiesTests,
+    LargeCommunitiesTests,
+    MultiprotocolTests,
+    RouteRefreshTests,
+    MPLSLabelTests,
+    NOPEERCommunityTests,
+    RouteFlapDampingTests,
+    ASNumberTests,
+    VPNTests,
+    CapabilitiesTests,
+    RouteOscillationTests,
+    TEST_CLASSES,
+    ALL_TEST_CATEGORIES,
 )
 from bgp_test_framework.constants import (
     NOTIFICATION_ERROR_CODES,
@@ -215,6 +228,193 @@ class TestTestCategories:
         assert TestCategory.EXTENDED_MESSAGES.value == "extended_messages"
         assert TestCategory.ORF_FILTERING.value == "orf_filtering"
         assert TestCategory.DYNAMIC_CAPABILITY.value == "dynamic_capability"
+
+
+class TestCommunitiesTests:
+    def test_get_tests(self):
+        tests = CommunitiesTests.get_tests()
+        assert len(tests) == 10
+        assert all(t.category == TestCategory.COMMUNITIES for t in tests)
+
+    def test_specific_tests_exist(self):
+        tests = {t.test_id: t for t in CommunitiesTests.get_tests()}
+        assert "COMM-001" in tests
+        assert "COMM-005" in tests
+        assert "COMM-010" in tests
+
+
+class TestLargeCommunitiesTests:
+    def test_get_tests(self):
+        tests = LargeCommunitiesTests.get_tests()
+        assert len(tests) == 10
+        assert all(t.category == TestCategory.LARGE_COMMUNITIES for t in tests)
+
+    def test_specific_tests_exist(self):
+        tests = {t.test_id: t for t in LargeCommunitiesTests.get_tests()}
+        assert "LCOMM-001" in tests
+        assert "LCOMM-005" in tests
+        assert "LCOMM-010" in tests
+
+
+class TestMultiprotocolTests:
+    def test_get_tests(self):
+        tests = MultiprotocolTests.get_tests()
+        assert len(tests) == 8
+        assert all(t.category == TestCategory.MULTIPROTOCOL for t in tests)
+
+    def test_specific_tests_exist(self):
+        tests = {t.test_id: t for t in MultiprotocolTests.get_tests()}
+        assert "MP-001" in tests
+        assert "MP-004" in tests
+        assert "MP-008" in tests
+
+
+class TestRouteRefreshTests:
+    def test_get_tests(self):
+        tests = RouteRefreshTests.get_tests()
+        assert len(tests) == 10
+        assert all(t.category == TestCategory.ROUTE_REFRESH for t in tests)
+
+    def test_specific_tests_exist(self):
+        tests = {t.test_id: t for t in RouteRefreshTests.get_tests()}
+        assert "RFR-001" in tests
+        assert "RFR-005" in tests
+        assert "RFR-010" in tests
+
+
+class TestMPLSLabelTests:
+    def test_get_tests(self):
+        tests = MPLSLabelTests.get_tests()
+        assert len(tests) == 10
+        assert all(t.category == TestCategory.MPLS_LABELS for t in tests)
+
+    def test_specific_tests_exist(self):
+        tests = {t.test_id: t for t in MPLSLabelTests.get_tests()}
+        assert "LABEL-001" in tests
+        assert "LABEL-005" in tests
+        assert "LABEL-010" in tests
+
+
+class TestNOPEERCommunityTests:
+    def test_get_tests(self):
+        tests = NOPEERCommunityTests.get_tests()
+        assert len(tests) == 5
+        assert all(t.category == TestCategory.NOPEER for t in tests)
+
+    def test_specific_tests_exist(self):
+        tests = {t.test_id: t for t in NOPEERCommunityTests.get_tests()}
+        assert "NOPEER-001" in tests
+        assert "NOPEER-003" in tests
+        assert "NOPEER-005" in tests
+
+
+class TestRouteFlapDampingTests:
+    def test_get_tests(self):
+        tests = RouteFlapDampingTests.get_tests()
+        assert len(tests) == 10
+        assert all(t.category == TestCategory.ROUTE_FLAP_DAMPING for t in tests)
+
+    def test_specific_tests_exist(self):
+        tests = {t.test_id: t for t in RouteFlapDampingTests.get_tests()}
+        assert "DAMP-001" in tests
+        assert "DAMP-005" in tests
+        assert "DAMP-010" in tests
+
+
+class TestASNumberTests:
+    def test_get_tests(self):
+        tests = ASNumberTests.get_tests()
+        assert len(tests) == 10
+        assert all(t.category == TestCategory.AS_NUMBER for t in tests)
+
+    def test_specific_tests_exist(self):
+        tests = {t.test_id: t for t in ASNumberTests.get_tests()}
+        assert "AS-001" in tests
+        assert "AS-005" in tests
+        assert "AS-010" in tests
+
+
+class TestVPNTests:
+    def test_get_tests(self):
+        tests = VPNTests.get_tests()
+        assert len(tests) == 10
+        assert all(t.category == TestCategory.VPN for t in tests)
+
+    def test_specific_tests_exist(self):
+        tests = {t.test_id: t for t in VPNTests.get_tests()}
+        assert "VPN-001" in tests
+        assert "VPN-005" in tests
+        assert "VPN-010" in tests
+
+
+class TestCapabilitiesTests:
+    def test_get_tests(self):
+        tests = CapabilitiesTests.get_tests()
+        assert len(tests) == 8
+        assert all(t.category == TestCategory.CAPABILITIES for t in tests)
+
+    def test_specific_tests_exist(self):
+        tests = {t.test_id: t for t in CapabilitiesTests.get_tests()}
+        assert "CAP-001" in tests
+        assert "CAP-004" in tests
+        assert "CAP-008" in tests
+
+
+class TestRouteOscillationTests:
+    def test_get_tests(self):
+        tests = RouteOscillationTests.get_tests()
+        assert len(tests) == 5
+        assert all(t.category == TestCategory.ROUTE_OSCILLATION for t in tests)
+
+    def test_specific_tests_exist(self):
+        tests = {t.test_id: t for t in RouteOscillationTests.get_tests()}
+        assert "OSCIL-001" in tests
+        assert "OSCIL-003" in tests
+        assert "OSCIL-005" in tests
+
+
+class TestTESTCLASSESConstant:
+    def test_all_test_classes_registered(self):
+        assert "message_header" in TEST_CLASSES
+        assert "open_message" in TEST_CLASSES
+        assert "update_message" in TEST_CLASSES
+        assert "communities" in TEST_CLASSES
+        assert "large_communities" in TEST_CLASSES
+        assert "multiprotocol" in TEST_CLASSES
+        assert "route_refresh" in TEST_CLASSES
+        assert "mpls_labels" in TEST_CLASSES
+        assert "nopeer" in TEST_CLASSES
+        assert "route_flap_damping" in TEST_CLASSES
+        assert "as_number" in TEST_CLASSES
+        assert "vpn" in TEST_CLASSES
+        assert "capabilities" in TEST_CLASSES
+        assert "route_oscillation" in TEST_CLASSES
+
+
+class TestALLTESTCATEGORIESConstant:
+    def test_all_categories_included(self):
+        expected_categories = [
+            "message_header",
+            "open_message",
+            "update_message",
+            "attribute",
+            "fsm",
+            "timing",
+            "security",
+            "communities",
+            "large_communities",
+            "multiprotocol",
+            "route_refresh",
+            "mpls_labels",
+            "nopeer",
+            "route_flap_damping",
+            "as_number",
+            "vpn",
+            "capabilities",
+            "route_oscillation",
+        ]
+        for cat in expected_categories:
+            assert cat in ALL_TEST_CATEGORIES
 
 
 class TestNotificationErrorCodes:
