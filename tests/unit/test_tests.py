@@ -192,7 +192,7 @@ class TestSecurityTests:
 
 class TestTestCategories:
     def test_all_categories_defined(self):
-        assert len(TestCategory) == 19
+        assert len(TestCategory) == 22
         assert TestCategory.MESSAGE_HEADER.value == "message_header"
         assert TestCategory.OPEN_MESSAGE.value == "open_message"
         assert TestCategory.UPDATE_MESSAGE.value == "update_message"
@@ -212,6 +212,9 @@ class TestTestCategories:
         assert TestCategory.CONFEDERATION.value == "confederation"
         assert TestCategory.GRACEFUL_RESTART.value == "graceful_restart"
         assert TestCategory.ENHANCED_ROUTE_REFRESH.value == "enhanced_route_refresh"
+        assert TestCategory.EXTENDED_MESSAGES.value == "extended_messages"
+        assert TestCategory.ORF_FILTERING.value == "orf_filtering"
+        assert TestCategory.DYNAMIC_CAPABILITY.value == "dynamic_capability"
 
 
 class TestNotificationErrorCodes:

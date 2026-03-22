@@ -166,6 +166,30 @@ Tests for Enhanced Route Refresh per RFC 7313:
 - ERR-004: Route Refresh with ORF Prefix
 - ERR-005: Route Refresh AFI/SAFI
 
+### extended_messages
+Tests for Extended Message support per RFC 7606:
+- EXT-001: Extended Message Capability
+- EXT-002: Extended Message Size
+- EXT-003: Message Length Overflow
+- EXT-004: Extended Message Type
+- EXT-005: Extended Keepalive
+
+### orf_filtering
+Tests for Outbound Route Filtering per RFC 5291:
+- ORF-001: ORF Capability
+- ORF-002: ORF Send Receive
+- ORF-003: ORF Prefix Filter
+- ORF-004: ORF Route Refresh
+- ORF-005: ORF Multiple Entries
+
+### dynamic_capability
+Tests for Dynamic Capability per RFC 6724:
+- DC-001: Dynamic Capability Advertisement
+- DC-002: Capability Refresh
+- DC-003: Unknown Capability
+- DC-004: Capability Length Error
+- DC-005: Multiple Capabilities
+
 ### open_message
 Tests for OPEN message handling per RFC 4271 Section 4.2 and 6.2:
 - OP-001: Unsupported BGP Version
@@ -371,7 +395,7 @@ bgp_test_framework/
 │   ├── __init__.py
 │   ├── constants.py       # RFC 4271/4272 constants
 │   ├── messages.py        # BGP message parsing/building
-│   ├── tests.py           # Test case definitions (150+ tests)
+│   ├── tests.py           # Test case definitions (210+ tests)
 │   ├── runner.py          # Test execution engine
 │   ├── api.py            # Programmatic API
 │   └── cli.py             # CLI entry point

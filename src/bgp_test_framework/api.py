@@ -43,6 +43,11 @@ from .tests import (
     ConnectionCollisionTests,
     MultiprotocolTests,
     RouteReflectionTests,
+    GracefulRestartTests,
+    EnhancedRouteRefreshTests,
+    ExtendedMessageTests,
+    ORFFilteringTests,
+    DynamicCapabilityTests,
 )
 from .runner import TestConfiguration, TestRunner, ComplianceMetrics
 
@@ -85,6 +90,11 @@ class BGPTestHarness:
         "connection_collision": ConnectionCollisionTests,
         "multiprotocol": MultiprotocolTests,
         "route_reflection": RouteReflectionTests,
+        "graceful_restart": GracefulRestartTests,
+        "enhanced_route_refresh": EnhancedRouteRefreshTests,
+        "extended_messages": ExtendedMessageTests,
+        "orf_filtering": ORFFilteringTests,
+        "dynamic_capability": DynamicCapabilityTests,
     }
 
     def __init__(self, config: BGPTestConfig):

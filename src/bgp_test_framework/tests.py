@@ -41,6 +41,9 @@ class TestCategory(Enum):
     CONFEDERATION = "confederation"
     GRACEFUL_RESTART = "graceful_restart"
     ENHANCED_ROUTE_REFRESH = "enhanced_route_refresh"
+    EXTENDED_MESSAGES = "extended_messages"
+    ORF_FILTERING = "orf_filtering"
+    DYNAMIC_CAPABILITY = "dynamic_capability"
 
 
 @dataclass
@@ -1713,6 +1716,54 @@ class BGPSecurityTests:
                 category=TestCategory.SECURITY,
                 description="Validate AS_PATH prepending semantics - RFC 4271",
             ),
+            TestCase(
+                test_id="SEC-025",
+                name="AS_PATH Length Manipulation",
+                category=TestCategory.SECURITY,
+                description="AS_PATH length validation - RFC 4271 Section 5.1.2",
+            ),
+            TestCase(
+                test_id="SEC-026",
+                name="Bogus AS_PATH",
+                category=TestCategory.SECURITY,
+                description="Invalid AS_PATH segment encoding - RFC 4271",
+            ),
+            TestCase(
+                test_id="SEC-027",
+                name="NEXT_HOP Self",
+                category=TestCategory.SECURITY,
+                description="Route with NEXT_HOP set to self - RFC 4271 Section 5.1.3",
+            ),
+            TestCase(
+                test_id="SEC-028",
+                name="Null NEXT_HOP",
+                category=TestCategory.SECURITY,
+                description="Route with NULL NEXT_HOP - RFC 4271",
+            ),
+            TestCase(
+                test_id="SEC-029",
+                name="MED Manipulation",
+                category=TestCategory.SECURITY,
+                description="MED value range validation - RFC 4271 Section 5.1.4",
+            ),
+            TestCase(
+                test_id="SEC-030",
+                name="LOCAL_PREF iBGP Only",
+                category=TestCategory.SECURITY,
+                description="LOCAL_PREF not in EBGP - RFC 4271 Section 5.1.5",
+            ),
+            TestCase(
+                test_id="SEC-031",
+                name="Route Hijacking Detection",
+                category=TestCategory.SECURITY,
+                description="Detect potential route hijacking patterns - RFC 4272",
+            ),
+            TestCase(
+                test_id="SEC-032",
+                name="Subverted Route Propagation",
+                category=TestCategory.SECURITY,
+                description="Prevent subverted route propagation - RFC 4272",
+            ),
         ]
 
 
@@ -1786,5 +1837,116 @@ class EnhancedRouteRefreshTests:
                 name="Route Refresh AFI/SAFI",
                 category=TestCategory.ENHANCED_ROUTE_REFRESH,
                 description="Route Refresh with specific AFI/SAFI - RFC 7313",
+            ),
+        ]
+
+
+class ExtendedMessageTests:
+    @staticmethod
+    def get_tests() -> List[TestCase]:
+        return [
+            TestCase(
+                test_id="EXT-001",
+                name="Extended Message Capability",
+                category=TestCategory.EXTENDED_MESSAGES,
+                description="OPEN with Extended Message capability - RFC 7606",
+            ),
+            TestCase(
+                test_id="EXT-002",
+                name="Extended Message Size",
+                category=TestCategory.EXTENDED_MESSAGES,
+                description="Extended message size negotiation - RFC 7606 Section 3",
+            ),
+            TestCase(
+                test_id="EXT-003",
+                name="Message Length Overflow",
+                category=TestCategory.EXTENDED_MESSAGES,
+                description="Extended message exceeds max size - RFC 7606",
+            ),
+            TestCase(
+                test_id="EXT-004",
+                name="Extended Message Type",
+                category=TestCategory.EXTENDED_MESSAGES,
+                description="Extended message with new type - RFC 7606 Section 2",
+            ),
+            TestCase(
+                test_id="EXT-005",
+                name="Extended Keepalive",
+                category=TestCategory.EXTENDED_MESSAGES,
+                description="Extended Keepalive message format - RFC 7606",
+            ),
+        ]
+
+
+class ORFFilteringTests:
+    @staticmethod
+    def get_tests() -> List[TestCase]:
+        return [
+            TestCase(
+                test_id="ORF-001",
+                name="ORF Capability",
+                category=TestCategory.ORF_FILTERING,
+                description="OPEN with ORF capability - RFC 5291",
+            ),
+            TestCase(
+                test_id="ORF-002",
+                name="ORF Send Receive",
+                category=TestCategory.ORF_FILTERING,
+                description="ORF send/receive capability - RFC 5291 Section 3",
+            ),
+            TestCase(
+                test_id="ORF-003",
+                name="ORF Prefix Filter",
+                category=TestCategory.ORF_FILTERING,
+                description="ORF with prefix-based filtering - RFC 5292",
+            ),
+            TestCase(
+                test_id="ORF-004",
+                name="ORF Route Refresh",
+                category=TestCategory.ORF_FILTERING,
+                description="ORF with route refresh - RFC 5291 Section 4",
+            ),
+            TestCase(
+                test_id="ORF-005",
+                name="ORF Multiple Entries",
+                category=TestCategory.ORF_FILTERING,
+                description="ORF with multiple filter entries - RFC 5292",
+            ),
+        ]
+
+
+class DynamicCapabilityTests:
+    @staticmethod
+    def get_tests() -> List[TestCase]:
+        return [
+            TestCase(
+                test_id="DC-001",
+                name="Dynamic Capability Advertisement",
+                category=TestCategory.DYNAMIC_CAPABILITY,
+                description="DYNAMIC capability in OPEN - RFC 6724",
+            ),
+            TestCase(
+                test_id="DC-002",
+                name="Capability Refresh",
+                category=TestCategory.DYNAMIC_CAPABILITY,
+                description="Dynamic capability refresh - RFC 6724 Section 2",
+            ),
+            TestCase(
+                test_id="DC-003",
+                name="Unknown Capability",
+                category=TestCategory.DYNAMIC_CAPABILITY,
+                description="OPEN with unknown capability - RFC 5492",
+            ),
+            TestCase(
+                test_id="DC-004",
+                name="Capability Length Error",
+                category=TestCategory.DYNAMIC_CAPABILITY,
+                description="Capability with invalid length - RFC 5492",
+            ),
+            TestCase(
+                test_id="DC-005",
+                name="Multiple Capabilities",
+                category=TestCategory.DYNAMIC_CAPABILITY,
+                description="Multiple capabilities in single OPEN - RFC 5492",
             ),
         ]
