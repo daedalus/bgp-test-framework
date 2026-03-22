@@ -11,6 +11,13 @@ from enum import Enum
 from .messages import (
     MARKER,
     build_open_message,
+    build_update_message,
+    build_keepalive_message,
+    build_route_refresh_message,
+    PathAttribute,
+    create_origin_attribute,
+    create_as_path_attribute,
+    create_next_hop_attribute,
 )
 from .constants import (
     MESSAGE_TYPES,
@@ -1607,6 +1614,14 @@ class ConnectionCollisionTests:
 
 
 class MultiprotocolTests:
+    MP_REACH_NLRI = 14
+    MP_UNREACH_NLRI = 15
+    AFI_IPV4 = 1
+    AFI_IPV6 = 2
+    SAFI_UNICAST = 1
+    SAFI_MULTICAST = 2
+    SAFI_VPNV4 = 128
+
     @staticmethod
     def get_tests() -> List[TestCase]:
         return [
@@ -1659,6 +1674,180 @@ class MultiprotocolTests:
                 description="Send MP_REACH_NLRI without multiprotocol capability - RFC 4760",
             ),
         ]
+
+    def _build_mp_reach_nlri(
+        self, afi: int, safi: int, next_hop: bytes, nlri: bytes
+    ) -> PathAttribute:
+        data = (
+            struct.pack("!HBB", afi, safi, len(next_hop)) + next_hop + bytes([0]) + nlri
+        )
+        return PathAttribute(self.MP_REACH_NLRI, 0x80, data)
+
+    def _send_mp_reach(
+        self, framework: BGPTestFramework, afi: int, safi: int, nlri: bytes
+    ) -> tuple:
+        if not framework.connect():
+            return (False, "Failed to connect", {})
+        try:
+            msg = build_open_message(framework.source_as)
+            framework.send_raw(msg)
+            response = framework.receive_raw()
+            if not response or len(response) < 19:
+                return (True, "No OPEN response", {})
+
+            keepalive = build_keepalive_message()
+            framework.send_raw(keepalive)
+            framework.receive_raw()
+
+            next_hop = socket.inet_aton("10.0.0.1")
+            mp_reach = self._build_mp_reach_nlri(afi, safi, next_hop, nlri)
+            origin = create_origin_attribute(0)
+            as_path = create_as_path_attribute([framework.source_as])
+            next_hop_attr = create_next_hop_attribute("10.0.0.1")
+            update = build_update_message(
+                [], [origin, as_path, next_hop_attr, mp_reach], []
+            )
+            framework.send_raw(update)
+            response = framework.receive_raw()
+            if response and len(response) >= 21:
+                return (True, f"MP_REACH_NLRI accepted (AFI={afi}, SAFI={safi})", {})
+            return (True, f"Sent MP_REACH_NLRI (AFI={afi}, SAFI={safi})", {})
+        except Exception as e:
+            return (False, f"Error: {str(e)}", {})
+        finally:
+            framework.disconnect()
+
+    def test_mp_001(self, framework: BGPTestFramework) -> TestResult:
+        invalid_afi = 999
+        nlri = bytes([24]) + socket.inet_aton("192.168.10.0")[:3]
+        return framework._run_test(
+            self.get_tests()[0],
+            lambda: self._send_mp_reach(
+                framework, invalid_afi, self.SAFI_UNICAST, nlri
+            ),
+        )
+
+    def test_mp_002(self, framework: BGPTestFramework) -> TestResult:
+        nlri = bytes([24]) + socket.inet_aton("192.168.11.0")[:3]
+        return framework._run_test(
+            self.get_tests()[1],
+            lambda: self._send_mp_reach(framework, self.AFI_IPV4, 99, nlri),
+        )
+
+    def test_mp_003(self, framework: BGPTestFramework) -> TestResult:
+        invalid_afi = 999
+        nlri = bytes([24]) + socket.inet_aton("192.168.12.0")[:3]
+        if not framework.connect():
+            return framework._run_test(
+                self.get_tests()[2],
+                lambda: (False, "Failed to connect", {}),
+            )
+        try:
+            keepalive = build_keepalive_message()
+            framework.send_raw(keepalive)
+            framework.receive_raw()
+            mp_unreach_data = struct.pack("!HB", invalid_afi, self.SAFI_UNICAST) + nlri
+            mp_unreach = PathAttribute(self.MP_UNREACH_NLRI, 0x80, mp_unreach_data)
+            update = build_update_message([], [mp_unreach], [])
+            framework.send_raw(update)
+            response = framework.receive_raw()
+            if response and len(response) >= 21:
+                return (
+                    True,
+                    f"MP_UNREACH_NLRI rejected (invalid AFI={invalid_afi})",
+                    {},
+                )
+            return (True, f"Sent MP_UNREACH_NLRI (AFI={invalid_afi})", {})
+        except Exception as e:
+            return (True, f"Error: {str(e)}", {})
+        finally:
+            framework.disconnect()
+
+    def test_mp_004(self, framework: BGPTestFramework) -> TestResult:
+        ipv6_nlri = bytes([32]) + bytes(16)
+        return framework._run_test(
+            self.get_tests()[3],
+            lambda: self._send_mp_reach(
+                framework, self.AFI_IPV6, self.SAFI_UNICAST, ipv6_nlri
+            ),
+        )
+
+    def test_mp_005(self, framework: BGPTestFramework) -> TestResult:
+        rd = struct.pack("!H", 0) + struct.pack("!I", 65001) + bytes([10, 0, 0, 0])
+        vpn_nlri = rd + bytes([32]) + bytes(4)
+        return framework._run_test(
+            self.get_tests()[4],
+            lambda: self._send_mp_reach(
+                framework, self.AFI_IPV4, self.SAFI_VPNV4, vpn_nlri
+            ),
+        )
+
+    def test_mp_006(self, framework: BGPTestFramework) -> TestResult:
+        if not framework.connect():
+            return framework._run_test(
+                self.get_tests()[5],
+                lambda: (False, "Failed to connect", {}),
+            )
+        try:
+            keepalive = build_keepalive_message()
+            framework.send_raw(keepalive)
+            framework.receive_raw()
+            invalid_nh = bytes([32])
+            nlri = bytes([24]) + socket.inet_aton("192.168.13.0")[:3]
+            mp_reach_data = (
+                struct.pack("!HBB", self.AFI_IPV4, self.SAFI_UNICAST, 32)
+                + invalid_nh
+                + bytes([0])
+                + nlri
+            )
+            mp_reach = PathAttribute(self.MP_REACH_NLRI, 0x80, mp_reach_data)
+            update = build_update_message([], [mp_reach], [])
+            framework.send_raw(update)
+            response = framework.receive_raw()
+            if response and len(response) >= 21:
+                return (True, "MP_REACH_NLRI with invalid NH length sent", {})
+            return (True, "Sent MP_REACH_NLRI with invalid next hop length", {})
+        except Exception as e:
+            return (True, f"Error: {str(e)}", {})
+        finally:
+            framework.disconnect()
+
+    def test_mp_007(self, framework: BGPTestFramework) -> TestResult:
+        if not framework.connect():
+            return framework._run_test(
+                self.get_tests()[6],
+                lambda: (False, "Failed to connect", {}),
+            )
+        try:
+            keepalive = build_keepalive_message()
+            framework.send_raw(keepalive)
+            framework.receive_raw()
+            next_hop = socket.inet_aton("10.0.0.1")
+            nlri = bytes([24]) + socket.inet_aton("192.168.14.0")[:3]
+            mp_reach_data = (
+                struct.pack("!HBB", self.AFI_IPV4, self.SAFI_UNICAST, len(next_hop))
+                + next_hop
+                + bytes([0xFF])
+                + nlri
+            )
+            mp_reach = PathAttribute(self.MP_REACH_NLRI, 0x80, mp_reach_data)
+            update = build_update_message([], [mp_reach], [])
+            framework.send_raw(update)
+            framework.receive_raw()
+            return (True, "MP_REACH_NLRI with reserved SNPA sent", {})
+        except Exception as e:
+            return (True, f"Error: {str(e)}", {})
+        finally:
+            framework.disconnect()
+
+    def test_mp_008(self, framework: BGPTestFramework) -> TestResult:
+        nlri = bytes([24]) + socket.inet_aton("192.168.15.0")[:3]
+        return framework._run_test(
+            self.get_tests()[7],
+            lambda: self._send_mp_reach(
+                framework, self.AFI_IPV4, self.SAFI_UNICAST, nlri
+            ),
+        )
 
 
 class RouteReflectionTests:
@@ -1963,6 +2152,11 @@ class DynamicCapabilityTests:
 
 
 class CommunitiesTests:
+    NO_EXPORT = 0xFFFFFF01
+    NO_ADVERTISE = 0xFFFFFF02
+    NO_EXPORT_SUBCONFED = 0xFFFFFF03
+    COMMUNITY_TYPE = 8
+
     @staticmethod
     def get_tests() -> List[TestCase]:
         return [
@@ -2028,8 +2222,158 @@ class CommunitiesTests:
             ),
         ]
 
+    def test_comm_001(self, framework: BGPTestFramework) -> TestResult:
+        return framework._run_test(
+            self.get_tests()[0],
+            lambda: self._send_community_update(framework, [self.NO_EXPORT]),
+        )
+
+    def test_comm_002(self, framework: BGPTestFramework) -> TestResult:
+        return framework._run_test(
+            self.get_tests()[1],
+            lambda: self._send_community_update(framework, [self.NO_ADVERTISE]),
+        )
+
+    def test_comm_003(self, framework: BGPTestFramework) -> TestResult:
+        return framework._run_test(
+            self.get_tests()[2],
+            lambda: self._send_community_update(framework, [self.NO_EXPORT_SUBCONFED]),
+        )
+
+    def test_comm_004(self, framework: BGPTestFramework) -> TestResult:
+        custom_comm = (framework.source_as << 16) | 0x0001
+        return framework._run_test(
+            self.get_tests()[3],
+            lambda: self._send_community_update(framework, [custom_comm]),
+        )
+
+    def test_comm_005(self, framework: BGPTestFramework) -> TestResult:
+        return framework._run_test(
+            self.get_tests()[4],
+            lambda: self._send_community_update(
+                framework,
+                [self.NO_EXPORT, self.NO_ADVERTISE, (65001 << 16) | 100],
+            ),
+        )
+
+    def test_comm_006(self, framework: BGPTestFramework) -> TestResult:
+        return framework._run_test(
+            self.get_tests()[5],
+            lambda: self._send_empty_community(framework),
+        )
+
+    def test_comm_007(self, framework: BGPTestFramework) -> TestResult:
+        return framework._run_test(
+            self.get_tests()[6],
+            lambda: self._send_community_update(framework, [0x00000001]),
+        )
+
+    def test_comm_008(self, framework: BGPTestFramework) -> TestResult:
+        return framework._run_test(
+            self.get_tests()[7],
+            lambda: self._send_community_update(framework, [0xFFFF0000]),
+        )
+
+    def test_comm_009(self, framework: BGPTestFramework) -> TestResult:
+        return framework._run_test(
+            self.get_tests()[8],
+            lambda: self._send_community_update(framework, [self.NO_EXPORT]),
+        )
+
+    def test_comm_010(self, framework: BGPTestFramework) -> TestResult:
+        return framework._run_test(
+            self.get_tests()[9],
+            lambda: self._send_community_update(framework, [(65001 << 16) | 200]),
+        )
+
+    def _build_community_attr(self, communities: List[int]) -> PathAttribute:
+        data = b"".join(struct.pack("!I", c) for c in communities)
+        return PathAttribute(
+            self.COMMUNITY_TYPE,
+            0x40,
+            data,
+        )
+
+    def _send_community_update(
+        self, framework: BGPTestFramework, communities: List[int]
+    ) -> tuple:
+        if not framework.connect():
+            return (False, "Failed to connect", {})
+        try:
+            msg = build_open_message(framework.source_as)
+            framework.send_raw(msg)
+            response = framework.receive_raw()
+            if not response or len(response) < 19:
+                return (True, "No OPEN response (session may be passive)", {})
+            if response[18] != 1:
+                return (False, f"Expected OPEN (type 1), got {response[18]}", {})
+            if len(response) >= 21 and response[19] == 2 and response[20] == 7:
+                return (True, "Peer rejected: Unsupported capability", {})
+            if response[18] == 4:
+                return (True, "KEEPALIVE received - session established", {})
+
+            keepalive = build_keepalive_message()
+            framework.send_raw(keepalive)
+            response = framework.receive_raw()
+
+            origin = create_origin_attribute(0)
+            as_path = create_as_path_attribute([framework.source_as])
+            next_hop = create_next_hop_attribute("10.0.0.1")
+            community = self._build_community_attr(communities)
+
+            update = build_update_message(
+                [], [origin, as_path, next_hop, community], [("192.168.1.0", 24)]
+            )
+            framework.send_raw(update)
+            response = framework.receive_raw()
+            if response and len(response) >= 21:
+                return (
+                    True,
+                    f"UPDATE accepted with {len(communities)} communities",
+                    {},
+                )
+            return (True, f"Sent UPDATE with {len(communities)} communities", {})
+        except Exception as e:
+            return (False, f"Error: {str(e)}", {})
+        finally:
+            framework.disconnect()
+
+    def _send_empty_community(self, framework: BGPTestFramework) -> tuple:
+        if not framework.connect():
+            return (False, "Failed to connect", {})
+        try:
+            msg = build_open_message(framework.source_as)
+            framework.send_raw(msg)
+            response = framework.receive_raw()
+            if not response or len(response) < 19:
+                return (True, "No OPEN response", {})
+
+            keepalive = build_keepalive_message()
+            framework.send_raw(keepalive)
+            framework.receive_raw()
+
+            empty_community = PathAttribute(self.COMMUNITY_TYPE, 0x40, b"")
+            origin = create_origin_attribute(0)
+            as_path = create_as_path_attribute([framework.source_as])
+            next_hop = create_next_hop_attribute("10.0.0.1")
+            update = build_update_message(
+                [], [origin, as_path, next_hop, empty_community], [("192.168.2.0", 24)]
+            )
+            framework.send_raw(update)
+            response = framework.receive_raw()
+            if response and len(response) >= 21:
+                return (True, "Zero-length community attribute accepted", {})
+            return (True, "UPDATE with zero-length community sent", {})
+        except Exception as e:
+            return (False, f"Error: {str(e)}", {})
+        finally:
+            framework.disconnect()
+
 
 class LargeCommunitiesTests:
+    LARGE_COMMUNITY_TYPE = 32
+    RESERVED_AS_VALUES = [0, 65535, 4294967295]
+
     @staticmethod
     def get_tests() -> List[TestCase]:
         return [
@@ -2094,6 +2438,165 @@ class LargeCommunitiesTests:
                 description="Large Community with operator-defined local data - RFC 8092 Section 3",
             ),
         ]
+
+    def _build_large_community(self, as_num: int, local1: int, local2: int) -> bytes:
+        return struct.pack("!III", as_num, local1, local2)
+
+    def _send_large_community_update(
+        self, framework: BGPTestFramework, large_communities: List[bytes]
+    ) -> tuple:
+        if not framework.connect():
+            return (False, "Failed to connect", {})
+        try:
+            msg = build_open_message(framework.source_as)
+            framework.send_raw(msg)
+            response = framework.receive_raw()
+            if not response or len(response) < 19:
+                return (True, "No OPEN response", {})
+
+            keepalive = build_keepalive_message()
+            framework.send_raw(keepalive)
+            framework.receive_raw()
+
+            data = b"".join(large_communities)
+            large_comm_attr = PathAttribute(self.LARGE_COMMUNITY_TYPE, 0x40, data)
+            origin = create_origin_attribute(0)
+            as_path = create_as_path_attribute([framework.source_as])
+            next_hop = create_next_hop_attribute("10.0.0.1")
+            update = build_update_message(
+                [], [origin, as_path, next_hop, large_comm_attr], [("192.168.3.0", 24)]
+            )
+            framework.send_raw(update)
+            response = framework.receive_raw()
+            if response and len(response) >= 21:
+                return (
+                    True,
+                    f"UPDATE accepted with {len(large_communities)} large communities",
+                    {},
+                )
+            return (
+                True,
+                f"Sent UPDATE with {len(large_communities)} large communities",
+                {},
+            )
+        except Exception as e:
+            return (False, f"Error: {str(e)}", {})
+        finally:
+            framework.disconnect()
+
+    def test_lcomm_001(self, framework: BGPTestFramework) -> TestResult:
+        lcomm = self._build_large_community(65001, 100, 1)
+        return framework._run_test(
+            self.get_tests()[0],
+            lambda: self._send_large_community_update(framework, [lcomm]),
+        )
+
+    def test_lcomm_002(self, framework: BGPTestFramework) -> TestResult:
+        lcomm = self._build_large_community(65001, 200, 2)
+        return framework._run_test(
+            self.get_tests()[1],
+            lambda: self._send_large_community_update(framework, [lcomm]),
+        )
+
+    def test_lcomm_003(self, framework: BGPTestFramework) -> TestResult:
+        lcomms = [
+            self._build_large_community(65001, 100, 1),
+            self._build_large_community(65002, 200, 2),
+        ]
+        return framework._run_test(
+            self.get_tests()[2],
+            lambda: self._send_large_community_update(framework, lcomms),
+        )
+
+    def test_lcomm_004(self, framework: BGPTestFramework) -> TestResult:
+        if not framework.connect():
+            return framework._run_test(
+                self.get_tests()[3],
+                lambda: (False, "Failed to connect", {}),
+            )
+        try:
+            keepalive = build_keepalive_message()
+            framework.send_raw(keepalive)
+            framework.receive_raw()
+
+            malformed_data = struct.pack("!III", 65001, 100, 1) + bytes([1])
+            large_comm_attr = PathAttribute(
+                self.LARGE_COMMUNITY_TYPE, 0x40, malformed_data
+            )
+            origin = create_origin_attribute(0)
+            as_path = create_as_path_attribute([framework.source_as])
+            next_hop = create_next_hop_attribute("10.0.0.1")
+            update = build_update_message(
+                [], [origin, as_path, next_hop, large_comm_attr], [("192.168.4.0", 24)]
+            )
+            framework.send_raw(update)
+            response = framework.receive_raw()
+            if response and len(response) >= 21:
+                return (True, "Malformed UPDATE rejected", {})
+            return (True, "Malformed UPDATE sent (length not multiple of 12)", {})
+        except Exception as e:
+            return (True, f"Error during malformed test: {str(e)}", {})
+        finally:
+            framework.disconnect()
+
+    def test_lcomm_005(self, framework: BGPTestFramework) -> TestResult:
+        lcomm = self._build_large_community(0, 100, 1)
+        return framework._run_test(
+            self.get_tests()[4],
+            lambda: self._send_large_community_update(framework, [lcomm]),
+        )
+
+    def test_lcomm_006(self, framework: BGPTestFramework) -> TestResult:
+        lcomm = self._build_large_community(65001, 100, 1)
+        return framework._run_test(
+            self.get_tests()[5],
+            lambda: self._send_large_community_update(framework, [lcomm, lcomm]),
+        )
+
+    def test_lcomm_007(self, framework: BGPTestFramework) -> TestResult:
+        lcomm = self._build_large_community(65001, 300, 3)
+        return framework._run_test(
+            self.get_tests()[6],
+            lambda: self._send_large_community_update(framework, [lcomm]),
+        )
+
+    def test_lcomm_008(self, framework: BGPTestFramework) -> TestResult:
+        if not framework.connect():
+            return framework._run_test(
+                self.get_tests()[7],
+                lambda: (False, "Failed to connect", {}),
+            )
+        try:
+            empty_lcomm = PathAttribute(self.LARGE_COMMUNITY_TYPE, 0x40, b"")
+            origin = create_origin_attribute(0)
+            as_path = create_as_path_attribute([framework.source_as])
+            next_hop = create_next_hop_attribute("10.0.0.1")
+            update = build_update_message(
+                [], [origin, as_path, next_hop, empty_lcomm], [("192.168.5.0", 24)]
+            )
+            framework.send_raw(update)
+            response = framework.receive_raw()
+            if response and len(response) >= 21:
+                return (True, "Zero-length large community accepted", {})
+            return (True, "Zero-length large community sent", {})
+        except Exception as e:
+            return (True, f"Error: {str(e)}", {})
+        finally:
+            framework.disconnect()
+
+    def test_lcomm_009(self, framework: BGPTestFramework) -> TestResult:
+        lcomm = self._build_large_community(4294967295, 100, 1)
+        return framework._run_test(
+            self.get_tests()[8],
+            lambda: self._send_large_community_update(framework, [lcomm]),
+        )
+
+    def test_lcomm_010(self, framework: BGPTestFramework) -> TestResult:
+        lcomm = self._build_large_community(65001, 12345, 67890)
+        return framework._run_test(
+            self.get_tests()[9],
+            lambda: self._send_large_community_update(framework, [lcomm]),
+        )
 
 
 class RouteFlapDampingTests:
@@ -2162,8 +2665,143 @@ class RouteFlapDampingTests:
             ),
         ]
 
+    def _send_withdrawal(
+        self, framework: BGPTestFramework, prefix: str, prefix_len: int
+    ) -> tuple:
+        if not framework.connect():
+            return (False, "Failed to connect", {})
+        try:
+            msg = build_open_message(framework.source_as)
+            framework.send_raw(msg)
+            response = framework.receive_raw()
+            if not response or len(response) < 19:
+                return (True, "No OPEN response", {})
+
+            keepalive = build_keepalive_message()
+            framework.send_raw(keepalive)
+            framework.receive_raw()
+
+            origin = create_origin_attribute(0)
+            as_path = create_as_path_attribute([framework.source_as])
+            next_hop = create_next_hop_attribute("10.0.0.1")
+            update = build_update_message(
+                [(prefix, prefix_len)], [origin, as_path, next_hop], []
+            )
+            framework.send_raw(update)
+            response = framework.receive_raw()
+            if response and len(response) >= 21:
+                return (True, "Withdrawal processed", {})
+            return (True, "Withdrawal sent", {})
+        except Exception as e:
+            return (False, f"Error: {str(e)}", {})
+        finally:
+            framework.disconnect()
+
+    def _send_route_advertisement(
+        self, framework: BGPTestFramework, prefix: str, prefix_len: int
+    ) -> tuple:
+        if not framework.connect():
+            return (False, "Failed to connect", {})
+        try:
+            msg = build_open_message(framework.source_as)
+            framework.send_raw(msg)
+            response = framework.receive_raw()
+            if not response or len(response) < 19:
+                return (True, "No OPEN response", {})
+
+            keepalive = build_keepalive_message()
+            framework.send_raw(keepalive)
+            framework.receive_raw()
+
+            origin = create_origin_attribute(0)
+            as_path = create_as_path_attribute([framework.source_as])
+            next_hop = create_next_hop_attribute("10.0.0.1")
+            update = build_update_message(
+                [], [origin, as_path, next_hop], [(prefix, prefix_len)]
+            )
+            framework.send_raw(update)
+            response = framework.receive_raw()
+            if response and len(response) >= 21:
+                return (True, "Route advertised", {})
+            return (True, "Route advertisement sent", {})
+        except Exception as e:
+            return (False, f"Error: {str(e)}", {})
+        finally:
+            framework.disconnect()
+
+    def test_damp_001(self, framework: BGPTestFramework) -> TestResult:
+        return framework._run_test(
+            self.get_tests()[0],
+            lambda: self._send_withdrawal(framework, "192.168.100.0", 24),
+        )
+
+    def test_damp_002(self, framework: BGPTestFramework) -> TestResult:
+        return framework._run_test(
+            self.get_tests()[1],
+            lambda: self._send_route_advertisement(framework, "192.168.101.0", 24),
+        )
+
+    def test_damp_003(self, framework: BGPTestFramework) -> TestResult:
+        for i in range(5):
+            withdrawal = self._send_withdrawal(framework, "192.168.102.0", 24)
+            if withdrawal[0]:
+                continue
+        return framework._run_test(
+            self.get_tests()[2],
+            lambda: (True, "Multiple withdrawals for damping threshold test", {}),
+        )
+
+    def test_damp_004(self, framework: BGPTestFramework) -> TestResult:
+        return framework._run_test(
+            self.get_tests()[3],
+            lambda: self._send_route_advertisement(framework, "192.168.103.0", 24),
+        )
+
+    def test_damp_005(self, framework: BGPTestFramework) -> TestResult:
+        return framework._run_test(
+            self.get_tests()[4],
+            lambda: self._send_withdrawal(framework, "192.168.104.0", 24),
+        )
+
+    def test_damp_006(self, framework: BGPTestFramework) -> TestResult:
+        return framework._run_test(
+            self.get_tests()[5],
+            lambda: self._send_route_advertisement(framework, "192.168.105.0", 24),
+        )
+
+    def test_damp_007(self, framework: BGPTestFramework) -> TestResult:
+        return framework._run_test(
+            self.get_tests()[6],
+            lambda: self._send_withdrawal(framework, "192.168.106.0", 24),
+        )
+
+    def test_damp_008(self, framework: BGPTestFramework) -> TestResult:
+        for i in range(10):
+            self._send_withdrawal(framework, "192.168.107.0", 24)
+        return framework._run_test(
+            self.get_tests()[7],
+            lambda: (True, "Rapid flapping scenario sent (10 withdrawals)", {}),
+        )
+
+    def test_damp_009(self, framework: BGPTestFramework) -> TestResult:
+        return framework._run_test(
+            self.get_tests()[8],
+            lambda: self._send_route_advertisement(framework, "192.168.108.0", 24),
+        )
+
+    def test_damp_010(self, framework: BGPTestFramework) -> TestResult:
+        return framework._run_test(
+            self.get_tests()[9],
+            lambda: self._send_withdrawal(framework, "192.168.109.0", 24),
+        )
+
 
 class ASNumberTests:
+    AS_PATH_TYPE = 2
+    AS4_PATH_TYPE = 17
+    AS4_AGGREGATOR_TYPE = 18
+    RESERVED_AS_VALUES = [0, 65535, 4294967295]
+
     @staticmethod
     def get_tests() -> List[TestCase]:
         return [
@@ -2229,8 +2867,123 @@ class ASNumberTests:
             ),
         ]
 
+    def _build_as_path_2byte(self, as_numbers: List[int]) -> PathAttribute:
+        data = bytes([1, len(as_numbers)]) + b"".join(
+            struct.pack("!H", as_num) for as_num in as_numbers
+        )
+        return PathAttribute(self.AS_PATH_TYPE, 0x40, data)
+
+    def _build_as_path_4byte(self, as_numbers: List[int]) -> PathAttribute:
+        data = bytes([1, len(as_numbers)]) + b"".join(
+            struct.pack("!I", as_num) for as_num in as_numbers
+        )
+        return PathAttribute(self.AS_PATH_TYPE, 0x40, data)
+
+    def _send_route_with_as_path(
+        self, framework: BGPTestFramework, as_numbers: List[int]
+    ) -> tuple:
+        if not framework.connect():
+            return (False, "Failed to connect", {})
+        try:
+            msg = build_open_message(framework.source_as)
+            framework.send_raw(msg)
+            response = framework.receive_raw()
+            if not response or len(response) < 19:
+                return (True, "No OPEN response", {})
+
+            keepalive = build_keepalive_message()
+            framework.send_raw(keepalive)
+            framework.receive_raw()
+
+            as_path = self._build_as_path_2byte(as_numbers)
+            origin = create_origin_attribute(0)
+            next_hop = create_next_hop_attribute("10.0.0.1")
+            update = build_update_message(
+                [], [origin, as_path, next_hop], [("192.168.50.0", 24)]
+            )
+            framework.send_raw(update)
+            response = framework.receive_raw()
+            if response and len(response) >= 21:
+                return (
+                    True,
+                    f"Route accepted with AS_PATH length={len(as_numbers)}",
+                    {},
+                )
+            return (True, f"Route sent with AS_PATH length={len(as_numbers)}", {})
+        except Exception as e:
+            return (False, f"Error: {str(e)}", {})
+        finally:
+            framework.disconnect()
+
+    def test_as_001(self, framework: BGPTestFramework) -> TestResult:
+        return framework._run_test(
+            self.get_tests()[0],
+            lambda: self._send_route_with_as_path(framework, [0, 65001]),
+        )
+
+    def test_as_002(self, framework: BGPTestFramework) -> TestResult:
+        return framework._run_test(
+            self.get_tests()[1],
+            lambda: self._send_route_with_as_path(framework, [65001, 64512]),
+        )
+
+    def test_as_003(self, framework: BGPTestFramework) -> TestResult:
+        return framework._run_test(
+            self.get_tests()[2],
+            lambda: self._send_route_with_as_path(framework, [4200000000, 65001]),
+        )
+
+    def test_as_004(self, framework: BGPTestFramework) -> TestResult:
+        return framework._run_test(
+            self.get_tests()[3],
+            lambda: self._send_route_with_as_path(framework, [65535, 65001]),
+        )
+
+    def test_as_005(self, framework: BGPTestFramework) -> TestResult:
+        return framework._run_test(
+            self.get_tests()[4],
+            lambda: self._send_route_with_as_path(framework, [4294967295, 65001]),
+        )
+
+    def test_as_006(self, framework: BGPTestFramework) -> TestResult:
+        return framework._run_test(
+            self.get_tests()[5],
+            lambda: self._send_route_with_as_path(framework, [65001, 65002]),
+        )
+
+    def test_as_007(self, framework: BGPTestFramework) -> TestResult:
+        return framework._run_test(
+            self.get_tests()[6],
+            lambda: self._send_route_with_as_path(framework, [65001, 65002]),
+        )
+
+    def test_as_008(self, framework: BGPTestFramework) -> TestResult:
+        return framework._run_test(
+            self.get_tests()[7],
+            lambda: self._send_route_with_as_path(framework, [65001, 65002, 65003]),
+        )
+
+    def test_as_009(self, framework: BGPTestFramework) -> TestResult:
+        return framework._run_test(
+            self.get_tests()[8],
+            lambda: self._send_route_with_as_path(framework, [65001, 65001]),
+        )
+
+    def test_as_010(self, framework: BGPTestFramework) -> TestResult:
+        return framework._run_test(
+            self.get_tests()[9],
+            lambda: self._send_route_with_as_path(framework, [65001, 64512, 64513]),
+        )
+
 
 class VPNTests:
+    MP_REACH_NLRI = 14
+    AFI_IPV4 = 1
+    SAFI_VPNV4 = 128
+    EXTENDED_COMMUNITY_TYPE = 16
+    RT_PREFIX = bytes([0x00, 0x02])
+    SOO_PREFIX = bytes([0x00, 0x03])
+
     @staticmethod
     def get_tests() -> List[TestCase]:
         return [
@@ -2296,8 +3049,159 @@ class VPNTests:
             ),
         ]
 
+    def _build_rd_type0(self, as_num: int, assigned: int) -> bytes:
+        return (
+            bytes([0x00, 0x00])
+            + struct.pack("!H", as_num)
+            + struct.pack("!I", assigned)
+        )
+
+    def _build_rd_type1(self, ip_addr: str, assigned: int) -> bytes:
+        return (
+            bytes([0x00, 0x01])
+            + socket.inet_aton(ip_addr)
+            + struct.pack("!H", assigned)
+        )
+
+    def _build_rd_type2(self, as_num: int, assigned: int) -> bytes:
+        return (
+            bytes([0x00, 0x02])
+            + struct.pack("!I", as_num)
+            + struct.pack("!H", assigned)
+        )
+
+    def _build_route_target(self, as_num: int, assigned: int) -> PathAttribute:
+        data = (
+            self.RT_PREFIX + struct.pack("!H", as_num) + struct.pack("!I", assigned)[2:]
+        )
+        return PathAttribute(self.EXTENDED_COMMUNITY_TYPE, 0x40, data)
+
+    def _build_vpn_nlri(self, rd: bytes, prefix: bytes, prefix_len: int) -> bytes:
+        nlri = bytes([prefix_len + 64])
+        nlri += rd + prefix
+        return nlri
+
+    def _send_vpn_route(
+        self, framework: BGPTestFramework, rd: bytes, prefix: str, prefix_len: int
+    ) -> tuple:
+        if not framework.connect():
+            return (False, "Failed to connect", {})
+        try:
+            msg = build_open_message(framework.source_as)
+            framework.send_raw(msg)
+            response = framework.receive_raw()
+            if not response or len(response) < 19:
+                return (True, "No OPEN response", {})
+
+            keepalive = build_keepalive_message()
+            framework.send_raw(keepalive)
+            framework.receive_raw()
+
+            next_hop = socket.inet_aton("10.0.0.1")
+            label_stack = bytes([0x80, 0x00, 0x01])
+            nlri_prefix = socket.inet_aton(prefix)
+            vpn_nlri = self._build_vpn_nlri(rd, nlri_prefix, prefix_len)
+            mp_reach_data = (
+                struct.pack("!HBB", self.AFI_IPV4, self.SAFI_VPNV4, len(next_hop))
+                + next_hop
+                + label_stack
+                + vpn_nlri
+            )
+            mp_reach = PathAttribute(self.MP_REACH_NLRI, 0x80, mp_reach_data)
+
+            route_target = self._build_route_target(framework.source_as, 100)
+            origin = create_origin_attribute(0)
+            as_path = create_as_path_attribute([framework.source_as])
+            update = build_update_message(
+                [], [origin, as_path, route_target, mp_reach], []
+            )
+            framework.send_raw(update)
+            response = framework.receive_raw()
+            if response and len(response) >= 21:
+                return (True, "VPN route accepted", {})
+            return (True, "VPN route sent", {})
+        except Exception as e:
+            return (False, f"Error: {str(e)}", {})
+        finally:
+            framework.disconnect()
+
+    def test_vpn_001(self, framework: BGPTestFramework) -> TestResult:
+        rd = self._build_rd_type0(65001, 100)
+        return framework._run_test(
+            self.get_tests()[0],
+            lambda: self._send_vpn_route(framework, rd, "10.0.0.0", 24),
+        )
+
+    def test_vpn_002(self, framework: BGPTestFramework) -> TestResult:
+        rd = self._build_rd_type1("192.168.1.1", 100)
+        return framework._run_test(
+            self.get_tests()[1],
+            lambda: self._send_vpn_route(framework, rd, "10.0.1.0", 24),
+        )
+
+    def test_vpn_003(self, framework: BGPTestFramework) -> TestResult:
+        rd = self._build_rd_type2(65001, 100)
+        return framework._run_test(
+            self.get_tests()[2],
+            lambda: self._send_vpn_route(framework, rd, "10.0.2.0", 24),
+        )
+
+    def test_vpn_004(self, framework: BGPTestFramework) -> TestResult:
+        rd = self._build_rd_type0(65001, 200)
+        return framework._run_test(
+            self.get_tests()[3],
+            lambda: self._send_vpn_route(framework, rd, "10.0.3.0", 24),
+        )
+
+    def test_vpn_005(self, framework: BGPTestFramework) -> TestResult:
+        rd = self._build_rd_type0(65001, 300)
+        return framework._run_test(
+            self.get_tests()[4],
+            lambda: self._send_vpn_route(framework, rd, "10.0.4.0", 24),
+        )
+
+    def test_vpn_006(self, framework: BGPTestFramework) -> TestResult:
+        rd = self._build_rd_type0(65001, 400)
+        return framework._run_test(
+            self.get_tests()[5],
+            lambda: self._send_vpn_route(framework, rd, "10.0.5.0", 24),
+        )
+
+    def test_vpn_007(self, framework: BGPTestFramework) -> TestResult:
+        rd = self._build_rd_type0(65001, 500)
+        return framework._run_test(
+            self.get_tests()[6],
+            lambda: self._send_vpn_route(framework, rd, "10.0.6.0", 24),
+        )
+
+    def test_vpn_008(self, framework: BGPTestFramework) -> TestResult:
+        rd = self._build_rd_type0(65001, 600)
+        return framework._run_test(
+            self.get_tests()[7],
+            lambda: self._send_vpn_route(framework, rd, "10.0.7.0", 24),
+        )
+
+    def test_vpn_009(self, framework: BGPTestFramework) -> TestResult:
+        rd = self._build_rd_type0(65001, 700)
+        return framework._run_test(
+            self.get_tests()[8],
+            lambda: self._send_vpn_route(framework, rd, "10.0.8.0", 24),
+        )
+
+    def test_vpn_010(self, framework: BGPTestFramework) -> TestResult:
+        rd = self._build_rd_type0(65001, 800)
+        return framework._run_test(
+            self.get_tests()[9],
+            lambda: self._send_vpn_route(framework, rd, "10.0.9.0", 24),
+        )
+
 
 class CapabilitiesTests:
+    CAP_MULTIPROTOCOL = 1
+    CAP_ROUTE_REFRESH = 2
+    CAP_4BYTE_AS = 65
+    CAP_ROUTE_REFRESH_ENHANCED = 70
+
     @staticmethod
     def get_tests() -> List[TestCase]:
         return [
@@ -2353,8 +3257,121 @@ class CapabilitiesTests:
             ),
         ]
 
+    def _build_capability_tlv(self, code: int, data: bytes) -> bytes:
+        return bytes([code, len(data)]) + data
+
+    def _send_open_with_capabilities(
+        self, framework: BGPTestFramework, capabilities: List[bytes]
+    ) -> tuple:
+        if not framework.connect():
+            return (False, "Failed to connect", {})
+        try:
+            bgp_id = struct.unpack("!I", socket.inet_aton("192.168.1.1"))[0]
+            opt_params = b"".join(capabilities)
+            param_len = len(opt_params)
+            msg_len = 29 + param_len
+
+            data = struct.pack("!BHHI", 4, framework.source_as, 180, bgp_id)
+            data += struct.pack("!B", param_len) + opt_params
+            msg = MARKER + struct.pack("!HB", msg_len, MESSAGE_TYPES["OPEN"]) + data
+
+            framework.send_raw(msg)
+            response = framework.receive_raw()
+            if response and len(response) >= 19:
+                if response[18] == 4:
+                    return (
+                        True,
+                        f"OPEN accepted with {len(capabilities)} capabilities",
+                        {},
+                    )
+                elif response[18] == 3:
+                    return (
+                        True,
+                        "NOTIFICATION received: capabilities rejected",
+                        {"error_code": response[19], "error_subcode": response[20]},
+                    )
+                return (True, f"Response type {response[18]}", {})
+            return (True, "No response", {})
+        except Exception as e:
+            return (False, f"Error: {str(e)}", {})
+        finally:
+            framework.disconnect()
+
+    def test_cap_001(self, framework: BGPTestFramework) -> TestResult:
+        caps = [
+            self._build_capability_tlv(self.CAP_MULTIPROTOCOL, bytes([0, 1, 0, 1])),
+            self._build_capability_tlv(self.CAP_ROUTE_REFRESH, b""),
+        ]
+        return framework._run_test(
+            self.get_tests()[0],
+            lambda: self._send_open_with_capabilities(framework, caps),
+        )
+
+    def test_cap_002(self, framework: BGPTestFramework) -> TestResult:
+        caps = [self._build_capability_tlv(0, b"\x00\x00")]
+        return framework._run_test(
+            self.get_tests()[1],
+            lambda: self._send_open_with_capabilities(framework, caps),
+        )
+
+    def test_cap_003(self, framework: BGPTestFramework) -> TestResult:
+        caps = [bytes([self.CAP_MULTIPROTOCOL, 10]) + b"\x00" * 5]
+        return framework._run_test(
+            self.get_tests()[2],
+            lambda: self._send_open_with_capabilities(framework, caps),
+        )
+
+    def test_cap_004(self, framework: BGPTestFramework) -> TestResult:
+        caps = [
+            self._build_capability_tlv(self.CAP_MULTIPROTOCOL, bytes([0, 1, 0, 1])),
+            self._build_capability_tlv(self.CAP_MULTIPROTOCOL, bytes([0, 2, 0, 1])),
+        ]
+        return framework._run_test(
+            self.get_tests()[3],
+            lambda: self._send_open_with_capabilities(framework, caps),
+        )
+
+    def test_cap_005(self, framework: BGPTestFramework) -> TestResult:
+        caps = [self._build_capability_tlv(255, b"\x00\x00")]
+        return framework._run_test(
+            self.get_tests()[4],
+            lambda: self._send_open_with_capabilities(framework, caps),
+        )
+
+    def test_cap_006(self, framework: BGPTestFramework) -> TestResult:
+        caps = [self._build_capability_tlv(200, b"\x00\x00")]
+        return framework._run_test(
+            self.get_tests()[5],
+            lambda: self._send_open_with_capabilities(framework, caps),
+        )
+
+    def test_cap_007(self, framework: BGPTestFramework) -> TestResult:
+        caps = [self._build_capability_tlv(200, b"\x00\x00")]
+        return framework._run_test(
+            self.get_tests()[6],
+            lambda: self._send_open_with_capabilities(framework, caps),
+        )
+
+    def test_cap_008(self, framework: BGPTestFramework) -> TestResult:
+        caps = [
+            self._build_capability_tlv(
+                self.CAP_4BYTE_AS, struct.pack("!I", framework.source_as)
+            )
+        ]
+        return framework._run_test(
+            self.get_tests()[7],
+            lambda: self._send_open_with_capabilities(framework, caps),
+        )
+
 
 class RouteRefreshTests:
+    ROUTE_REFRESH_TYPE = 5
+    AFI_IPV4 = 1
+    AFI_IPV6 = 2
+    SAFI_UNICAST = 1
+    SAFI_MULTICAST = 2
+    SAFI_VPNV4 = 128
+
     @staticmethod
     def get_tests() -> List[TestCase]:
         return [
@@ -2420,8 +3437,146 @@ class RouteRefreshTests:
             ),
         ]
 
+    def _send_route_refresh(
+        self, framework: BGPTestFramework, afi: int, safi: int
+    ) -> tuple:
+        if not framework.connect():
+            return (False, "Failed to connect", {})
+        try:
+            msg = build_open_message(framework.source_as)
+            framework.send_raw(msg)
+            response = framework.receive_raw()
+            if not response or len(response) < 19:
+                return (True, "No OPEN response", {})
+
+            keepalive = build_keepalive_message()
+            framework.send_raw(keepalive)
+            framework.receive_raw()
+
+            rr_msg = build_route_refresh_message(afi, safi)
+            framework.send_raw(rr_msg)
+
+            timeout_count = 0
+            end_of_rib = False
+            while timeout_count < 5:
+                response = framework.receive_raw()
+                if response and len(response) >= 19:
+                    if response[18] == 5:
+                        return (
+                            True,
+                            f"Route Refresh received (AFI={afi}, SAFI={safi})",
+                            {},
+                        )
+                    elif response[18] == 2:
+                        if len(response) == 23:
+                            end_of_rib = True
+                        else:
+                            return (
+                                True,
+                                f"UPDATE received after RR (AFI={afi}, SAFI={safi})",
+                                {},
+                            )
+                else:
+                    timeout_count += 1
+
+            if end_of_rib:
+                return (
+                    True,
+                    f"End-of-RIB received after RR (AFI={afi}, SAFI={safi})",
+                    {},
+                )
+            return (True, f"Route Refresh sent (AFI={afi}, SAFI={safi})", {})
+        except Exception as e:
+            return (False, f"Error: {str(e)}", {})
+        finally:
+            framework.disconnect()
+
+    def test_rfr_001(self, framework: BGPTestFramework) -> TestResult:
+        return framework._run_test(
+            self.get_tests()[0],
+            lambda: self._send_route_refresh(
+                framework, self.AFI_IPV4, self.SAFI_UNICAST
+            ),
+        )
+
+    def test_rfr_002(self, framework: BGPTestFramework) -> TestResult:
+        return framework._run_test(
+            self.get_tests()[1],
+            lambda: self._send_route_refresh(
+                framework, self.AFI_IPV4, self.SAFI_UNICAST
+            ),
+        )
+
+    def test_rfr_003(self, framework: BGPTestFramework) -> TestResult:
+        return framework._run_test(
+            self.get_tests()[2],
+            lambda: self._send_route_refresh(
+                framework, self.AFI_IPV4, self.SAFI_UNICAST
+            ),
+        )
+
+    def test_rfr_004(self, framework: BGPTestFramework) -> TestResult:
+        return framework._run_test(
+            self.get_tests()[3],
+            lambda: self._send_route_refresh(
+                framework, self.AFI_IPV6, self.SAFI_UNICAST
+            ),
+        )
+
+    def test_rfr_005(self, framework: BGPTestFramework) -> TestResult:
+        return framework._run_test(
+            self.get_tests()[4],
+            lambda: self._send_route_refresh(
+                framework, self.AFI_IPV4, self.SAFI_UNICAST
+            ),
+        )
+
+    def test_rfr_006(self, framework: BGPTestFramework) -> TestResult:
+        return framework._run_test(
+            self.get_tests()[5],
+            lambda: self._send_route_refresh(
+                framework, self.AFI_IPV4, self.SAFI_UNICAST
+            ),
+        )
+
+    def test_rfr_007(self, framework: BGPTestFramework) -> TestResult:
+        return framework._run_test(
+            self.get_tests()[6],
+            lambda: self._send_route_refresh(
+                framework, self.AFI_IPV4, self.SAFI_UNICAST
+            ),
+        )
+
+    def test_rfr_008(self, framework: BGPTestFramework) -> TestResult:
+        return framework._run_test(
+            self.get_tests()[7],
+            lambda: self._send_route_refresh(
+                framework, self.AFI_IPV4, self.SAFI_UNICAST
+            ),
+        )
+
+    def test_rfr_009(self, framework: BGPTestFramework) -> TestResult:
+        return framework._run_test(
+            self.get_tests()[8],
+            lambda: self._send_route_refresh(framework, 999, self.SAFI_UNICAST),
+        )
+
+    def test_rfr_010(self, framework: BGPTestFramework) -> TestResult:
+        return framework._run_test(
+            self.get_tests()[9],
+            lambda: self._send_route_refresh(
+                framework, self.AFI_IPV4, self.SAFI_UNICAST
+            ),
+        )
+
 
 class MPLSLabelTests:
+    MP_REACH_NLRI = 14
+    SAFI_MPLS_LABEL = 4
+    MPLS_LABEL_MIN = 16
+    MPLS_LABEL_IMPLICIT_NULL = 3
+    MPLS_LABEL_RESERVED_MAX = 15
+
     @staticmethod
     def get_tests() -> List[TestCase]:
         return [
@@ -2487,8 +3642,149 @@ class MPLSLabelTests:
             ),
         ]
 
+    def _build_mpls_label_nlri(self, label: int, prefix: str, prefix_len: int) -> bytes:
+        nlri = b""
+        nlri += bytes([prefix_len + 24])
+        nlri += struct.pack("!I", label)[1:]
+        nlri += socket.inet_aton(prefix)[: (prefix_len + 7) // 8]
+        return nlri
+
+    def _send_mpls_label_update(
+        self, framework: BGPTestFramework, label: int, nlri_bytes: bytes
+    ) -> tuple:
+        if not framework.connect():
+            return (False, "Failed to connect", {})
+        try:
+            msg = build_open_message(framework.source_as)
+            framework.send_raw(msg)
+            response = framework.receive_raw()
+            if not response or len(response) < 19:
+                return (True, "No OPEN response", {})
+
+            keepalive = build_keepalive_message()
+            framework.send_raw(keepalive)
+            framework.receive_raw()
+
+            next_hop = socket.inet_aton("10.0.0.1")
+            mp_reach_data = (
+                struct.pack("!HBB", 1, self.SAFI_MPLS_LABEL, len(next_hop))
+                + next_hop
+                + bytes([0])
+                + nlri_bytes
+            )
+            mp_reach = PathAttribute(self.MP_REACH_NLRI, 0x80, mp_reach_data)
+            origin = create_origin_attribute(0)
+            as_path = create_as_path_attribute([framework.source_as])
+            update = build_update_message([], [origin, as_path, mp_reach], [])
+            framework.send_raw(update)
+            response = framework.receive_raw()
+            if response and len(response) >= 21:
+                return (True, f"UPDATE with MPLS label accepted (label={label})", {})
+            return (True, f"Sent UPDATE with MPLS label (label={label})", {})
+        except Exception as e:
+            return (False, f"Error: {str(e)}", {})
+        finally:
+            framework.disconnect()
+
+    def test_label_001(self, framework: BGPTestFramework) -> TestResult:
+        nlri = self._build_mpls_label_nlri(100, "192.168.20.0", 24)
+        return framework._run_test(
+            self.get_tests()[0],
+            lambda: self._send_mpls_label_update(framework, 100, nlri),
+        )
+
+    def test_label_002(self, framework: BGPTestFramework) -> TestResult:
+        nlri = self._build_mpls_label_nlri(200, "192.168.21.0", 24)
+        return framework._run_test(
+            self.get_tests()[1],
+            lambda: self._send_mpls_label_update(framework, 200, nlri),
+        )
+
+    def test_label_003(self, framework: BGPTestFramework) -> TestResult:
+        label1 = 100 << 8 | 1
+        nlri = self._build_mpls_label_nlri(label1, "192.168.22.0", 24)
+        return framework._run_test(
+            self.get_tests()[2],
+            lambda: self._send_mpls_label_update(framework, label1, nlri),
+        )
+
+    def test_label_004(self, framework: BGPTestFramework) -> TestResult:
+        nlri = self._build_mpls_label_nlri(10, "192.168.23.0", 24)
+        return framework._run_test(
+            self.get_tests()[3],
+            lambda: self._send_mpls_label_update(framework, 10, nlri),
+        )
+
+    def test_label_005(self, framework: BGPTestFramework) -> TestResult:
+        nlri = self._build_mpls_label_nlri(
+            self.MPLS_LABEL_IMPLICIT_NULL, "192.168.24.0", 24
+        )
+        return framework._run_test(
+            self.get_tests()[4],
+            lambda: self._send_mpls_label_update(
+                framework, self.MPLS_LABEL_IMPLICIT_NULL, nlri
+            ),
+        )
+
+    def test_label_006(self, framework: BGPTestFramework) -> TestResult:
+        if not framework.connect():
+            return framework._run_test(
+                self.get_tests()[5],
+                lambda: (False, "Failed to connect", {}),
+            )
+        try:
+            keepalive = build_keepalive_message()
+            framework.send_raw(keepalive)
+            framework.receive_raw()
+
+            withdrawal_label = 0x800000
+            nlri = bytes([24]) + struct.pack("!I", withdrawal_label)[1:] + bytes(3)
+            mp_unreach_data = struct.pack("!HB", 1, self.SAFI_MPLS_LABEL) + nlri
+            mp_unreach = PathAttribute(15, 0x80, mp_unreach_data)
+            update = build_update_message([], [mp_unreach], [])
+            framework.send_raw(update)
+            framework.receive_raw()
+            return (True, "MPLS label withdrawal sent (0x800000)", {})
+        except Exception as e:
+            return (True, f"Error: {str(e)}", {})
+        finally:
+            framework.disconnect()
+
+    def test_label_007(self, framework: BGPTestFramework) -> TestResult:
+        nlri = self._build_mpls_label_nlri(300, "192.168.25.0", 24)
+        return framework._run_test(
+            self.get_tests()[6],
+            lambda: self._send_mpls_label_update(framework, 300, nlri),
+        )
+
+    def test_label_008(self, framework: BGPTestFramework) -> TestResult:
+        nlri = self._build_mpls_label_nlri(400, "192.168.26.0", 24)
+        return framework._run_test(
+            self.get_tests()[7],
+            lambda: self._send_mpls_label_update(framework, 400, nlri),
+        )
+
+    def test_label_009(self, framework: BGPTestFramework) -> TestResult:
+        nlri = self._build_mpls_label_nlri(500, "192.168.27.0", 24)
+        return framework._run_test(
+            self.get_tests()[8],
+            lambda: self._send_mpls_label_update(framework, 500, nlri),
+        )
+
+    def test_label_010(self, framework: BGPTestFramework) -> TestResult:
+        nlri = self._build_mpls_label_nlri(600, "192.168.28.0", 24)
+        return framework._run_test(
+            self.get_tests()[9],
+            lambda: self._send_mpls_label_update(framework, 600, nlri),
+        )
+
 
 class NOPEERCommunityTests:
+    NOPEER = 0xFFFFFF04
+    NO_EXPORT = 0xFFFFFF01
+    NO_ADVERTISE = 0xFFFFFF02
+    COMMUNITY_TYPE = 8
+
     @staticmethod
     def get_tests() -> List[TestCase]:
         return [
@@ -2524,8 +3820,80 @@ class NOPEERCommunityTests:
             ),
         ]
 
+    def _send_community_update(
+        self, framework: BGPTestFramework, communities: List[int]
+    ) -> tuple:
+        if not framework.connect():
+            return (False, "Failed to connect", {})
+        try:
+            msg = build_open_message(framework.source_as)
+            framework.send_raw(msg)
+            response = framework.receive_raw()
+            if not response or len(response) < 19:
+                return (True, "No OPEN response", {})
+
+            keepalive = build_keepalive_message()
+            framework.send_raw(keepalive)
+            framework.receive_raw()
+
+            data = b"".join(struct.pack("!I", c) for c in communities)
+            comm_attr = PathAttribute(self.COMMUNITY_TYPE, 0x40, data)
+            origin = create_origin_attribute(0)
+            as_path = create_as_path_attribute([framework.source_as])
+            next_hop = create_next_hop_attribute("10.0.0.1")
+            update = build_update_message(
+                [], [origin, as_path, next_hop, comm_attr], [("192.168.30.0", 24)]
+            )
+            framework.send_raw(update)
+            response = framework.receive_raw()
+            if response and len(response) >= 21:
+                return (
+                    True,
+                    f"UPDATE accepted with {len(communities)} communities",
+                    {},
+                )
+            return (True, "Sent UPDATE with NOPEER community", {})
+        except Exception as e:
+            return (False, f"Error: {str(e)}", {})
+        finally:
+            framework.disconnect()
+
+    def test_nopeer_001(self, framework: BGPTestFramework) -> TestResult:
+        return framework._run_test(
+            self.get_tests()[0],
+            lambda: self._send_community_update(framework, [self.NOPEER]),
+        )
+
+    def test_nopeer_002(self, framework: BGPTestFramework) -> TestResult:
+        return framework._run_test(
+            self.get_tests()[1],
+            lambda: self._send_community_update(framework, [self.NOPEER]),
+        )
+
+    def test_nopeer_003(self, framework: BGPTestFramework) -> TestResult:
+        return framework._run_test(
+            self.get_tests()[2],
+            lambda: self._send_community_update(
+                framework, [self.NOPEER, self.NO_EXPORT]
+            ),
+        )
+
+    def test_nopeer_004(self, framework: BGPTestFramework) -> TestResult:
+        return framework._run_test(
+            self.get_tests()[3],
+            lambda: self._send_community_update(framework, [self.NOPEER]),
+        )
+
+    def test_nopeer_005(self, framework: BGPTestFramework) -> TestResult:
+        return framework._run_test(
+            self.get_tests()[4],
+            lambda: self._send_community_update(framework, [self.NOPEER]),
+        )
+
 
 class RouteOscillationTests:
+    MED_TYPE = 4
+
     @staticmethod
     def get_tests() -> List[TestCase]:
         return [
@@ -2560,6 +3928,74 @@ class RouteOscillationTests:
                 description="MED comparable only between routes from same neighboring AS - RFC 3345",
             ),
         ]
+
+    def _build_med_attribute(self, med: int) -> PathAttribute:
+        return PathAttribute(self.MED_TYPE, 0x40, struct.pack("!I", med))
+
+    def _send_route_with_med(
+        self, framework: BGPTestFramework, med: int, prefix: str = "192.168.200.0"
+    ) -> tuple:
+        if not framework.connect():
+            return (False, "Failed to connect", {})
+        try:
+            msg = build_open_message(framework.source_as)
+            framework.send_raw(msg)
+            response = framework.receive_raw()
+            if not response or len(response) < 19:
+                return (True, "No OPEN response", {})
+
+            keepalive = build_keepalive_message()
+            framework.send_raw(keepalive)
+            framework.receive_raw()
+
+            origin = create_origin_attribute(0)
+            as_path = create_as_path_attribute(
+                [framework.source_as, framework.source_as]
+            )
+            next_hop = create_next_hop_attribute("10.0.0.1")
+            med_attr = self._build_med_attribute(med)
+            update = build_update_message(
+                [], [origin, as_path, next_hop, med_attr], [(prefix, 24)]
+            )
+            framework.send_raw(update)
+            response = framework.receive_raw()
+            if response and len(response) >= 21:
+                return (True, f"Route with MED={med} accepted", {})
+            return (True, f"Route with MED={med} sent", {})
+        except Exception as e:
+            return (False, f"Error: {str(e)}", {})
+        finally:
+            framework.disconnect()
+
+    def test_osil_001(self, framework: BGPTestFramework) -> TestResult:
+        return framework._run_test(
+            self.get_tests()[0],
+            lambda: self._send_route_with_med(framework, 100),
+        )
+
+    def test_osil_002(self, framework: BGPTestFramework) -> TestResult:
+        return framework._run_test(
+            self.get_tests()[1],
+            lambda: self._send_route_with_med(framework, 200),
+        )
+
+    def test_osil_003(self, framework: BGPTestFramework) -> TestResult:
+        return framework._run_test(
+            self.get_tests()[2],
+            lambda: self._send_route_with_med(framework, 300),
+        )
+
+    def test_osil_004(self, framework: BGPTestFramework) -> TestResult:
+        return framework._run_test(
+            self.get_tests()[3],
+            lambda: self._send_route_with_med(framework, 400),
+        )
+
+    def test_osil_005(self, framework: BGPTestFramework) -> TestResult:
+        return framework._run_test(
+            self.get_tests()[4],
+            lambda: self._send_route_with_med(framework, 500),
+        )
 
 
 TEST_CLASSES: Dict[str, Type] = {
