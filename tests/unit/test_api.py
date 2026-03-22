@@ -2,7 +2,6 @@
 Unit tests for BGP Test Framework API
 """
 
-import pytest
 from bgp_test_framework.api import (
     BGPTestConfig,
     TestOptions,
