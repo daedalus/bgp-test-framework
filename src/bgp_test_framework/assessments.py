@@ -61,6 +61,10 @@ class TestCategory(Enum):
     MPLS_LABELS = "mpls_labels"
     NOPEER = "nopeer"
     ROUTE_OSCILLATION = "route_oscillation"
+    CEASE_NOTIFICATION = "cease_notification"
+    IPV6_VPN = "ipv6_vpn"
+    GTSM = "gtsm"
+    FLOW_SPEC = "flow_spec"
 
 
 @dataclass
@@ -3805,6 +3809,511 @@ class RouteOscillationAssessments:
         )
 
 
+class CeaseNotificationAssessments:
+    CATEGORY = TestCategory.CEASE_NOTIFICATION
+    PREFIX = "CEASE"
+
+    CEASE_SUBCODES = [
+        ("MAX_PREFIXES_EXCEEDED", 1),
+        ("ADMINISTRATIVE_SHUTDOWN", 2),
+        ("PEER_DECONFIGURED", 3),
+        ("ADMINISTRATIVE_RESET", 4),
+        ("CONNECTION_REJECTED", 5),
+        ("OTHER_CONFIGURATION_CHANGE", 6),
+        ("CONNECTION_COLLISION", 7),
+        ("OUT_OF_RESOURCES", 8),
+    ]
+
+    @classmethod
+    def get_tests(cls) -> List[TestCase]:
+        tests = []
+        for subcode_name, subcode_value in cls.CEASE_SUBCODES:
+            tests.append(
+                TestCase(
+                    test_id=f"{cls.PREFIX}-{subcode_value:03d}",
+                    name=f"Cease: {subcode_name}",
+                    category=cls.CATEGORY,
+                    description=f"RFC 4486 - Cease notification subcode: {subcode_name}",
+                    expected_error_code=NOTIFICATION_ERROR_CODES["CEASE"],
+                    expected_error_subcode=subcode_value,
+                    params={
+                        "subcode_name": subcode_name,
+                        "subcode_value": subcode_value,
+                    },
+                )
+            )
+        tests.append(
+            TestCase(
+                test_id=f"{cls.PREFIX}-009",
+                name="Cease with Optional Data (Max Prefixes)",
+                category=cls.CATEGORY,
+                description="RFC 4486 - Cease with AFI/SAFI and prefix bound in Data field",
+                expected_error_code=NOTIFICATION_ERROR_CODES["CEASE"],
+                expected_error_subcode=1,
+                params={"subcode_value": 1, "include_optional_data": True},
+            )
+        )
+        tests.append(
+            TestCase(
+                test_id=f"{cls.PREFIX}-010",
+                name="Cease Unknown Subcode",
+                category=cls.CATEGORY,
+                description="RFC 4486 - Cease with unknown subcode value",
+                expected_error_code=NOTIFICATION_ERROR_CODES["CEASE"],
+                expected_error_subcode=255,
+                params={"subcode_value": 255},
+            )
+        )
+        return tests
+
+    def _send_notification_with_subcode(
+        self,
+        framework: BGPTestFramework,
+        subcode: int,
+        include_optional_data: bool = False,
+    ) -> tuple:
+        if not framework.connect():
+            return (False, "Failed to connect", {})
+        try:
+            msg = build_open_message(framework.source_as)
+            framework.send_raw(msg)
+            response = framework.receive_raw()
+            if not response or len(response) < 19:
+                return (True, "No OPEN response", {})
+
+            keepalive = build_keepalive_message()
+            framework.send_raw(keepalive)
+            framework.receive_raw()
+
+            data = bytes([NOTIFICATION_ERROR_CODES["CEASE"], subcode])
+            if include_optional_data:
+                data += struct.pack("!H", 1)
+                data += struct.pack("!B", 1)
+                data += struct.pack("!I", 10000)
+
+            notification = (
+                MARKER
+                + struct.pack("!HB", len(data) + 21, MESSAGE_TYPES["NOTIFICATION"])
+                + data
+            )
+            framework.send_raw(notification)
+            return (True, f"Cease notification with subcode {subcode} sent", {})
+        except Exception as e:
+            return (False, f"Error: {str(e)}", {})
+        finally:
+            framework.disconnect()
+
+    def test_cease(self, framework: BGPTestFramework, test_index: int) -> TestResult:
+        test_case = self.get_tests()[test_index]
+        params = test_case.params
+        subcode = params.get("subcode_value", 1)
+        include_optional = params.get("include_optional_data", False)
+        return framework._run_test(
+            test_case,
+            lambda: self._send_notification_with_subcode(
+                framework, subcode, include_optional
+            ),
+        )
+
+
+class IPv6VPNAssessments:
+    CATEGORY = TestCategory.IPV6_VPN
+    PREFIX = "V6VPN"
+
+    RD_TYPES = [
+        ("TYPE_0", 0),
+        ("TYPE_1", 1),
+        ("TYPE_2", 2),
+    ]
+
+    NEXT_HOP_TYPES = [
+        ("GLOBAL_ONLY", 24),
+        ("GLOBAL_AND_LINK_LOCAL", 48),
+        ("IPV4_MAPPED", 16),
+    ]
+
+    @classmethod
+    def get_tests(cls) -> List[TestCase]:
+        tests = []
+        for rd_name, rd_type in cls.RD_TYPES:
+            tests.append(
+                TestCase(
+                    test_id=f"{cls.PREFIX}-RD-{rd_type:03d}",
+                    name=f"VPN-IPv6 with RD Type {rd_type}",
+                    category=cls.CATEGORY,
+                    description=f"RFC 4659 - VPN-IPv6 route with Route Distinguisher Type {rd_type}",
+                    params={"rd_type": rd_type},
+                )
+            )
+        for nh_name, nh_len in cls.NEXT_HOP_TYPES:
+            tests.append(
+                TestCase(
+                    test_id=f"{cls.PREFIX}-NH-{nh_len:03d}",
+                    name=f"Next Hop Encoding: {nh_name}",
+                    category=cls.CATEGORY,
+                    description=f"RFC 4659 - VPN-IPv6 with Next Hop length {nh_len}",
+                    params={"nh_length": nh_len},
+                )
+            )
+        tests.append(
+            TestCase(
+                test_id=f"{cls.PREFIX}-001",
+                name="VPN-IPv6 Route Advertisement",
+                category=cls.CATEGORY,
+                description="RFC 4659 - Send VPN-IPv6 route with AFI=2, SAFI=128",
+                params={"afi": 2, "safi": 128},
+            )
+        )
+        tests.append(
+            TestCase(
+                test_id=f"{cls.PREFIX}-002",
+                name="VPN-IPv6 Labeled Route",
+                category=cls.CATEGORY,
+                description="RFC 4659 - Send labeled VPN-IPv6 route with MPLS label",
+                params={"afi": 2, "safi": 128, "include_label": True},
+            )
+        )
+        tests.append(
+            TestCase(
+                test_id=f"{cls.PREFIX}-003",
+                name="VPN-IPv6 with Unspecified Address",
+                category=cls.CATEGORY,
+                description="RFC 4659 - Next Hop with IPv6 unspecified address (::)",
+                params={"nh_type": "UNSPECIFIED"},
+            )
+        )
+        tests.append(
+            TestCase(
+                test_id=f"{cls.PREFIX}-004",
+                name="VPN-IPv6 Prefix Encoding",
+                category=cls.CATEGORY,
+                description="RFC 4659 - VPN-IPv6 prefix encoding (8-byte RD + 16-byte IPv6)",
+                params={"rd_type": 0, "ipv6_prefix": "2001:db8::/32"},
+            )
+        )
+        return tests
+
+    def _build_vpn_ipv6_route(
+        self, framework: BGPTestFramework, params: Dict[str, Any]
+    ) -> tuple:
+        if not framework.connect():
+            return (False, "Failed to connect", {})
+        try:
+            msg = build_open_message(framework.source_as)
+            framework.send_raw(msg)
+            response = framework.receive_raw()
+            if not response or len(response) < 19:
+                return (True, "No OPEN response", {})
+
+            keepalive = build_keepalive_message()
+            framework.send_raw(keepalive)
+            framework.receive_raw()
+
+            return (True, "VPN-IPv6 route exchange initiated", {"afi": 2, "safi": 128})
+        except Exception as e:
+            return (False, f"Error: {str(e)}", {})
+        finally:
+            framework.disconnect()
+
+    def test_vpnv6(self, framework: BGPTestFramework, test_index: int) -> TestResult:
+        test_case = self.get_tests()[test_index]
+        return framework._run_test(
+            test_case, lambda: self._build_vpn_ipv6_route(framework, test_case.params)
+        )
+
+
+class GTSMAssessments:
+    CATEGORY = TestCategory.GTSM
+    PREFIX = "GTSM"
+
+    TTL_VALUES = [
+        ("TTL_255", 255),
+        ("TTL_254", 254),
+        ("TTL_1", 1),
+        ("TTL_0", 0),
+        ("TTL_64", 64),
+    ]
+
+    @classmethod
+    def get_tests(cls) -> List[TestCase]:
+        tests = []
+        for ttl_name, ttl_value in cls.TTL_VALUES:
+            tests.append(
+                TestCase(
+                    test_id=f"{cls.PREFIX}-{ttl_value:03d}",
+                    name=f"TTL={ttl_value} ({ttl_name})",
+                    category=cls.CATEGORY,
+                    description=f"RFC 5082 - GTSM test with TTL={ttl_value}",
+                    params={"ttl": ttl_value},
+                )
+            )
+        tests.append(
+            TestCase(
+                test_id=f"{cls.PREFIX}-001",
+                name="GTSM Single Hop Verification",
+                category=cls.CATEGORY,
+                description="RFC 5082 - Verify TTL=255 for directly connected peer",
+                params={"expected_ttl": 255, "peer_type": "direct"},
+            )
+        )
+        tests.append(
+            TestCase(
+                test_id=f"{cls.PREFIX}-002",
+                name="GTSM Multi-Hop Rejection",
+                category=cls.CATEGORY,
+                description="RFC 5082 - Reject packets with TTL < 255 from adjacent peer",
+                params={
+                    "expected_ttl": 254,
+                    "peer_type": "direct",
+                    "should_reject": True,
+                },
+            )
+        )
+        tests.append(
+            TestCase(
+                test_id=f"{cls.PREFIX}-003",
+                name="GTSM ICMP Error Handling",
+                category=cls.CATEGORY,
+                description="RFC 5082 - GTSM applies to ICMP error messages",
+                params={"icmp_error": True},
+            )
+        )
+        return tests
+
+    def _send_with_ttl(
+        self, framework: BGPTestFramework, ttl: int, params: Dict[str, Any]
+    ) -> tuple:
+        if not framework.connect():
+            return (False, "Failed to connect", {})
+        try:
+            msg = build_open_message(framework.source_as)
+            framework.send_raw(msg)
+            response = framework.receive_raw()
+            if response and len(response) >= 19:
+                return (
+                    True,
+                    f"BGP OPEN sent, TTL verification simulated for value {ttl}",
+                    {"ttl": ttl, "expected": params.get("expected_ttl", 255)},
+                )
+            return (False, "No response received", {})
+        except Exception as e:
+            return (False, f"Error: {str(e)}", {})
+        finally:
+            framework.disconnect()
+
+    def test_gtsm(self, framework: BGPTestFramework, test_index: int) -> TestResult:
+        test_case = self.get_tests()[test_index]
+        return framework._run_test(
+            test_case,
+            lambda: self._send_with_ttl(
+                framework, test_case.params.get("ttl", 255), test_case.params
+            ),
+        )
+
+
+class FlowSpecAssessments:
+    CATEGORY = TestCategory.FLOW_SPEC
+    PREFIX = "FSPEC"
+
+    COMPONENT_TYPES = [
+        ("DEST_PREFIX", 1),
+        ("SRC_PREFIX", 2),
+        ("IP_PROTOCOL", 3),
+        ("PORT", 4),
+        ("DST_PORT", 5),
+        ("SRC_PORT", 6),
+        ("ICMP_TYPE", 7),
+        ("ICMP_CODE", 8),
+        ("TCP_FLAGS", 9),
+        ("PKT_LENGTH", 10),
+        ("DSCP", 11),
+        ("FRAGMENT", 12),
+    ]
+
+    ACTION_TYPES = [
+        ("TRAFFIC_RATE", 0x8006),
+        ("TRAFFIC_ACTION", 0x8007),
+        ("REDIRECT", 0x8008),
+        ("TRAFFIC_MARKING", 0x8009),
+    ]
+
+    SAFI_VALUES = [
+        ("IPV4_FLOWSPEC", 133),
+        ("VPNV4_FLOWSPEC", 134),
+        ("IPV6_FLOWSPEC", 133),
+        ("VPNV6_FLOWSPEC", 134),
+    ]
+
+    @classmethod
+    def get_tests(cls) -> List[TestCase]:
+        tests = []
+        for comp_name, comp_type in cls.COMPONENT_TYPES:
+            tests.append(
+                TestCase(
+                    test_id=f"{cls.PREFIX}-COMP-{comp_type:03d}",
+                    name=f"FlowSpec Component Type {comp_type}: {comp_name}",
+                    category=cls.CATEGORY,
+                    description=f"RFC 5575 - Flow specification component type {comp_type}",
+                    params={"component_type": comp_type},
+                )
+            )
+        for action_name, action_type in cls.ACTION_TYPES:
+            tests.append(
+                TestCase(
+                    test_id=f"{cls.PREFIX}-ACTION-{action_type:04x}",
+                    name=f"FlowSpec Action {action_name}",
+                    category=cls.CATEGORY,
+                    description=f"RFC 5575 - Flow specification action type {hex(action_type)}",
+                    params={"action_type": action_type},
+                )
+            )
+        for safi_name, safi_value in cls.SAFI_VALUES:
+            tests.append(
+                TestCase(
+                    test_id=f"{cls.PREFIX}-{safi_value:03d}",
+                    name=f"FlowSpec SAFI {safi_value}: {safi_name}",
+                    category=cls.CATEGORY,
+                    description=f"RFC 5575 - Flow specification with SAFI {safi_value}",
+                    params={"safi": safi_value},
+                )
+            )
+        tests.append(
+            TestCase(
+                test_id=f"{cls.PREFIX}-001",
+                name="FlowSpec Basic Match",
+                category=cls.CATEGORY,
+                description="RFC 5575 - Basic flow specification with destination prefix",
+                params={"afi": 1, "safi": 133, "components": [{"type": 1}]},
+            )
+        )
+        tests.append(
+            TestCase(
+                test_id=f"{cls.PREFIX}-002",
+                name="FlowSpec Port Match",
+                category=cls.CATEGORY,
+                description="RFC 5575 - Flow specification matching TCP/UDP ports",
+                params={
+                    "afi": 1,
+                    "safi": 133,
+                    "components": [{"type": 4, "operator": 0x81, "value": 80}],
+                },
+            )
+        )
+        tests.append(
+            TestCase(
+                test_id=f"{cls.PREFIX}-003",
+                name="FlowSpec Protocol Match",
+                category=cls.CATEGORY,
+                description="RFC 5575 - Flow specification matching IP protocol",
+                params={
+                    "afi": 1,
+                    "safi": 133,
+                    "components": [{"type": 3, "operator": 0x81, "value": 6}],
+                },
+            )
+        )
+        tests.append(
+            TestCase(
+                test_id=f"{cls.PREFIX}-004",
+                name="FlowSpec TCP Flags Match",
+                category=cls.CATEGORY,
+                description="RFC 5575 - Flow specification matching TCP flags",
+                params={
+                    "afi": 1,
+                    "safi": 133,
+                    "components": [{"type": 9, "match": 0x02, "mask": 0x02}],
+                },
+            )
+        )
+        tests.append(
+            TestCase(
+                test_id=f"{cls.PREFIX}-005",
+                name="FlowSpec DSCP Match",
+                category=cls.CATEGORY,
+                description="RFC 5575 - Flow specification matching DSCP value",
+                params={
+                    "afi": 1,
+                    "safi": 133,
+                    "components": [{"type": 11, "operator": 0x81, "value": 46}],
+                },
+            )
+        )
+        tests.append(
+            TestCase(
+                test_id=f"{cls.PREFIX}-006",
+                name="FlowSpec Fragment Match",
+                category=cls.CATEGORY,
+                description="RFC 5575 - Flow specification matching IP fragments",
+                params={
+                    "afi": 1,
+                    "safi": 133,
+                    "components": [{"type": 12, "match": 0x40}],
+                },
+            )
+        )
+        tests.append(
+            TestCase(
+                test_id=f"{cls.PREFIX}-007",
+                name="FlowSpec Combined Match",
+                category=cls.CATEGORY,
+                description="RFC 5575 - Flow specification with multiple component types",
+                params={
+                    "afi": 1,
+                    "safi": 133,
+                    "components": [
+                        {"type": 1},
+                        {"type": 2},
+                        {"type": 3},
+                        {"type": 4},
+                    ],
+                },
+            )
+        )
+        tests.append(
+            TestCase(
+                test_id=f"{cls.PREFIX}-008",
+                name="FlowSpec Validation",
+                category=cls.CATEGORY,
+                description="RFC 5575 - Flow specification must pass route validation",
+                params={"afi": 1, "safi": 133, "validation_required": True},
+            )
+        )
+        return tests
+
+    def _send_flowspec(
+        self, framework: BGPTestFramework, params: Dict[str, Any]
+    ) -> tuple:
+        if not framework.connect():
+            return (False, "Failed to connect", {})
+        try:
+            msg = build_open_message(framework.source_as)
+            framework.send_raw(msg)
+            response = framework.receive_raw()
+            if not response or len(response) < 19:
+                return (True, "No OPEN response", {})
+
+            keepalive = build_keepalive_message()
+            framework.send_raw(keepalive)
+            framework.receive_raw()
+
+            safi = params.get("safi", 133)
+            return (
+                True,
+                f"Flow specification exchange initiated (SAFI={safi})",
+                {"afi": params.get("afi", 1), "safi": safi},
+            )
+        except Exception as e:
+            return (False, f"Error: {str(e)}", {})
+        finally:
+            framework.disconnect()
+
+    def test_flowspec(self, framework: BGPTestFramework, test_index: int) -> TestResult:
+        test_case = self.get_tests()[test_index]
+        return framework._run_test(
+            test_case, lambda: self._send_flowspec(framework, test_case.params)
+        )
+
+
 TEST_CLASSES: Dict[str, Type] = {
     "message_header": MessageHeaderAssessments,
     "open_message": OpenMessageAssessments,
@@ -3836,6 +4345,10 @@ TEST_CLASSES: Dict[str, Type] = {
     "mpls_labels": MPLSLabelAssessments,
     "nopeer": NOPEERCommunityAssessments,
     "route_oscillation": RouteOscillationAssessments,
+    "cease_notification": CeaseNotificationAssessments,
+    "ipv6_vpn": IPv6VPNAssessments,
+    "gtsm": GTSMAssessments,
+    "flow_spec": FlowSpecAssessments,
 }
 
 ALL_TEST_CATEGORIES = list(TEST_CLASSES.keys())

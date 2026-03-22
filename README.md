@@ -514,7 +514,7 @@ bgp_test_framework/
 │   ├── __init__.py
 │   ├── constants.py       # RFC 4271/4272 constants
 │   ├── messages.py        # BGP message parsing/building
-│   ├── tests.py           # Test case definitions (210+ tests)
+│   ├── assessments.py     # Assessment case definitions (250+ tests)
 │   ├── runner.py          # Test execution engine
 │   ├── api.py             # Programmatic API
 │   └── cli.py             # CLI entry point
@@ -675,6 +675,52 @@ Tests for BGP Route Oscillation Conditions per RFC 3345:
 - OSCIL-004: Type II Oscillation Conditions
 - OSCIL-005: MED Comparison Same AS Only
 
+### cease_notification
+Tests for BGP Cease Notification Message Subcodes per RFC 4486:
+- CEASE-001: Maximum Number of Prefixes Reached
+- CEASE-002: Administrative Shutdown
+- CEASE-003: Peer De-configured
+- CEASE-004: Administrative Reset
+- CEASE-005: Connection Rejected
+- CEASE-006: Other Configuration Change
+- CEASE-007: Connection Collision Resolution
+- CEASE-008: Out of Resources
+- CEASE-009: Cease with Optional Data (Max Prefixes)
+- CEASE-010: Cease Unknown Subcode
+
+### ipv6_vpn
+Tests for BGP-MPLS IP VPN Extension for IPv6 VPN per RFC 4659:
+- V6VPN-001: VPN-IPv6 Route Advertisement
+- V6VPN-002: VPN-IPv6 Labeled Route
+- V6VPN-003: VPN-IPv6 with Unspecified Address
+- V6VPN-004: VPN-IPv6 Prefix Encoding
+- V6VPN-RD-*: Route Distinguisher Type 0/1/2 tests
+- V6VPN-NH-*: Next Hop Encoding tests (Global, Link-Local, IPv4-mapped)
+
+### gtsm
+Tests for Generalized TTL Security Mechanism per RFC 5082:
+- GTSM-255: TTL=255 for Single Hop
+- GTSM-254: TTL=254 Multi-Hop Rejection
+- GTSM-001: GTSM Single Hop Verification
+- GTSM-002: GTSM Multi-Hop Rejection
+- GTSM-003: GTSM ICMP Error Handling
+- GTSM-*: Various TTL Values (0, 1, 64, 254, 255)
+
+### flow_spec
+Tests for Dissemination of Flow Specification Rules per RFC 5575:
+- FSPEC-001: FlowSpec Basic Match (Destination Prefix)
+- FSPEC-002: FlowSpec Port Match
+- FSPEC-003: FlowSpec Protocol Match
+- FSPEC-004: FlowSpec TCP Flags Match
+- FSPEC-005: FlowSpec DSCP Match
+- FSPEC-006: FlowSpec Fragment Match
+- FSPEC-007: FlowSpec Combined Match
+- FSPEC-008: FlowSpec Validation
+- FSPEC-133: IPv4 FlowSpec (AFI=1, SAFI=133)
+- FSPEC-134: VPNv4 FlowSpec (AFI=1, SAFI=134)
+- FSPEC-COMP-*: Component Type Tests (Types 1-12)
+- FSPEC-ACTION-*: Action Type Tests (traffic-rate, traffic-action, redirect, traffic-marking)
+
 ## References
 
 - [RFC 4271 - A Border Gateway Protocol 4 (BGP-4)](https://www.rfc-editor.org/rfc/rfc4271)
@@ -699,6 +745,10 @@ Tests for BGP Route Oscillation Conditions per RFC 3345:
 - [RFC 5492 - Extensions to BGP-4 for Capabilities Advertisement](https://www.rfc-editor.org/rfc/rfc5492)
 - [RFC 3107 - Carrying Label Information in BGP-4](https://www.rfc-editor.org/rfc/rfc3107)
 - [RFC 3765 - NOPEER Community for BGP Route Scope Control](https://www.rfc-editor.org/rfc/rfc3765)
+- [RFC 4486 - Subcodes for BGP Cease Notification Message](https://www.rfc-editor.org/rfc/rfc4486)
+- [RFC 4659 - BGP-MPLS IP VPN Extension for IPv6 VPN](https://www.rfc-editor.org/rfc/rfc4659)
+- [RFC 5082 - The Generalized TTL Security Mechanism (GTSM)](https://www.rfc-editor.org/rfc/rfc5082)
+- [RFC 5575 - Dissemination of Flow Specification Rules](https://www.rfc-editor.org/rfc/rfc5575)
 - [RFC 1105 - BGP (obsolete)](https://www.rfc-editor.org/rfc/rfc1105)
 - [RFC 1163 - BGP-2 (obsolete)](https://www.rfc-editor.org/rfc/rfc1163)
 - [RFC 1267 - BGP-3 (obsolete)](https://www.rfc-editor.org/rfc/rfc1267)

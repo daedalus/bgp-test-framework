@@ -205,7 +205,7 @@ class TestSecurityAssessments:
 
 class TestTestCategories:
     def test_all_categories_defined(self):
-        assert len(TestCategory) == 32
+        assert len(TestCategory) == 36
         assert TestCategory.MESSAGE_HEADER.value == "message_header"
         assert TestCategory.OPEN_MESSAGE.value == "open_message"
         assert TestCategory.UPDATE_MESSAGE.value == "update_message"
@@ -453,3 +453,78 @@ class TestUpdateMessageErrorSubcodes:
         assert UPDATE_MESSAGE_ERROR_SUBCODES["INVALID_ORIGIN_ATTRIBUTE"] == 6
         assert UPDATE_MESSAGE_ERROR_SUBCODES["INVALID_NEXT_HOP_ATTRIBUTE"] == 8
         assert UPDATE_MESSAGE_ERROR_SUBCODES["MALFORMED_AS_PATH"] == 11
+
+
+class TestCeaseNotificationAssessments:
+    def test_get_tests(self):
+        from bgp_test_framework.assessments import CeaseNotificationAssessments
+
+        tests = CeaseNotificationAssessments.get_tests()
+        assert len(tests) == 10
+        assert all(t.category == TestCategory.CEASE_NOTIFICATION for t in tests)
+
+    def test_specific_tests_exist(self):
+        from bgp_test_framework.assessments import CeaseNotificationAssessments
+
+        tests = {t.test_id: t for t in CeaseNotificationAssessments.get_tests()}
+        assert "CEASE-001" in tests
+        assert "CEASE-005" in tests
+        assert "CEASE-008" in tests
+
+
+class TestIPv6VPNAssessments:
+    def test_get_tests(self):
+        from bgp_test_framework.assessments import IPv6VPNAssessments
+
+        tests = IPv6VPNAssessments.get_tests()
+        assert len(tests) >= 9
+        assert all(t.category == TestCategory.IPV6_VPN for t in tests)
+
+    def test_specific_tests_exist(self):
+        from bgp_test_framework.assessments import IPv6VPNAssessments
+
+        tests = {t.test_id: t for t in IPv6VPNAssessments.get_tests()}
+        assert "V6VPN-001" in tests
+        assert "V6VPN-002" in tests
+
+
+class TestGTSMAssessments:
+    def test_get_tests(self):
+        from bgp_test_framework.assessments import GTSMAssessments
+
+        tests = GTSMAssessments.get_tests()
+        assert len(tests) == 8
+        assert all(t.category == TestCategory.GTSM for t in tests)
+
+    def test_specific_tests_exist(self):
+        from bgp_test_framework.assessments import GTSMAssessments
+
+        tests = {t.test_id: t for t in GTSMAssessments.get_tests()}
+        assert "GTSM-255" in tests
+        assert "GTSM-001" in tests
+        assert "GTSM-003" in tests
+
+
+class TestFlowSpecAssessments:
+    def test_get_tests(self):
+        from bgp_test_framework.assessments import FlowSpecAssessments
+
+        tests = FlowSpecAssessments.get_tests()
+        assert len(tests) >= 28
+        assert all(t.category == TestCategory.FLOW_SPEC for t in tests)
+
+    def test_specific_tests_exist(self):
+        from bgp_test_framework.assessments import FlowSpecAssessments
+
+        tests = {t.test_id: t for t in FlowSpecAssessments.get_tests()}
+        assert "FSPEC-001" in tests
+        assert "FSPEC-133" in tests
+        assert "FSPEC-134" in tests
+
+
+class TestNewTESTCLASSESConstant:
+    def test_new_categories_registered(self):
+        assert "cease_notification" in TEST_CLASSES
+        assert "ipv6_vpn" in TEST_CLASSES
+        assert "gtsm" in TEST_CLASSES
+        assert "flow_spec" in TEST_CLASSES
