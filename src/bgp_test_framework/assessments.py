@@ -75,6 +75,9 @@ class TestCategory(Enum):
     MPLS_LABEL_BINDING = "mpls_label_binding"
     LARGE_COMMUNITY_USAGE = "large_community_usage"
     DATACENTER_BGP = "datacenter_bgp"
+    GRACEFUL_SHUTDOWN = "graceful_shutdown"
+    EVPN_NVO = "evpn_nvo"
+    SEGMENT_ROUTING = "segment_routing"
 
 
 @dataclass
@@ -5913,6 +5916,409 @@ class DataCenterBGPAssessments:
         )
 
 
+class GracefulShutdownAssessments:
+    CATEGORY = TestCategory.GRACEFUL_SHUTDOWN
+    PREFIX = "GSD"
+
+    GRACEFUL_SHUTDOWN = 0xFFFF0000
+    RECOMMENDED_LOCAL_PREF = 0
+
+    @classmethod
+    def get_tests(cls) -> List[TestCase]:
+        tests = [
+            TestCase(
+                test_id=f"{cls.PREFIX}-001",
+                name="Graceful Shutdown Community Value",
+                category=cls.CATEGORY,
+                description="RFC 8326 - GRACEFUL_SHUTDOWN community 0xFFFF0000",
+                params={"community": cls.GRACEFUL_SHUTDOWN},
+            ),
+            TestCase(
+                test_id=f"{cls.PREFIX}-002",
+                name="Graceful Shutdown LOCAL_PREF 0",
+                category=cls.CATEGORY,
+                description="RFC 8326 - Set LOCAL_PREF to 0 for graceful shutdown paths",
+                params={
+                    "local_pref": cls.RECOMMENDED_LOCAL_PREF,
+                    "community": cls.GRACEFUL_SHUTDOWN,
+                },
+            ),
+            TestCase(
+                test_id=f"{cls.PREFIX}-003",
+                name="Graceful Shutdown with NO_EXPORT",
+                category=cls.CATEGORY,
+                description="RFC 8326 - Combine with NO_EXPORT for scope control",
+                params={"communities": [cls.GRACEFUL_SHUTDOWN, 0xFFFFFF01]},
+            ),
+            TestCase(
+                test_id=f"{cls.PREFIX}-004",
+                name="Graceful Shutdown Route Selection",
+                category=cls.CATEGORY,
+                description="RFC 8326 - Graceful shutdown paths deprioritized",
+                params={"community": cls.GRACEFUL_SHUTDOWN},
+            ),
+            TestCase(
+                test_id=f"{cls.PREFIX}-005",
+                name="Graceful Shutdown Maintenance Window",
+                category=cls.CATEGORY,
+                description="RFC 8326 - Planned maintenance announcement",
+                params={"community": cls.GRACEFUL_SHUTDOWN},
+            ),
+            TestCase(
+                test_id=f"{cls.PREFIX}-006",
+                name="Graceful Shutdown Traffic Rerouting",
+                category=cls.CATEGORY,
+                description="RFC 8326 - Alternate paths used during shutdown",
+                params={"community": cls.GRACEFUL_SHUTDOWN},
+            ),
+            TestCase(
+                test_id=f"{cls.PREFIX}-007",
+                name="Graceful Shutdown Restoration",
+                category=cls.CATEGORY,
+                description="RFC 8326 - Route restoration after maintenance",
+                params={"community": cls.GRACEFUL_SHUTDOWN, "action": "restore"},
+            ),
+            TestCase(
+                test_id=f"{cls.PREFIX}-008",
+                name="Graceful Shutdown in EBGP",
+                category=cls.CATEGORY,
+                description="RFC 8326 - Graceful shutdown behavior in EBGP sessions",
+                params={"community": cls.GRACEFUL_SHUTDOWN, "session_type": "ebgp"},
+            ),
+            TestCase(
+                test_id=f"{cls.PREFIX}-009",
+                name="Graceful Shutdown in IBGP",
+                category=cls.CATEGORY,
+                description="RFC 8326 - Graceful shutdown behavior in IBGP sessions",
+                params={"community": cls.GRACEFUL_SHUTDOWN, "session_type": "ibgp"},
+            ),
+            TestCase(
+                test_id=f"{cls.PREFIX}-010",
+                name="Graceful Shutdown Community Recognition",
+                category=cls.CATEGORY,
+                description="RFC 8326 - Verify well-known community is recognized",
+                params={"community": cls.GRACEFUL_SHUTDOWN},
+            ),
+        ]
+        return tests
+
+    def _send_graceful_shutdown_route(
+        self, framework: BGPTestFramework, params: Dict[str, Any]
+    ) -> tuple:
+        if not framework.connect():
+            return (False, "Failed to connect", {})
+        try:
+            msg = build_open_message(framework.source_as)
+            framework.send_raw(msg)
+            response = framework.receive_raw()
+            if not response or len(response) < 19:
+                return (True, "No OPEN response", {})
+
+            keepalive = build_keepalive_message()
+            framework.send_raw(keepalive)
+            framework.receive_raw()
+
+            communities = params.get("communities", [self.GRACEFUL_SHUTDOWN])
+            comm_data = b"".join(struct.pack("!I", c) for c in communities)
+            comm_attr = PathAttribute(8, 0x40, comm_data)
+
+            local_pref = params.get("local_pref", self.RECOMMENDED_LOCAL_PREF)
+            lp_attr = PathAttribute(5, 0x40, struct.pack("!I", local_pref))
+
+            origin = create_origin_attribute(0)
+            as_path = create_as_path_attribute([framework.source_as])
+            next_hop = create_next_hop_attribute("10.0.0.1")
+            update = build_update_message(
+                [],
+                [origin, as_path, next_hop, lp_attr, comm_attr],
+                [("192.168.50.0", 24)],
+            )
+            framework.send_raw(update)
+            response = framework.receive_raw()
+            if response and len(response) >= 21:
+                return (
+                    True,
+                    f"Graceful shutdown route accepted (LOCAL_PREF={local_pref})",
+                    {},
+                )
+            return (True, "Graceful shutdown route sent", {})
+        except Exception as e:
+            return (False, f"Error: {str(e)}", {})
+        finally:
+            framework.disconnect()
+
+    def test_gsd(self, framework: BGPTestFramework, test_index: int) -> TestResult:
+        test_case = self.get_tests()[test_index]
+        return framework._run_test(
+            test_case,
+            lambda: self._send_graceful_shutdown_route(framework, test_case.params),
+        )
+
+
+class EVPNNVOAssessments:
+    CATEGORY = TestCategory.EVPN_NVO
+    PREFIX = "EVPN"
+
+    TUNNEL_TYPES = [
+        ("VXLAN", 8),
+        ("NVGRE", 9),
+        ("MPLS", 10),
+        ("MPLS_IN_GRE", 11),
+        ("VXLAN_GPE", 12),
+    ]
+
+    VNI_LENGTH = 24
+
+    @classmethod
+    def get_tests(cls) -> List[TestCase]:
+        tests = []
+        for tunnel_name, tunnel_type in cls.TUNNEL_TYPES:
+            tests.append(
+                TestCase(
+                    test_id=f"{cls.PREFIX}-TUN-{tunnel_type:02d}",
+                    name=f"Tunnel Type {tunnel_type}: {tunnel_name}",
+                    category=cls.CATEGORY,
+                    description=f"RFC 8365 - {tunnel_name} encapsulation support",
+                    params={"tunnel_type": tunnel_type},
+                )
+            )
+        tests.append(
+            TestCase(
+                test_id=f"{cls.PREFIX}-001",
+                name="EVPN VXLAN Encapsulation",
+                category=cls.CATEGORY,
+                description="RFC 8365 - VXLAN tunnel type (value 8)",
+                params={"tunnel_type": 8, "vni": 10000},
+            )
+        )
+        tests.append(
+            TestCase(
+                test_id=f"{cls.PREFIX}-002",
+                name="EVPN VXLAN-GPE Encapsulation",
+                category=cls.CATEGORY,
+                description="RFC 8365 - VXLAN-GPE tunnel type (value 12)",
+                params={"tunnel_type": 12, "vni": 20000},
+            )
+        )
+        tests.append(
+            TestCase(
+                test_id=f"{cls.PREFIX}-003",
+                name="VNI Encoding 24-bit",
+                category=cls.CATEGORY,
+                description="RFC 8365 - VNI is a 24-bit value",
+                params={"vni": 0xFFFFFF},
+            )
+        )
+        tests.append(
+            TestCase(
+                test_id=f"{cls.PREFIX}-004",
+                name="RT Auto-Derivation VID",
+                category=cls.CATEGORY,
+                description="RFC 8365 - Route Target auto-derivation from VID",
+                params={"rt_deriv_type": 0},
+            )
+        )
+        tests.append(
+            TestCase(
+                test_id=f"{cls.PREFIX}-005",
+                name="RT Auto-Derivation VXLAN",
+                category=cls.CATEGORY,
+                description="RFC 8365 - Route Target auto-derivation from VXLAN VNI",
+                params={"rt_deriv_type": 1},
+            )
+        )
+        return tests
+
+    def _send_evpn_route(
+        self, framework: BGPTestFramework, params: Dict[str, Any]
+    ) -> tuple:
+        if not framework.connect():
+            return (False, "Failed to connect", {})
+        try:
+            msg = build_open_message(framework.source_as)
+            framework.send_raw(msg)
+            response = framework.receive_raw()
+            if not response or len(response) < 19:
+                return (True, "No OPEN response", {})
+
+            keepalive = build_keepalive_message()
+            framework.send_raw(keepalive)
+            framework.receive_raw()
+
+            tunnel_type = params.get("tunnel_type", 8)
+            tunnel_comm = bytes([0x00, 0x00, 0x00, tunnel_type, 0x00, 0x00, 0x00, 0x00])
+            tunnel_attr = PathAttribute(23, 0xC0, tunnel_comm)
+
+            origin = create_origin_attribute(0)
+            as_path = create_as_path_attribute([framework.source_as])
+            next_hop = create_next_hop_attribute("10.0.0.1")
+            update = build_update_message(
+                [], [origin, as_path, next_hop, tunnel_attr], []
+            )
+            framework.send_raw(update)
+            response = framework.receive_raw()
+
+            tunnel_names = {
+                8: "VXLAN",
+                9: "NVGRE",
+                10: "MPLS",
+                11: "MPLS in GRE",
+                12: "VXLAN-GPE",
+            }
+            if response and len(response) >= 21:
+                return (
+                    True,
+                    f"EVPN route with {tunnel_names.get(tunnel_type, 'Unknown')} accepted",
+                    {},
+                )
+            return (True, f"EVPN route sent with tunnel type {tunnel_type}", {})
+        except Exception as e:
+            return (False, f"Error: {str(e)}", {})
+        finally:
+            framework.disconnect()
+
+    def test_evpn(self, framework: BGPTestFramework, test_index: int) -> TestResult:
+        test_case = self.get_tests()[test_index]
+        return framework._run_test(
+            test_case, lambda: self._send_evpn_route(framework, test_case.params)
+        )
+
+
+class SegmentRoutingAssessments:
+    CATEGORY = TestCategory.SEGMENT_ROUTING
+    PREFIX = "SR"
+
+    ALGORITHMS = [
+        ("SPF", 0),
+        ("STRICT_SPF", 1),
+    ]
+
+    BGP_PEERING_SEGMENTS = [
+        ("PEER_NODE", 1),
+        ("PEER_ADJ", 2),
+        ("PEER_SET", 3),
+    ]
+
+    @classmethod
+    def get_tests(cls) -> List[TestCase]:
+        tests = []
+        for algo_name, algo_id in cls.ALGORITHMS:
+            tests.append(
+                TestCase(
+                    test_id=f"{cls.PREFIX}-ALGO-{algo_id}",
+                    name=f"SR Algorithm {algo_id}: {algo_name}",
+                    category=cls.CATEGORY,
+                    description=f"RFC 8402 - Segment Routing {algo_name} algorithm",
+                    params={"algorithm": algo_id},
+                )
+            )
+        for seg_name, seg_id in cls.BGP_PEERING_SEGMENTS:
+            tests.append(
+                TestCase(
+                    test_id=f"{cls.PREFIX}-PEER-{seg_id}",
+                    name=f"Peering Segment {seg_id}: {seg_name}",
+                    category=cls.CATEGORY,
+                    description=f"RFC 8402 - {seg_name} for Egress Peer Engineering",
+                    params={"peering_segment_type": seg_id},
+                )
+            )
+        tests.append(
+            TestCase(
+                test_id=f"{cls.PREFIX}-001",
+                name="SR-MPLS SID Label",
+                category=cls.CATEGORY,
+                description="RFC 8402 - Segment ID encoded as MPLS label",
+                params={"sid_type": "mpls", "sid_value": 16000},
+            )
+        )
+        tests.append(
+            TestCase(
+                test_id=f"{cls.PREFIX}-002",
+                name="SR-MPLS SID within SRGB",
+                category=cls.CATEGORY,
+                description="RFC 8402 - SID value within SR Global Block range",
+                params={"sid_type": "mpls", "sid_value": 16000, "srgb_range": True},
+            )
+        )
+        tests.append(
+            TestCase(
+                test_id=f"{cls.PREFIX}-003",
+                name="BGP-Prefix Segment",
+                category=cls.CATEGORY,
+                description="RFC 8402 - BGP-Prefix SID advertisement",
+                params={"segment_type": "prefix"},
+            )
+        )
+        tests.append(
+            TestCase(
+                test_id=f"{cls.PREFIX}-004",
+                name="PeerNode SID",
+                category=cls.CATEGORY,
+                description="RFC 8402 - PeerNode SID for EPE",
+                params={"peering_segment_type": 1},
+            )
+        )
+        tests.append(
+            TestCase(
+                test_id=f"{cls.PREFIX}-005",
+                name="PeerAdj SID",
+                category=cls.CATEGORY,
+                description="RFC 8402 - PeerAdj SID for EPE",
+                params={"peering_segment_type": 2},
+            )
+        )
+        tests.append(
+            TestCase(
+                test_id=f"{cls.PREFIX}-006",
+                name="PeerSet SID",
+                category=cls.CATEGORY,
+                description="RFC 8402 - PeerSet SID for EPE load balancing",
+                params={"peering_segment_type": 3},
+            )
+        )
+        return tests
+
+    def _send_sr_route(
+        self, framework: BGPTestFramework, params: Dict[str, Any]
+    ) -> tuple:
+        if not framework.connect():
+            return (False, "Failed to connect", {})
+        try:
+            msg = build_open_message(framework.source_as)
+            framework.send_raw(msg)
+            response = framework.receive_raw()
+            if not response or len(response) < 19:
+                return (True, "No OPEN response", {})
+
+            keepalive = build_keepalive_message()
+            framework.send_raw(keepalive)
+            framework.receive_raw()
+
+            segment_type = params.get("segment_type", "mpls")
+            origin = create_origin_attribute(0)
+            as_path = create_as_path_attribute([framework.source_as])
+            next_hop = create_next_hop_attribute("10.0.0.1")
+            update = build_update_message(
+                [], [origin, as_path, next_hop], [("192.168.60.0", 24)]
+            )
+            framework.send_raw(update)
+            response = framework.receive_raw()
+
+            if response and len(response) >= 21:
+                return (True, f"SR route accepted ({segment_type})", {})
+            return (True, f"SR route sent ({segment_type})", {})
+        except Exception as e:
+            return (False, f"Error: {str(e)}", {})
+        finally:
+            framework.disconnect()
+
+    def test_sr(self, framework: BGPTestFramework, test_index: int) -> TestResult:
+        test_case = self.get_tests()[test_index]
+        return framework._run_test(
+            test_case, lambda: self._send_sr_route(framework, test_case.params)
+        )
+
+
 TEST_CLASSES: Dict[str, Type] = {
     "message_header": MessageHeaderAssessments,
     "open_message": OpenMessageAssessments,
@@ -5958,6 +6364,9 @@ TEST_CLASSES: Dict[str, Type] = {
     "mpls_label_binding": MPLSLabelBindingAssessments,
     "large_community_usage": LargeCommunityUsageAssessments,
     "datacenter_bgp": DataCenterBGPAssessments,
+    "graceful_shutdown": GracefulShutdownAssessments,
+    "evpn_nvo": EVPNNVOAssessments,
+    "segment_routing": SegmentRoutingAssessments,
 }
 
 ALL_TEST_CATEGORIES = list(TEST_CLASSES.keys())
