@@ -11,4 +11,6 @@ RUN apt-get update && apt-get install -y \
 COPY . /app
 RUN pip install --no-cache-dir -e .
 
-ENTRYPOINT ["bgp-test"]
+RUN chmod +x /app/examples/docker/run_tests.sh
+
+CMD ["/app/examples/docker/run_tests.sh"]

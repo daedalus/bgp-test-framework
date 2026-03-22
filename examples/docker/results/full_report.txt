@@ -1,0 +1,525 @@
+{
+  "summary": {
+    "total": 23,
+    "passed": 23,
+    "failed": 0,
+    "pass_rate": "100.0%",
+    "by_category": {
+      "message_header": {
+        "total": 8,
+        "passed": 8,
+        "failed": 0
+      },
+      "open_message": {
+        "total": 7,
+        "passed": 7,
+        "failed": 0
+      },
+      "update_message": {
+        "total": 8,
+        "passed": 8,
+        "failed": 0
+      }
+    },
+    "target": "172.16.0.2:179",
+    "source_as": 65000,
+    "compliance": {
+      "compliance_score": 100.0,
+      "compliance_grade": "A",
+      "total_tests": 23,
+      "tests_passed": 23,
+      "tests_failed": 0,
+      "pass_rate": "100.0%",
+      "severity_distribution": {
+        "CRITICAL": 0,
+        "HIGH": 0,
+        "MEDIUM": 0,
+        "LOW": 0,
+        "INFO": 0
+      },
+      "weighted_score": 100.0,
+      "rfc_section_compliance": {
+        "RFC 4271 Section 4.1": {
+          "total": 8,
+          "passed": 8,
+          "failed": 0,
+          "score": 100.0,
+          "grade": "A"
+        },
+        "RFC 4271 Section 4.2": {
+          "total": 7,
+          "passed": 7,
+          "failed": 0,
+          "score": 100.0,
+          "grade": "A"
+        },
+        "RFC 4271 Section 4.3": {
+          "total": 8,
+          "passed": 8,
+          "failed": 0,
+          "score": 100.0,
+          "grade": "A"
+        },
+        "RFC 4271 Section 5": {
+          "total": 0,
+          "passed": 0,
+          "failed": 0,
+          "score": 0.0,
+          "grade": "F"
+        },
+        "RFC 4271 Section 8": {
+          "total": 0,
+          "passed": 0,
+          "failed": 0,
+          "score": 0.0,
+          "grade": "F"
+        },
+        "RFC 4271 Section 4.4": {
+          "total": 0,
+          "passed": 0,
+          "failed": 0,
+          "score": 0.0,
+          "grade": "F"
+        },
+        "RFC 4271 Section 6": {
+          "total": 0,
+          "passed": 0,
+          "failed": 0,
+          "score": 0.0,
+          "grade": "F"
+        },
+        "RFC 4271 Section 9.2": {
+          "total": 0,
+          "passed": 0,
+          "failed": 0,
+          "score": 0.0,
+          "grade": "F"
+        },
+        "RFC 4271 Section 9.1": {
+          "total": 0,
+          "passed": 0,
+          "failed": 0,
+          "score": 0.0,
+          "grade": "F"
+        }
+      }
+    }
+  },
+  "results": [
+    {
+      "test_id": "MH-001",
+      "test_name": "test_invalid_marker",
+      "category": "TestCategory.MESSAGE_HEADER",
+      "passed": true,
+      "expected_behavior": "Invalid Marker",
+      "actual_behavior": "Response received (22 bytes)",
+      "details": {},
+      "error_code": null,
+      "error_subcode": null
+    },
+    {
+      "test_id": "MH-003",
+      "test_name": "test_length_too_short",
+      "category": "TestCategory.MESSAGE_HEADER",
+      "passed": true,
+      "expected_behavior": "Length < 19",
+      "actual_behavior": "Response received (23 bytes)",
+      "details": {},
+      "error_code": null,
+      "error_subcode": null
+    },
+    {
+      "test_id": "MH-004",
+      "test_name": "test_length_too_large",
+      "category": "TestCategory.MESSAGE_HEADER",
+      "passed": true,
+      "expected_behavior": "Length > 4096",
+      "actual_behavior": "Response received (23 bytes)",
+      "details": {},
+      "error_code": null,
+      "error_subcode": null
+    },
+    {
+      "test_id": "MH-006",
+      "test_name": "test_invalid_type",
+      "category": "TestCategory.MESSAGE_HEADER",
+      "passed": true,
+      "expected_behavior": "Invalid Type (0)",
+      "actual_behavior": "Response received (22 bytes)",
+      "details": {},
+      "error_code": null,
+      "error_subcode": null
+    },
+    {
+      "test_id": "MH-009",
+      "test_name": "test_open_length_short",
+      "category": "TestCategory.MESSAGE_HEADER",
+      "passed": true,
+      "expected_behavior": "OPEN < 29",
+      "actual_behavior": "Response received (23 bytes)",
+      "details": {},
+      "error_code": null,
+      "error_subcode": null
+    },
+    {
+      "test_id": "MH-010",
+      "test_name": "test_update_length_short",
+      "category": "TestCategory.MESSAGE_HEADER",
+      "passed": true,
+      "expected_behavior": "UPDATE < 23",
+      "actual_behavior": "Response received (23 bytes)",
+      "details": {},
+      "error_code": null,
+      "error_subcode": null
+    },
+    {
+      "test_id": "MH-011",
+      "test_name": "test_keepalive_wrong_length",
+      "category": "TestCategory.MESSAGE_HEADER",
+      "passed": true,
+      "expected_behavior": "KEEPALIVE != 19",
+      "actual_behavior": "Response received (23 bytes)",
+      "details": {},
+      "error_code": null,
+      "error_subcode": null
+    },
+    {
+      "test_id": "MH-012",
+      "test_name": "test_notification_length_short",
+      "category": "TestCategory.MESSAGE_HEADER",
+      "passed": true,
+      "expected_behavior": "NOTIFICATION < 21",
+      "actual_behavior": "Response received (23 bytes)",
+      "details": {},
+      "error_code": null,
+      "error_subcode": null
+    },
+    {
+      "test_id": "OP-001",
+      "test_name": "Version 0",
+      "category": "TestCategory.OPEN_MESSAGE",
+      "passed": true,
+      "expected_behavior": "RFC 4271: Version 0",
+      "actual_behavior": "NOTIFICATION: code=4, subcode=253",
+      "details": {
+        "error_code": 4,
+        "error_subcode": 253
+      },
+      "error_code": null,
+      "error_subcode": null
+    },
+    {
+      "test_id": "OP-002",
+      "test_name": "Version 3",
+      "category": "TestCategory.OPEN_MESSAGE",
+      "passed": true,
+      "expected_behavior": "RFC 4271: Version 3",
+      "actual_behavior": "NOTIFICATION: code=4, subcode=253",
+      "details": {
+        "error_code": 4,
+        "error_subcode": 253
+      },
+      "error_code": null,
+      "error_subcode": null
+    },
+    {
+      "test_id": "OP-003",
+      "test_name": "Version 5",
+      "category": "TestCategory.OPEN_MESSAGE",
+      "passed": true,
+      "expected_behavior": "RFC 4271: Version 5",
+      "actual_behavior": "NOTIFICATION: code=4, subcode=253",
+      "details": {
+        "error_code": 4,
+        "error_subcode": 253
+      },
+      "error_code": null,
+      "error_subcode": null
+    },
+    {
+      "test_id": "OP-005",
+      "test_name": "Hold Time 1",
+      "category": "TestCategory.OPEN_MESSAGE",
+      "passed": true,
+      "expected_behavior": "RFC 4271: Hold Time 1",
+      "actual_behavior": "NOTIFICATION: code=4, subcode=253",
+      "details": {
+        "error_code": 4,
+        "error_subcode": 253
+      },
+      "error_code": null,
+      "error_subcode": null
+    },
+    {
+      "test_id": "OP-006",
+      "test_name": "Hold Time 2",
+      "category": "TestCategory.OPEN_MESSAGE",
+      "passed": true,
+      "expected_behavior": "RFC 4271: Hold Time 2",
+      "actual_behavior": "NOTIFICATION: code=4, subcode=253",
+      "details": {
+        "error_code": 4,
+        "error_subcode": 253
+      },
+      "error_code": null,
+      "error_subcode": null
+    },
+    {
+      "test_id": "OP-008",
+      "test_name": "BGP ID 0.0.0.0",
+      "category": "TestCategory.OPEN_MESSAGE",
+      "passed": true,
+      "expected_behavior": "RFC 4271: BGP ID 0.0.0.0",
+      "actual_behavior": "NOTIFICATION: code=4, subcode=253",
+      "details": {
+        "error_code": 4,
+        "error_subcode": 253
+      },
+      "error_code": null,
+      "error_subcode": null
+    },
+    {
+      "test_id": "OP-009",
+      "test_name": "BGP ID 224.0.0.1",
+      "category": "TestCategory.OPEN_MESSAGE",
+      "passed": true,
+      "expected_behavior": "RFC 4271: BGP ID 224.0.0.1",
+      "actual_behavior": "NOTIFICATION: code=4, subcode=253",
+      "details": {
+        "error_code": 4,
+        "error_subcode": 253
+      },
+      "error_code": null,
+      "error_subcode": null
+    },
+    {
+      "test_id": "UP-001",
+      "test_name": "Missing ORIGIN",
+      "category": "TestCategory.UPDATE_MESSAGE",
+      "passed": true,
+      "expected_behavior": "RFC 4271: Missing ORIGIN",
+      "actual_behavior": "NOTIFICATION: code=4, subcode=253",
+      "details": {
+        "error_code": 4,
+        "error_subcode": 253
+      },
+      "error_code": null,
+      "error_subcode": null
+    },
+    {
+      "test_id": "UP-002",
+      "test_name": "Missing AS_PATH",
+      "category": "TestCategory.UPDATE_MESSAGE",
+      "passed": true,
+      "expected_behavior": "RFC 4271: Missing AS_PATH",
+      "actual_behavior": "NOTIFICATION: code=4, subcode=253",
+      "details": {
+        "error_code": 4,
+        "error_subcode": 253
+      },
+      "error_code": null,
+      "error_subcode": null
+    },
+    {
+      "test_id": "UP-003",
+      "test_name": "Missing NEXT_HOP",
+      "category": "TestCategory.UPDATE_MESSAGE",
+      "passed": true,
+      "expected_behavior": "RFC 4271: Missing NEXT_HOP",
+      "actual_behavior": "NOTIFICATION: code=4, subcode=253",
+      "details": {
+        "error_code": 4,
+        "error_subcode": 253
+      },
+      "error_code": null,
+      "error_subcode": null
+    },
+    {
+      "test_id": "UP-004",
+      "test_name": "Invalid ORIGIN Value",
+      "category": "TestCategory.UPDATE_MESSAGE",
+      "passed": true,
+      "expected_behavior": "RFC 4271: Invalid ORIGIN Value",
+      "actual_behavior": "NOTIFICATION: code=4, subcode=253",
+      "details": {
+        "error_code": 4,
+        "error_subcode": 253
+      },
+      "error_code": null,
+      "error_subcode": null
+    },
+    {
+      "test_id": "UP-005",
+      "test_name": "Malformed AS_PATH",
+      "category": "TestCategory.UPDATE_MESSAGE",
+      "passed": true,
+      "expected_behavior": "RFC 4271: Malformed AS_PATH",
+      "actual_behavior": "NOTIFICATION: code=4, subcode=253",
+      "details": {
+        "error_code": 4,
+        "error_subcode": 253
+      },
+      "error_code": null,
+      "error_subcode": null
+    },
+    {
+      "test_id": "UP-008",
+      "test_name": "NEXT_HOP 0.0.0.0",
+      "category": "TestCategory.UPDATE_MESSAGE",
+      "passed": true,
+      "expected_behavior": "RFC 4271: NEXT_HOP 0.0.0.0",
+      "actual_behavior": "NOTIFICATION: code=4, subcode=253",
+      "details": {
+        "error_code": 4,
+        "error_subcode": 253
+      },
+      "error_code": null,
+      "error_subcode": null
+    },
+    {
+      "test_id": "UP-011",
+      "test_name": "Attribute Length Error",
+      "category": "TestCategory.UPDATE_MESSAGE",
+      "passed": true,
+      "expected_behavior": "RFC 4271: Attribute Length Error",
+      "actual_behavior": "NOTIFICATION: code=4, subcode=253",
+      "details": {
+        "error_code": 4,
+        "error_subcode": 253
+      },
+      "error_code": null,
+      "error_subcode": null
+    },
+    {
+      "test_id": "UP-012",
+      "test_name": "Duplicate Attribute",
+      "category": "TestCategory.UPDATE_MESSAGE",
+      "passed": true,
+      "expected_behavior": "RFC 4271: Duplicate Attribute",
+      "actual_behavior": "NOTIFICATION: code=4, subcode=253",
+      "details": {
+        "error_code": 4,
+        "error_subcode": 253
+      },
+      "error_code": null,
+      "error_subcode": null
+    }
+  ],
+  "logs": [
+    {
+      "timestamp": 1774150826.9219785,
+      "level": "INFO",
+      "message": "Test MH-001: Response received (22 bytes)"
+    },
+    {
+      "timestamp": 1774150826.924137,
+      "level": "INFO",
+      "message": "Test MH-003: Response received (23 bytes)"
+    },
+    {
+      "timestamp": 1774150826.9313295,
+      "level": "INFO",
+      "message": "Test MH-004: Response received (23 bytes)"
+    },
+    {
+      "timestamp": 1774150826.9332788,
+      "level": "INFO",
+      "message": "Test MH-006: Response received (22 bytes)"
+    },
+    {
+      "timestamp": 1774150826.9351535,
+      "level": "INFO",
+      "message": "Test MH-009: Response received (23 bytes)"
+    },
+    {
+      "timestamp": 1774150826.9372578,
+      "level": "INFO",
+      "message": "Test MH-010: Response received (23 bytes)"
+    },
+    {
+      "timestamp": 1774150826.939632,
+      "level": "INFO",
+      "message": "Test MH-011: Response received (23 bytes)"
+    },
+    {
+      "timestamp": 1774150826.9416425,
+      "level": "INFO",
+      "message": "Test MH-012: Response received (23 bytes)"
+    },
+    {
+      "timestamp": 1774150826.9437003,
+      "level": "INFO",
+      "message": "Test OP-001: NOTIFICATION: code=4, subcode=253"
+    },
+    {
+      "timestamp": 1774150826.9455793,
+      "level": "INFO",
+      "message": "Test OP-002: NOTIFICATION: code=4, subcode=253"
+    },
+    {
+      "timestamp": 1774150826.947391,
+      "level": "INFO",
+      "message": "Test OP-003: NOTIFICATION: code=4, subcode=253"
+    },
+    {
+      "timestamp": 1774150826.9494917,
+      "level": "INFO",
+      "message": "Test OP-005: NOTIFICATION: code=4, subcode=253"
+    },
+    {
+      "timestamp": 1774150826.9516573,
+      "level": "INFO",
+      "message": "Test OP-006: NOTIFICATION: code=4, subcode=253"
+    },
+    {
+      "timestamp": 1774150826.9532812,
+      "level": "INFO",
+      "message": "Test OP-008: NOTIFICATION: code=4, subcode=253"
+    },
+    {
+      "timestamp": 1774150826.9555824,
+      "level": "INFO",
+      "message": "Test OP-009: NOTIFICATION: code=4, subcode=253"
+    },
+    {
+      "timestamp": 1774150826.9578185,
+      "level": "INFO",
+      "message": "Test UP-001: NOTIFICATION: code=4, subcode=253"
+    },
+    {
+      "timestamp": 1774150826.96034,
+      "level": "INFO",
+      "message": "Test UP-002: NOTIFICATION: code=4, subcode=253"
+    },
+    {
+      "timestamp": 1774150826.9623575,
+      "level": "INFO",
+      "message": "Test UP-003: NOTIFICATION: code=4, subcode=253"
+    },
+    {
+      "timestamp": 1774150826.9639623,
+      "level": "INFO",
+      "message": "Test UP-004: NOTIFICATION: code=4, subcode=253"
+    },
+    {
+      "timestamp": 1774150826.9658213,
+      "level": "INFO",
+      "message": "Test UP-005: NOTIFICATION: code=4, subcode=253"
+    },
+    {
+      "timestamp": 1774150826.9681005,
+      "level": "INFO",
+      "message": "Test UP-008: NOTIFICATION: code=4, subcode=253"
+    },
+    {
+      "timestamp": 1774150826.9702625,
+      "level": "INFO",
+      "message": "Test UP-011: NOTIFICATION: code=4, subcode=253"
+    },
+    {
+      "timestamp": 1774150826.972093,
+      "level": "INFO",
+      "message": "Test UP-012: NOTIFICATION: code=4, subcode=253"
+    }
+  ]
+}
