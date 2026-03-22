@@ -205,7 +205,7 @@ class TestSecurityAssessments:
 
 class TestTestCategories:
     def test_all_categories_defined(self):
-        assert len(TestCategory) == 36
+        assert len(TestCategory) == 41
         assert TestCategory.MESSAGE_HEADER.value == "message_header"
         assert TestCategory.OPEN_MESSAGE.value == "open_message"
         assert TestCategory.UPDATE_MESSAGE.value == "update_message"
@@ -528,3 +528,105 @@ class TestNewTESTCLASSESConstant:
         assert "ipv6_vpn" in TEST_CLASSES
         assert "gtsm" in TEST_CLASSES
         assert "flow_spec" in TEST_CLASSES
+        assert "ipv6_extended_community" in TEST_CLASSES
+        assert "rpki_router" in TEST_CLASSES
+        assert "origin_validation" in TEST_CLASSES
+        assert "as0_processing" in TEST_CLASSES
+        assert "bgp_ls" in TEST_CLASSES
+
+
+class TestIPv6ExtCommunityAssessments:
+    def test_get_tests(self):
+        from bgp_test_framework.assessments import IPv6ExtCommunityAssessments
+
+        tests = IPv6ExtCommunityAssessments.get_tests()
+        assert len(tests) >= 7
+        assert all(t.category == TestCategory.IPV6_EXTENDED_COMMUNITY for t in tests)
+
+    def test_specific_tests_exist(self):
+        from bgp_test_framework.assessments import IPv6ExtCommunityAssessments
+
+        tests = {t.test_id: t for t in IPv6ExtCommunityAssessments.get_tests()}
+        assert "V6EC-0002" in tests
+        assert "V6EC-0003" in tests
+        assert "V6EC-001" in tests
+
+
+class TestRPKIRouterAssessments:
+    def test_get_tests(self):
+        from bgp_test_framework.assessments import RPKIRouterAssessments
+
+        tests = RPKIRouterAssessments.get_tests()
+        assert len(tests) >= 10
+        assert all(t.category == TestCategory.RPKI_ROUTER for t in tests)
+
+    def test_specific_tests_exist(self):
+        from bgp_test_framework.assessments import RPKIRouterAssessments
+
+        tests = {t.test_id: t for t in RPKIRouterAssessments.get_tests()}
+        assert "RPKI-000" in tests
+        assert "RPKI-001" in tests
+        assert "RPKI-004" in tests
+        assert "RPKI-006" in tests
+
+
+class TestOriginValidationAssessments:
+    def test_get_tests(self):
+        from bgp_test_framework.assessments import OriginValidationAssessments
+
+        tests = OriginValidationAssessments.get_tests()
+        assert len(tests) >= 7
+        assert all(t.category == TestCategory.ORIGIN_VALIDATION for t in tests)
+
+    def test_specific_tests_exist(self):
+        from bgp_test_framework.assessments import OriginValidationAssessments
+
+        tests = {t.test_id: t for t in OriginValidationAssessments.get_tests()}
+        assert "OV-000" in tests
+        assert "OV-001" in tests
+        assert "OV-002" in tests
+        assert "OV-003" in tests
+
+
+class TestAS0Assessments:
+    def test_get_tests(self):
+        from bgp_test_framework.assessments import AS0Assessments
+
+        tests = AS0Assessments.get_tests()
+        assert len(tests) >= 10
+        assert all(t.category == TestCategory.AS0_PROCESSING for t in tests)
+
+    def test_specific_tests_exist(self):
+        from bgp_test_framework.assessments import AS0Assessments
+
+        tests = {t.test_id: t for t in AS0Assessments.get_tests()}
+        assert "AS0-001" in tests
+        assert "AS0-002" in tests
+        assert "AS0-003" in tests
+
+
+class TestBGPLinkStateAssessments:
+    def test_get_tests(self):
+        from bgp_test_framework.assessments import BGPLinkStateAssessments
+
+        tests = BGPLinkStateAssessments.get_tests()
+        assert len(tests) >= 10
+        assert all(t.category == TestCategory.BGP_LS_NLRI for t in tests)
+
+    def test_specific_tests_exist(self):
+        from bgp_test_framework.assessments import BGPLinkStateAssessments
+
+        tests = {t.test_id: t for t in BGPLinkStateAssessments.get_tests()}
+        assert "BGPLS-NLRI-01" in tests
+        assert "BGPLS-NLRI-02" in tests
+        assert "BGPLS-001" in tests
+        assert "BGPLS-002" in tests
+
+
+class TestTestCategoryNewEntries:
+    def test_new_categories_defined(self):
+        assert TestCategory.IPV6_EXTENDED_COMMUNITY.value == "ipv6_extended_community"
+        assert TestCategory.RPKI_ROUTER.value == "rpki_router"
+        assert TestCategory.ORIGIN_VALIDATION.value == "origin_validation"
+        assert TestCategory.AS0_PROCESSING.value == "as0_processing"
+        assert TestCategory.BGP_LS_NLRI.value == "bgp_ls_nlri"

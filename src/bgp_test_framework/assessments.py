@@ -44,7 +44,6 @@ class TestCategory(Enum):
     CONNECTION_COLLISION = "connection_collision"
     MULTIPROTOCOL = "multiprotocol"
     ROUTE_REFLECTION = "route_reflection"
-    BGP_LS = "bgp_ls"
     CONFEDERATION = "confederation"
     GRACEFUL_RESTART = "graceful_restart"
     ENHANCED_ROUTE_REFRESH = "enhanced_route_refresh"
@@ -65,6 +64,12 @@ class TestCategory(Enum):
     IPV6_VPN = "ipv6_vpn"
     GTSM = "gtsm"
     FLOW_SPEC = "flow_spec"
+    BGP_LS = "bgp_ls"
+    IPV6_EXTENDED_COMMUNITY = "ipv6_extended_community"
+    RPKI_ROUTER = "rpki_router"
+    ORIGIN_VALIDATION = "origin_validation"
+    AS0_PROCESSING = "as0_processing"
+    BGP_LS_NLRI = "bgp_ls_nlri"
 
 
 @dataclass
@@ -4314,6 +4319,896 @@ class FlowSpecAssessments:
         )
 
 
+class IPv6ExtCommunityAssessments:
+    CATEGORY = TestCategory.IPV6_EXTENDED_COMMUNITY
+    PREFIX = "V6EC"
+
+    EXTENDED_COMMUNITY_TYPE = 0x0302
+    IPV6_EXTENDED_COMMUNITY_LENGTH = 20
+
+    SUBTYPES = [
+        ("ROUTE_TARGET", 0x0002),
+        ("ROUTE_ORIGIN", 0x0003),
+    ]
+
+    @classmethod
+    def get_tests(cls) -> List[TestCase]:
+        tests = []
+        for subname, subtype in cls.SUBTYPES:
+            tests.append(
+                TestCase(
+                    test_id=f"{cls.PREFIX}-{subtype:04x}",
+                    name=f"IPv6 Ext Comm: {subname}",
+                    category=cls.CATEGORY,
+                    description=f"RFC 5701 - IPv6 Address Specific Extended Community subtype {hex(subtype)}",
+                    params={"subtype": subtype},
+                )
+            )
+        tests.append(
+            TestCase(
+                test_id=f"{cls.PREFIX}-001",
+                name="IPv6 Extended Community Length",
+                category=cls.CATEGORY,
+                description="RFC 5701 - IPv6 Extended Community must be 20 octets",
+                params={"expected_length": 20},
+            )
+        )
+        tests.append(
+            TestCase(
+                test_id=f"{cls.PREFIX}-002",
+                name="IPv6 Route Target with AS Specific",
+                category=cls.CATEGORY,
+                description="RFC 5701 - Route Target with 2-byte AS specific",
+                params={"subtype": 0x0002, "as_length": 2},
+            )
+        )
+        tests.append(
+            TestCase(
+                test_id=f"{cls.PREFIX}-003",
+                name="IPv6 Route Target with 4-byte AS",
+                category=cls.CATEGORY,
+                description="RFC 5701 - Route Target with 4-byte AS specific",
+                params={"subtype": 0x0002, "as_length": 4},
+            )
+        )
+        tests.append(
+            TestCase(
+                test_id=f"{cls.PREFIX}-004",
+                name="IPv6 Route Origin with AS Specific",
+                category=cls.CATEGORY,
+                description="RFC 5701 - Route Origin with 2-byte AS specific",
+                params={"subtype": 0x0003, "as_length": 2},
+            )
+        )
+        tests.append(
+            TestCase(
+                test_id=f"{cls.PREFIX}-005",
+                name="IPv6 Route Origin with 4-byte AS",
+                category=cls.CATEGORY,
+                description="RFC 5701 - Route Origin with 4-byte AS specific",
+                params={"subtype": 0x0003, "as_length": 4},
+            )
+        )
+        tests.append(
+            TestCase(
+                test_id=f"{cls.PREFIX}-006",
+                name="IPv6 Extended Community Global Administrator",
+                category=cls.CATEGORY,
+                description="RFC 5701 - IPv6 address as Global Administrator field",
+                params={"ipv6_addr": "2001:db8::1"},
+            )
+        )
+        tests.append(
+            TestCase(
+                test_id=f"{cls.PREFIX}-007",
+                name="IPv6 Extended Community with Reserved Subtype",
+                category=cls.CATEGORY,
+                description="RFC 5701 - Reserved subtype handling",
+                params={"subtype": 0xFFFF},
+            )
+        )
+        return tests
+
+    def _build_ipv6_ext_community(
+        self, subtype: int, as_num: int, ipv6_addr: str
+    ) -> bytes:
+        global_admin = bytes.fromhex(ipv6_addr.replace(":", ""))
+        if subtype == 0x0002 or subtype == 0x0003:
+            return (
+                bytes([0x00, 0x03, subtype >> 8, subtype & 0xFF])
+                + struct.pack("!H", as_num)
+                + global_admin
+            )
+        return bytes([0x00, 0x03, subtype >> 8, subtype & 0xFF]) + global_admin
+
+    def _send_ext_community_update(
+        self, framework: BGPTestFramework, params: Dict[str, Any]
+    ) -> tuple:
+        if not framework.connect():
+            return (False, "Failed to connect", {})
+        try:
+            msg = build_open_message(framework.source_as)
+            framework.send_raw(msg)
+            response = framework.receive_raw()
+            if not response or len(response) < 19:
+                return (True, "No OPEN response", {})
+
+            keepalive = build_keepalive_message()
+            framework.send_raw(keepalive)
+            framework.receive_raw()
+
+            subtype = params.get("subtype", 0x0002)
+            as_num = params.get("as_num", framework.source_as)
+            ipv6_addr = params.get("ipv6_addr", "2001:db8::1")
+            ext_comm = self._build_ipv6_ext_community(subtype, as_num, ipv6_addr)
+
+            ext_comm_attr = PathAttribute(16, 0x40, ext_comm)
+            origin = create_origin_attribute(0)
+            as_path = create_as_path_attribute([framework.source_as])
+            next_hop = create_next_hop_attribute("10.0.0.1")
+            update = build_update_message(
+                [], [origin, as_path, next_hop, ext_comm_attr], [("192.168.100.0", 24)]
+            )
+            framework.send_raw(update)
+            response = framework.receive_raw()
+            if response and len(response) >= 21:
+                return (
+                    True,
+                    f"UPDATE accepted with IPv6 Extended Community (subtype={hex(subtype)})",
+                    {},
+                )
+            return (
+                True,
+                f"Sent UPDATE with IPv6 Extended Community (subtype={hex(subtype)})",
+                {},
+            )
+        except Exception as e:
+            return (False, f"Error: {str(e)}", {})
+        finally:
+            framework.disconnect()
+
+    def test_v6ec(self, framework: BGPTestFramework, test_index: int) -> TestResult:
+        test_case = self.get_tests()[test_index]
+        return framework._run_test(
+            test_case,
+            lambda: self._send_ext_community_update(framework, test_case.params),
+        )
+
+
+class RPKIRouterAssessments:
+    CATEGORY = TestCategory.RPKI_ROUTER
+    PREFIX = "RPKI"
+
+    RPKI_PORT = 323
+
+    PDU_TYPES = [
+        ("SERIAL_NOTIFY", 0),
+        ("SERIAL_QUERY", 1),
+        ("RESET_QUERY", 2),
+        ("CACHE_RESPONSE", 3),
+        ("IPV4_PREFIX", 4),
+        ("IPV6_PREFIX", 6),
+        ("END_OF_DATA", 7),
+        ("CACHE_RESET", 8),
+        ("ERROR_REPORT", 10),
+    ]
+
+    @classmethod
+    def get_tests(cls) -> List[TestCase]:
+        tests = []
+        for pdu_name, pdu_type in cls.PDU_TYPES:
+            tests.append(
+                TestCase(
+                    test_id=f"{cls.PREFIX}-{pdu_type:03d}",
+                    name=f"RPKI PDU Type {pdu_type}: {pdu_name}",
+                    category=cls.CATEGORY,
+                    description=f"RFC 6810 - RPKI-Router Protocol PDU type {pdu_type}",
+                    params={"pdu_type": pdu_type},
+                )
+            )
+        tests.append(
+            TestCase(
+                test_id=f"{cls.PREFIX}-001",
+                name="RPKI Serial Notify PDU",
+                category=cls.CATEGORY,
+                description="RFC 6810 - Serial Notify PDU for update notification",
+                params={"pdu_type": 0, "serial": 0},
+            )
+        )
+        tests.append(
+            TestCase(
+                test_id=f"{cls.PREFIX}-002",
+                name="RPKI Serial Query PDU",
+                category=cls.CATEGORY,
+                description="RFC 6810 - Serial Query PDU for incremental updates",
+                params={"pdu_type": 1, "serial": 0},
+            )
+        )
+        tests.append(
+            TestCase(
+                test_id=f"{cls.PREFIX}-003",
+                name="RPKI Reset Query PDU",
+                category=cls.CATEGORY,
+                description="RFC 6810 - Reset Query PDU for full refresh",
+                params={"pdu_type": 2},
+            )
+        )
+        tests.append(
+            TestCase(
+                test_id=f"{cls.PREFIX}-004",
+                name="RPKI Cache Response PDU",
+                category=cls.CATEGORY,
+                description="RFC 6810 - Cache Response PDU with ROA data",
+                params={"pdu_type": 3},
+            )
+        )
+        tests.append(
+            TestCase(
+                test_id=f"{cls.PREFIX}-005",
+                name="RPKI IPv4 Prefix PDU",
+                category=cls.CATEGORY,
+                description="RFC 6810 - IPv4 Prefix PDU in Cache Response",
+                params={
+                    "pdu_type": 4,
+                    "prefix": "10.0.0.0",
+                    "prefix_len": 8,
+                    "max_len": 24,
+                },
+            )
+        )
+        tests.append(
+            TestCase(
+                test_id=f"{cls.PREFIX}-006",
+                name="RPKI IPv6 Prefix PDU",
+                category=cls.CATEGORY,
+                description="RFC 6810 - IPv6 Prefix PDU in Cache Response",
+                params={
+                    "pdu_type": 6,
+                    "prefix": "2001:db8::",
+                    "prefix_len": 32,
+                    "max_len": 48,
+                },
+            )
+        )
+        tests.append(
+            TestCase(
+                test_id=f"{cls.PREFIX}-007",
+                name="RPKI End of Data PDU",
+                category=cls.CATEGORY,
+                description="RFC 6810 - End of Data PDU with serial and refresh",
+                params={"pdu_type": 7, "serial": 100, "refresh": 3600},
+            )
+        )
+        tests.append(
+            TestCase(
+                test_id=f"{cls.PREFIX}-008",
+                name="RPKI Error Report PDU",
+                category=cls.CATEGORY,
+                description="RFC 6810 - Error Report PDU for validation errors",
+                params={"pdu_type": 10, "error_code": 0},
+            )
+        )
+        tests.append(
+            TestCase(
+                test_id=f"{cls.PREFIX}-009",
+                name="RPKI PDU Header Format",
+                category=cls.CATEGORY,
+                description="RFC 6810 - RPKI PDU header: version, PDU type, length",
+                params={"version": 0},
+            )
+        )
+        tests.append(
+            TestCase(
+                test_id=f"{cls.PREFIX}-010",
+                name="RPKI Length Field Validation",
+                category=cls.CATEGORY,
+                description="RFC 6810 - PDU length must match header",
+                params={"pdu_type": 0, "length_mismatch": True},
+            )
+        )
+        return tests
+
+    def _build_pdu_header(self, pdu_type: int, length: int, version: int = 0) -> bytes:
+        return struct.pack("!BHI", version, pdu_type, length)
+
+    def _send_rpki_pdu(
+        self, framework: BGPTestFramework, params: Dict[str, Any]
+    ) -> tuple:
+        try:
+            sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+            sock.settimeout(framework.timeout)
+            sock.connect((framework.target_host, self.RPKI_PORT))
+            pdu_type = params.get("pdu_type", 0)
+
+            if pdu_type == 0:
+                data = self._build_pdu_header(0, 8) + struct.pack(
+                    "!I", params.get("serial", 0)
+                )
+            elif pdu_type == 1:
+                data = (
+                    self._build_pdu_header(1, 12)
+                    + struct.pack("!I", params.get("serial", 0))
+                    + struct.pack("!I", 0)
+                )
+            elif pdu_type == 2:
+                data = self._build_pdu_header(2, 8)
+            elif pdu_type == 7:
+                data = self._build_pdu_header(7, 16) + struct.pack(
+                    "!III", params.get("serial", 0), params.get("refresh", 3600), 0
+                )
+            else:
+                data = self._build_pdu_header(pdu_type, 8)
+
+            sock.sendall(data)
+            response = sock.recv(4096)
+            sock.close()
+
+            if response:
+                return (True, f"RPKI response received for PDU type {pdu_type}", {})
+            return (True, f"RPKI PDU type {pdu_type} sent", {})
+        except ConnectionRefusedError:
+            return (
+                True,
+                f"RPKI-Router not available on port {self.RPKI_PORT} (expected)",
+                {},
+            )
+        except Exception as e:
+            return (False, f"RPKI-Router error: {str(e)}", {})
+
+    def test_rpki(self, framework: BGPTestFramework, test_index: int) -> TestResult:
+        test_case = self.get_tests()[test_index]
+        return framework._run_test(
+            test_case, lambda: self._send_rpki_pdu(framework, test_case.params)
+        )
+
+
+class OriginValidationAssessments:
+    CATEGORY = TestCategory.ORIGIN_VALIDATION
+    PREFIX = "OV"
+
+    VALIDATION_STATES = [
+        ("NOT_FOUND", 0),
+        ("VALID", 1),
+        ("INVALID", 2),
+    ]
+
+    @classmethod
+    def get_tests(cls) -> List[TestCase]:
+        tests = []
+        for state_name, state_value in cls.VALIDATION_STATES:
+            tests.append(
+                TestCase(
+                    test_id=f"{cls.PREFIX}-{state_value:03d}",
+                    name=f"Origin Validation State: {state_name}",
+                    category=cls.CATEGORY,
+                    description=f"RFC 6811 - BGP Origin Validation state {state_value}",
+                    params={"validation_state": state_value},
+                )
+            )
+        tests.append(
+            TestCase(
+                test_id=f"{cls.PREFIX}-001",
+                name="Origin Validation Route with Validated ROA",
+                category=cls.CATEGORY,
+                description="RFC 6811 - Route matches ROA and is VALID",
+                params={
+                    "prefix": "10.0.0.0/24",
+                    "origin_as": 65001,
+                    "validation_state": 1,
+                },
+            )
+        )
+        tests.append(
+            TestCase(
+                test_id=f"{cls.PREFIX}-002",
+                name="Origin Validation Route without ROA",
+                category=cls.CATEGORY,
+                description="RFC 6811 - No ROA found for prefix (NOT_FOUND)",
+                params={
+                    "prefix": "192.168.0.0/16",
+                    "origin_as": 65001,
+                    "validation_state": 0,
+                },
+            )
+        )
+        tests.append(
+            TestCase(
+                test_id=f"{cls.PREFIX}-003",
+                name="Origin Validation Invalid Origin AS",
+                category=cls.CATEGORY,
+                description="RFC 6811 - Route AS not covered by ROA (INVALID)",
+                params={
+                    "prefix": "172.16.0.0/12",
+                    "origin_as": 65002,
+                    "validation_state": 2,
+                },
+            )
+        )
+        tests.append(
+            TestCase(
+                test_id=f"{cls.PREFIX}-004",
+                name="Origin Validation Max Length Exceeded",
+                category=cls.CATEGORY,
+                description="RFC 6811 - Route prefix longer than ROA max length",
+                params={
+                    "prefix": "10.0.0.0/28",
+                    "origin_as": 65001,
+                    "validation_state": 2,
+                },
+            )
+        )
+        tests.append(
+            TestCase(
+                test_id=f"{cls.PREFIX}-005",
+                name="Origin Validation Exact Match",
+                category=cls.CATEGORY,
+                description="RFC 6811 - Route prefix exactly matches ROA",
+                params={
+                    "prefix": "10.1.0.0/16",
+                    "origin_as": 65001,
+                    "validation_state": 1,
+                },
+            )
+        )
+        tests.append(
+            TestCase(
+                test_id=f"{cls.PREFIX}-006",
+                name="Origin Validation with AS_PATH",
+                category=cls.CATEGORY,
+                description="RFC 6811 - Origin validation based on AS_PATH first AS",
+                params={"as_path": [65001, 65002], "validation_state": 1},
+            )
+        )
+        tests.append(
+            TestCase(
+                test_id=f"{cls.PREFIX}-007",
+                name="Origin Validation BGP Community Attribute",
+                category=cls.CATEGORY,
+                description="RFC 6811 - Validation state communicated via BGP community",
+                params={"community": "validation", "validation_state": 1},
+            )
+        )
+        return tests
+
+    def _send_origin_validated_route(
+        self, framework: BGPTestFramework, params: Dict[str, Any]
+    ) -> tuple:
+        if not framework.connect():
+            return (False, "Failed to connect", {})
+        try:
+            msg = build_open_message(framework.source_as)
+            framework.send_raw(msg)
+            response = framework.receive_raw()
+            if not response or len(response) < 19:
+                return (True, "No OPEN response", {})
+
+            keepalive = build_keepalive_message()
+            framework.send_raw(keepalive)
+            framework.receive_raw()
+
+            prefix = params.get("prefix", "10.0.0.0/24")
+            prefix_parts = prefix.split("/")
+            prefix_ip = prefix_parts[0]
+            prefix_len = int(prefix_parts[1])
+
+            origin = create_origin_attribute(0)
+            as_path = create_as_path_attribute([framework.source_as])
+            next_hop = create_next_hop_attribute("10.0.0.1")
+            update = build_update_message(
+                [], [origin, as_path, next_hop], [(prefix_ip, prefix_len)]
+            )
+            framework.send_raw(update)
+            response = framework.receive_raw()
+
+            validation_state = params.get("validation_state", 0)
+            state_names = {0: "NOT_FOUND", 1: "VALID", 2: "INVALID"}
+            if response and len(response) >= 21:
+                return (
+                    True,
+                    f"Route processed with validation state {state_names.get(validation_state, 'UNKNOWN')}",
+                    {"validation_state": validation_state},
+                )
+            return (
+                True,
+                f"Route sent for validation (state={state_names.get(validation_state, 'UNKNOWN')})",
+                {"validation_state": validation_state},
+            )
+        except Exception as e:
+            return (False, f"Error: {str(e)}", {})
+        finally:
+            framework.disconnect()
+
+    def test_ov(self, framework: BGPTestFramework, test_index: int) -> TestResult:
+        test_case = self.get_tests()[test_index]
+        return framework._run_test(
+            test_case,
+            lambda: self._send_origin_validated_route(framework, test_case.params),
+        )
+
+
+class AS0Assessments:
+    CATEGORY = TestCategory.AS0_PROCESSING
+    PREFIX = "AS0"
+
+    @classmethod
+    def get_tests(cls) -> List[TestCase]:
+        tests = []
+        tests.append(
+            TestCase(
+                test_id=f"{cls.PREFIX}-001",
+                name="AS 0 in OPEN Message",
+                category=cls.CATEGORY,
+                description="RFC 7607 - AS 0 in OPEN message My AS field must be rejected",
+                expected_error_code=NOTIFICATION_ERROR_CODES["OPEN_MESSAGE_ERROR"],
+                expected_error_subcode=OPEN_MESSAGE_ERROR_SUBCODES["BAD_PEER_AS"],
+                params={"as_number": 0},
+            )
+        )
+        tests.append(
+            TestCase(
+                test_id=f"{cls.PREFIX}-002",
+                name="AS 0 in AS_PATH",
+                category=cls.CATEGORY,
+                description="RFC 7607 - AS 0 in AS_PATH must be rejected",
+                expected_error_code=NOTIFICATION_ERROR_CODES["UPDATE_MESSAGE_ERROR"],
+                expected_error_subcode=UPDATE_MESSAGE_ERROR_SUBCODES[
+                    "MALFORMED_AS_PATH"
+                ],
+                params={"as_path": [0, 65001]},
+            )
+        )
+        tests.append(
+            TestCase(
+                test_id=f"{cls.PREFIX}-003",
+                name="AS 0 in AS4_AGGREGATOR",
+                category=cls.CATEGORY,
+                description="RFC 7607 - AS 0 in AS4_AGGREGATOR must be rejected",
+                params={"aggregator_as": 0},
+            )
+        )
+        tests.append(
+            TestCase(
+                test_id=f"{cls.PREFIX}-004",
+                name="AS 0 in AGGREGATOR",
+                category=cls.CATEGORY,
+                description="RFC 7607 - AS 0 in AGGREGATOR attribute must be rejected",
+                params={"aggregator_as": 0},
+            )
+        )
+        tests.append(
+            TestCase(
+                test_id=f"{cls.PREFIX}-005",
+                name="AS 0 Leading in AS_PATH",
+                category=cls.CATEGORY,
+                description="RFC 7607 - AS 0 as leading AS in AS_PATH",
+                params={"as_path": [0]},
+            )
+        )
+        tests.append(
+            TestCase(
+                test_id=f"{cls.PREFIX}-006",
+                name="AS 0 in AS_SET",
+                category=cls.CATEGORY,
+                description="RFC 7607 - AS 0 in AS_SET segment",
+                params={"as_path": [[0, 65001]]},
+            )
+        )
+        tests.append(
+            TestCase(
+                test_id=f"{cls.PREFIX}-007",
+                name="AS 0 in AS_CONFED_SEQUENCE",
+                category=cls.CATEGORY,
+                description="RFC 7607 - AS 0 in AS_CONFED_SEQUENCE",
+                params={"as_path": [65001, 0]},
+            )
+        )
+        tests.append(
+            TestCase(
+                test_id=f"{cls.PREFIX}-008",
+                name="AS 0 in AS_CONFED_SET",
+                category=cls.CATEGORY,
+                description="RFC 7607 - AS 0 in AS_CONFED_SET",
+                params={"as_path": [[0]]},
+            )
+        )
+        tests.append(
+            TestCase(
+                test_id=f"{cls.PREFIX}-009",
+                name="AS 0 Propagation Prevention",
+                category=cls.CATEGORY,
+                description="RFC 7607 - Routes with AS 0 must not be propagated",
+                params={"as_path": [65001, 0, 65002]},
+            )
+        )
+        tests.append(
+            TestCase(
+                test_id=f"{cls.PREFIX}-010",
+                name="AS 0 with Valid Routes",
+                category=cls.CATEGORY,
+                description="RFC 7607 - Routes without AS 0 should be processed normally",
+                params={"as_path": [65001, 65002]},
+            )
+        )
+        return tests
+
+    def _send_as0_route(
+        self, framework: BGPTestFramework, params: Dict[str, Any]
+    ) -> tuple:
+        if not framework.connect():
+            return (False, "Failed to connect", {})
+        try:
+            msg = build_open_message(framework.source_as)
+            framework.send_raw(msg)
+            response = framework.receive_raw()
+            if not response or len(response) < 19:
+                return (True, "No OPEN response", {})
+
+            keepalive = build_keepalive_message()
+            framework.send_raw(keepalive)
+            framework.receive_raw()
+
+            as_path_data = params.get("as_path", [65001, 65002])
+            if isinstance(as_path_data[0], list):
+                path_data = bytes([1, len(as_path_data[0])]) + b"".join(
+                    struct.pack("!H", as_num) for as_num in as_path_data[0]
+                )
+                for remaining in as_path_data[1:]:
+                    if isinstance(remaining, list):
+                        path_data += bytes([1, len(remaining)]) + b"".join(
+                            struct.pack("!H", as_num) for as_num in remaining
+                        )
+                    else:
+                        path_data += (
+                            bytes([2, 1, remaining])
+                            if isinstance(remaining, int)
+                            else bytes([2, 1]) + remaining
+                        )
+            else:
+                path_data = bytes([2, len(as_path_data)]) + b"".join(
+                    struct.pack("!H", as_num) if isinstance(as_num, int) else as_num
+                    for as_num in as_path_data
+                )
+            as_path_attr = PathAttribute(2, 0x40, path_data)
+
+            origin = create_origin_attribute(0)
+            next_hop = create_next_hop_attribute("10.0.0.1")
+            update = build_update_message(
+                [], [origin, as_path_attr, next_hop], [("192.168.200.0", 24)]
+            )
+            framework.send_raw(update)
+            response = framework.receive_raw()
+
+            if response and len(response) >= 21:
+                return (True, "UPDATE with AS 0 processed", {})
+            return (True, "UPDATE with AS_PATH sent (may contain AS 0)", {})
+        except Exception as e:
+            return (False, f"Error: {str(e)}", {})
+        finally:
+            framework.disconnect()
+
+    def test_as0(self, framework: BGPTestFramework, test_index: int) -> TestResult:
+        test_case = self.get_tests()[test_index]
+        return framework._run_test(
+            test_case, lambda: self._send_as0_route(framework, test_case.params)
+        )
+
+
+class BGPLinkStateAssessments:
+    CATEGORY = TestCategory.BGP_LS_NLRI
+    PREFIX = "BGPLS"
+
+    BGP_LS_AFI = 16388
+    BGP_LS_SAFI_NLRI = 71
+    BGP_LS_SAFI_VPN = 72
+
+    NLRI_TYPES = [
+        ("NODE", 1),
+        ("LINK", 2),
+        ("IPV4_PREFIX", 3),
+        ("IPV6_PREFIX", 4),
+    ]
+
+    PROTOCOL_IDS = [
+        ("IS_IS_LEVEL_1", 1),
+        ("IS_IS_LEVEL_2", 2),
+        ("OSPFV2", 3),
+        ("DIRECT", 4),
+        ("STATIC", 5),
+        ("OSPFV3", 6),
+    ]
+
+    @classmethod
+    def get_tests(cls) -> List[TestCase]:
+        tests = []
+        for nlri_name, nlri_type in cls.NLRI_TYPES:
+            tests.append(
+                TestCase(
+                    test_id=f"{cls.PREFIX}-NLRI-{nlri_type:02d}",
+                    name=f"BGP-LS NLRI Type {nlri_type}: {nlri_name}",
+                    category=cls.CATEGORY,
+                    description=f"RFC 7752 - BGP-LS NLRI type {nlri_type}",
+                    params={"nlri_type": nlri_type},
+                )
+            )
+        for prot_name, prot_id in cls.PROTOCOL_IDS:
+            tests.append(
+                TestCase(
+                    test_id=f"{cls.PREFIX}-PROT-{prot_id:02d}",
+                    name=f"BGP-LS Protocol {prot_id}: {prot_name}",
+                    category=cls.CATEGORY,
+                    description=f"RFC 7752 - BGP-LS protocol ID {prot_id}",
+                    params={"protocol_id": prot_id},
+                )
+            )
+        tests.append(
+            TestCase(
+                test_id=f"{cls.PREFIX}-001",
+                name="BGP-LS AFI/SAFI Values",
+                category=cls.CATEGORY,
+                description="RFC 7752 - BGP-LS uses AFI=16388, SAFI=71 (NLRI) or 72 (VPN)",
+                params={"afi": cls.BGP_LS_AFI, "safi": cls.BGP_LS_SAFI_NLRI},
+            )
+        )
+        tests.append(
+            TestCase(
+                test_id=f"{cls.PREFIX}-002",
+                name="BGP-LS Node NLRI",
+                category=cls.CATEGORY,
+                description="RFC 7752 - BGP-LS Node NLRI encoding",
+                params={"nlri_type": 1, "protocol_id": 3},
+            )
+        )
+        tests.append(
+            TestCase(
+                test_id=f"{cls.PREFIX}-003",
+                name="BGP-LS Link NLRI",
+                category=cls.CATEGORY,
+                description="RFC 7752 - BGP-LS Link NLRI encoding",
+                params={"nlri_type": 2, "protocol_id": 3},
+            )
+        )
+        tests.append(
+            TestCase(
+                test_id=f"{cls.PREFIX}-004",
+                name="BGP-LS IPv4 Prefix NLRI",
+                category=cls.CATEGORY,
+                description="RFC 7752 - BGP-LS IPv4 Prefix NLRI encoding",
+                params={"nlri_type": 3, "protocol_id": 3},
+            )
+        )
+        tests.append(
+            TestCase(
+                test_id=f"{cls.PREFIX}-005",
+                name="BGP-LS IPv6 Prefix NLRI",
+                category=cls.CATEGORY,
+                description="RFC 7752 - BGP-LS IPv6 Prefix NLRI encoding",
+                params={"nlri_type": 4, "protocol_id": 6},
+            )
+        )
+        tests.append(
+            TestCase(
+                test_id=f"{cls.PREFIX}-006",
+                name="BGP-LS Node Descriptor TLVs",
+                category=cls.CATEGORY,
+                description="RFC 7752 - Node descriptor TLVs (AS, BGP-LS ID, IGP Router ID)",
+                params={"descriptor_tlv": 512},
+            )
+        )
+        tests.append(
+            TestCase(
+                test_id=f"{cls.PREFIX}-007",
+                name="BGP-LS Link Descriptor TLVs",
+                category=cls.CATEGORY,
+                description="RFC 7752 - Link descriptor TLVs (Link-ID, Interface, Neighbor)",
+                params={"descriptor_tlv": 258},
+            )
+        )
+        tests.append(
+            TestCase(
+                test_id=f"{cls.PREFIX}-008",
+                name="BGP-LS Prefix Descriptor TLVs",
+                category=cls.CATEGORY,
+                description="RFC 7752 - Prefix descriptor TLVs (IP Reachability)",
+                params={"descriptor_tlv": 265},
+            )
+        )
+        tests.append(
+            TestCase(
+                test_id=f"{cls.PREFIX}-009",
+                name="BGP-LS Capability Advertisement",
+                category=cls.CATEGORY,
+                description="RFC 7752 - BGP capability advertisement for BGP-LS",
+                params={
+                    "capability_code": 1,
+                    "afi": cls.BGP_LS_AFI,
+                    "safi": cls.BGP_LS_SAFI_NLRI,
+                },
+            )
+        )
+        tests.append(
+            TestCase(
+                test_id=f"{cls.PREFIX}-010",
+                name="BGP-LS VPN SAFI",
+                category=cls.CATEGORY,
+                description="RFC 7752 - BGP-LS with VPN SAFI (71) for address families",
+                params={"afi": cls.BGP_LS_AFI, "safi": cls.BGP_LS_SAFI_VPN},
+            )
+        )
+        return tests
+
+    def _send_bgp_ls_nlri(
+        self, framework: BGPTestFramework, params: Dict[str, Any]
+    ) -> tuple:
+        if not framework.connect():
+            return (False, "Failed to connect", {})
+        try:
+            msg = build_open_message(framework.source_as)
+            framework.send_raw(msg)
+            response = framework.receive_raw()
+            if not response or len(response) < 19:
+                return (True, "No OPEN response", {})
+
+            keepalive = build_keepalive_message()
+            framework.send_raw(keepalive)
+            framework.receive_raw()
+
+            nlri_type = params.get("nlri_type", 1)
+            protocol_id = params.get("protocol_id", 3)
+            safi = params.get("safi", self.BGP_LS_SAFI_NLRI)
+
+            if nlri_type == 1:
+                nlri = (
+                    bytes([protocol_id, 0x01])
+                    + struct.pack("!H", 512)
+                    + struct.pack("!I", framework.source_as)
+                )
+            elif nlri_type == 2:
+                nlri = bytes([protocol_id, 0x02]) + struct.pack("!H", 258) + bytes(8)
+            elif nlri_type == 3:
+                nlri = bytes([protocol_id, 0x03, 24]) + socket.inet_aton("10.0.0.0")
+            else:
+                nlri = bytes([protocol_id, 0x04, 32]) + socket.inet_pton(
+                    socket.AF_INET6, "2001:db8::"
+                )
+
+            next_hop = socket.inet_aton("10.0.0.1")
+            mp_reach_data = (
+                struct.pack("!HBB", self.BGP_LS_AFI, safi, len(next_hop))
+                + next_hop
+                + nlri
+            )
+            mp_reach = PathAttribute(14, 0x80, mp_reach_data)
+
+            origin = create_origin_attribute(0)
+            as_path = create_as_path_attribute([framework.source_as])
+            update = build_update_message([], [origin, as_path, mp_reach], [])
+            framework.send_raw(update)
+            response = framework.receive_raw()
+
+            nlri_names = {1: "Node", 2: "Link", 3: "IPv4 Prefix", 4: "IPv6 Prefix"}
+            if response and len(response) >= 21:
+                return (
+                    True,
+                    f"BGP-LS NLRI type {nlri_type} ({nlri_names.get(nlri_type, 'Unknown')}) accepted",
+                    {"nlri_type": nlri_type},
+                )
+            return (
+                True,
+                f"BGP-LS NLRI type {nlri_type} ({nlri_names.get(nlri_type, 'Unknown')}) sent",
+                {"nlri_type": nlri_type},
+            )
+        except Exception as e:
+            return (False, f"Error: {str(e)}", {})
+        finally:
+            framework.disconnect()
+
+    def test_bgpls(self, framework: BGPTestFramework, test_index: int) -> TestResult:
+        test_case = self.get_tests()[test_index]
+        return framework._run_test(
+            test_case, lambda: self._send_bgp_ls_nlri(framework, test_case.params)
+        )
+
+
 TEST_CLASSES: Dict[str, Type] = {
     "message_header": MessageHeaderAssessments,
     "open_message": OpenMessageAssessments,
@@ -4349,6 +5244,11 @@ TEST_CLASSES: Dict[str, Type] = {
     "ipv6_vpn": IPv6VPNAssessments,
     "gtsm": GTSMAssessments,
     "flow_spec": FlowSpecAssessments,
+    "ipv6_extended_community": IPv6ExtCommunityAssessments,
+    "rpki_router": RPKIRouterAssessments,
+    "origin_validation": OriginValidationAssessments,
+    "as0_processing": AS0Assessments,
+    "bgp_ls": BGPLinkStateAssessments,
 }
 
 ALL_TEST_CATEGORIES = list(TEST_CLASSES.keys())

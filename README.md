@@ -721,6 +721,71 @@ Tests for Dissemination of Flow Specification Rules per RFC 5575:
 - FSPEC-COMP-*: Component Type Tests (Types 1-12)
 - FSPEC-ACTION-*: Action Type Tests (traffic-rate, traffic-action, redirect, traffic-marking)
 
+### ipv6_extended_community
+Tests for IPv6 Address Specific Extended Community per RFC 5701:
+- V6EC-0002: IPv6 Extended Community: Route Target
+- V6EC-0003: IPv6 Extended Community: Route Origin
+- V6EC-001: IPv6 Extended Community Length Validation (20 octets)
+- V6EC-002: IPv6 Route Target with 2-byte AS Specific
+- V6EC-003: IPv6 Route Target with 4-byte AS
+- V6EC-004: IPv6 Route Origin with 2-byte AS Specific
+- V6EC-005: IPv6 Route Origin with 4-byte AS
+- V6EC-006: IPv6 Extended Community Global Administrator Field
+- V6EC-007: IPv6 Extended Community Reserved Subtype
+
+### rpki_router
+Tests for RPKI to Router Protocol per RFC 6810:
+- RPKI-000: Serial Notify PDU
+- RPKI-001: Serial Query PDU
+- RPKI-002: Reset Query PDU
+- RPKI-003: Cache Response PDU
+- RPKI-004: IPv4 Prefix PDU
+- RPKI-006: IPv6 Prefix PDU
+- RPKI-007: End of Data PDU
+- RPKI-008: Error Report PDU
+- RPKI-009: RPKI PDU Header Format
+- RPKI-010: RPKI Length Field Validation
+
+### origin_validation
+Tests for BGP Prefix Origin Validation per RFC 6811:
+- OV-000: Origin Validation State: NOT_FOUND
+- OV-001: Origin Validation State: VALID
+- OV-002: Origin Validation State: INVALID
+- OV-003: Origin Validation Route with Validated ROA
+- OV-004: Origin Validation Route without ROA (NOT_FOUND)
+- OV-005: Origin Validation Invalid Origin AS
+- OV-006: Origin Validation Max Length Exceeded
+- OV-007: Origin Validation Exact Match
+- OV-008: Origin Validation with AS_PATH
+
+### as0_processing
+Tests for AS 0 Processing per RFC 7607:
+- AS0-001: AS 0 in OPEN Message (must reject)
+- AS0-002: AS 0 in AS_PATH (must reject)
+- AS0-003: AS 0 in AS4_AGGREGATOR
+- AS0-004: AS 0 in AGGREGATOR Attribute
+- AS0-005: AS 0 Leading in AS_PATH
+- AS0-006: AS 0 in AS_SET
+- AS0-007: AS 0 in AS_CONFED_SEQUENCE
+- AS0-008: AS 0 in AS_CONFED_SET
+- AS0-009: AS 0 Propagation Prevention
+- AS0-010: AS 0 with Valid Routes
+
+### bgp_ls
+Tests for BGP Link-State Distribution per RFC 7752:
+- BGPLS-001: BGP-LS AFI/SAFI Values (AFI=16388, SAFI=71/72)
+- BGPLS-002: BGP-LS Node NLRI
+- BGPLS-003: BGP-LS Link NLRI
+- BGPLS-004: BGP-LS IPv4 Prefix NLRI
+- BGPLS-005: BGP-LS IPv6 Prefix NLRI
+- BGPLS-006: BGP-LS Node Descriptor TLVs
+- BGPLS-007: BGP-LS Link Descriptor TLVs
+- BGPLS-008: BGP-LS Prefix Descriptor TLVs
+- BGPLS-009: BGP-LS Capability Advertisement
+- BGPLS-010: BGP-LS VPN SAFI
+- BGPLS-NLRI-*: NLRI Type Tests (Node=1, Link=2, IPv4 Prefix=3, IPv6 Prefix=4)
+- BGPLS-PROT-*: Protocol ID Tests (IS-IS, OSPF, Direct, Static, OSPFv3)
+
 ## References
 
 - [RFC 4271 - A Border Gateway Protocol 4 (BGP-4)](https://www.rfc-editor.org/rfc/rfc4271)
@@ -749,6 +814,11 @@ Tests for Dissemination of Flow Specification Rules per RFC 5575:
 - [RFC 4659 - BGP-MPLS IP VPN Extension for IPv6 VPN](https://www.rfc-editor.org/rfc/rfc4659)
 - [RFC 5082 - The Generalized TTL Security Mechanism (GTSM)](https://www.rfc-editor.org/rfc/rfc5082)
 - [RFC 5575 - Dissemination of Flow Specification Rules](https://www.rfc-editor.org/rfc/rfc5575)
+- [RFC 5701 - IPv6 Address Specific Extended Community](https://www.rfc-editor.org/rfc/rfc5701)
+- [RFC 6810 - The RPKI to Router Protocol](https://www.rfc-editor.org/rfc/rfc6810)
+- [RFC 6811 - BGP Prefix Origin Validation](https://www.rfc-editor.org/rfc/rfc6811)
+- [RFC 7607 - Codification of AS 0 Processing](https://www.rfc-editor.org/rfc/rfc7607)
+- [RFC 7752 - North-Bound Distribution of Link-State and TE Information](https://www.rfc-editor.org/rfc/rfc7752)
 - [RFC 1105 - BGP (obsolete)](https://www.rfc-editor.org/rfc/rfc1105)
 - [RFC 1163 - BGP-2 (obsolete)](https://www.rfc-editor.org/rfc/rfc1163)
 - [RFC 1267 - BGP-3 (obsolete)](https://www.rfc-editor.org/rfc/rfc1267)
