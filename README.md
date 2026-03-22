@@ -853,6 +853,152 @@ Tests for BGP in Large-Scale Data Centers per RFC 7938:
 - DCB-009: Route Advertisement No Summarization
 - DCB-010: ECMP with Link Bandwidth
 
+### graceful_shutdown
+Tests for BGP Graceful Shutdown per RFC 8326:
+- GSD-001: Graceful Shutdown Community Value (0xFFFF0000)
+- GSD-002: Graceful Shutdown LOCAL_PREF 0
+- GSD-003: Graceful Shutdown with NO_EXPORT
+- GSD-004: Graceful Shutdown Route Selection
+- GSD-005: Graceful Shutdown Maintenance Window
+- GSD-006: Graceful Shutdown Traffic Rerouting
+- GSD-007: Graceful Shutdown Restoration
+- GSD-008: Graceful Shutdown in EBGP
+- GSD-009: Graceful Shutdown in IBGP
+- GSD-010: Graceful Shutdown Community Recognition
+
+### evpn_nvo
+Tests for EVPN Network Virtualization Overlay per RFC 8365:
+- EVPN-TUN-08: Tunnel Type VXLAN
+- EVPN-TUN-09: Tunnel Type NVGRE
+- EVPN-TUN-10: Tunnel Type MPLS
+- EVPN-TUN-11: Tunnel Type MPLS in GRE
+- EVPN-TUN-12: Tunnel Type VXLAN-GPE
+- EVPN-001: EVPN VXLAN Encapsulation
+- EVPN-002: EVPN VXLAN-GPE Encapsulation
+- EVPN-003: VNI Encoding 24-bit
+- EVPN-004: RT Auto-Derivation VID
+- EVPN-005: RT Auto-Derivation VXLAN
+
+### segment_routing
+Tests for Segment Routing per RFC 8402:
+- SR-ALGO-0: SR Algorithm SPF
+- SR-ALGO-1: SR Algorithm Strict SPF
+- SR-PEER-1: Peering Segment PeerNode
+- SR-PEER-2: Peering Segment PeerAdj
+- SR-PEER-3: Peering Segment PeerSet
+- SR-001: SR-MPLS SID Label
+- SR-002: SR-MPLS SID within SRGB
+- SR-003: BGP-Prefix Segment
+- SR-004: PeerNode SID
+- SR-005: PeerAdj SID
+- SR-006: PeerSet SID
+
+### evpn_irb
+Tests for EVPN Integrated Routing and Bridging per RFC 9135:
+- IRB-SYMMETRIC-001: IRB Symmetric MAC/IP Route with Label2
+- IRB-SYMMETRIC-002: IRB Symmetric Subnet Route (RT-5)
+- IRB-SYMMETRIC-003: IRB Symmetric Default Gateway Extended Community
+- IRB-ASYMMETRIC-001: IRB Asymmetric MAC/IP Route with Label2
+- IRB-ASYMMETRIC-002: IRB Asymmetric Subnet Route (RT-5)
+- IRB-ASYMMETRIC-003: IRB Asymmetric Default Gateway Extended Community
+- IRB-ANYCAST-001: Anycast MAC Address Derivation
+- IRB-MOBILITY-001: MAC/IP Mobility Procedures
+- IRB-EVPN-ROUTER-MAC-001: EVPN Router's MAC Extended Community
+- IRB-TTL-001: TTL/Hop Limit Decrement
+
+### evpn_ip_prefix
+Tests for EVPN IP Prefix Advertisement (RT-5) per RFC 9136:
+- RT5-IPv4-001: EVPN IP Prefix IPv4 Route Encoding
+- RT5-IPv4-002: EVPN IP Prefix IPv4 with Overlay Index (GW IP)
+- RT5-IPv4-003: EVPN IP Prefix IPv4 with Overlay Index (ESI)
+- RT5-IPv4-004: EVPN IP Prefix IPv4 with Overlay Index (MAC)
+- RT5-IPv6-001: EVPN IP Prefix IPv6 Route Encoding
+- RT5-IPv6-002: EVPN IP Prefix IPv6 with Overlay Index (GW IP)
+- RT5-IPv6-003: EVPN IP Prefix IPv6 with Overlay Index (ESI)
+- RT5-IPv6-004: EVPN IP Prefix IPv6 with Overlay Index (MAC)
+- RT5-RECURSIVE-001: RT-5 Recursive Lookup Resolution
+- RT5-INVALID-001: RT-5 Invalid Combination (ESI + GW IP Non-Zero)
+- RT5-LABEL-001: RT-5 MPLS Label Zero with Overlay Index
+
+### bgp_role
+Tests for BGP Role per RFC 9234:
+- ROLE-PROVIDER: BGP Role Capability: Provider (0)
+- ROLE-ROUTE_SERVER: BGP Role Capability: Route Server (1)
+- ROLE-ROUTE_SERVER_CLIENT: BGP Role Capability: Route Server Client (2)
+- ROLE-CUSTOMER: BGP Role Capability: Customer (3)
+- ROLE-PEER: BGP Role Capability: Peer (4)
+- ROLE-PROVIDER-CUSTOMER: Role Pair Provider -> Customer
+- ROLE-CUSTOMER-PROVIDER: Role Pair Customer -> Provider
+- ROLE-ROUTE_SERVER-ROUTE_SERVER_CLIENT: Role Pair RS -> RSC
+- ROLE-ROUTE_SERVER_CLIENT-ROUTE_SERVER: Role Pair RSC -> RS
+- ROLE-PEER-PEER: Role Pair Peer -> Peer
+- ROLE-OTC-001: OTC Attribute Present from Customer
+- ROLE-OTC-002: OTC Attribute Added on Egress to Customer
+- ROLE-OTC-003: OTC Attribute Not Propagated to Provider
+- ROLE-MISMATCH-001: Role Mismatch Notification
+- ROLE-STRICT-001: Strict Mode - Role Required
+
+### srv6_bgp_overlay
+Tests for SRv6 BGP Overlay per RFC 9252:
+- SRV6-L3_SERVICE-001: SRv6 L3 Service TLV Encoding
+- SRV6-L2_SERVICE-001: SRv6 L2 Service TLV Encoding
+- SRV6-SID-END_DX4: SRv6 SID Endpoint Behavior END_DX4
+- SRV6-SID-END_DT4: SRv6 SID Endpoint Behavior END_DT4
+- SRV6-SID-END_DX6: SRv6 SID Endpoint Behavior END_DX6
+- SRV6-SID-END_DT6: SRv6 SID Endpoint Behavior END_DT6
+- SRV6-SID-END_DX2: SRv6 SID Endpoint Behavior END_DX2
+- SRV6-SID-END_DT2U: SRv6 SID Endpoint Behavior END_DT2U
+- SRV6-SID-END_DT2M: SRv6 SID Endpoint Behavior END_DT2M
+- SRV6-SID-END_DT46: SRv6 SID Endpoint Behavior END_DT46
+- SRV6-SID-INFO-001: SRv6 SID Information Sub-TLV
+- SRV6-STRUCTURE-001: SRv6 SID Structure Sub-Sub-TLV
+- SRV6-TRANSPOSITION-001: SRv6 SID Transposition Scheme
+- SRV6-L3VPN-001: IPv4 VPN over SRv6 Core
+- SRV6-L3VPN-002: IPv6 VPN over SRv6 Core
+- SRV6-EVPN-001: EVPN MAC/IP over SRv6 Core
+- SRV6-EVPN-002: EVPN IP Prefix (RT-5) over SRv6 Core
+
+### sr_policy
+Tests for BGP SR Policy per RFC 9256:
+- SRPOL-SEG-A: SR Policy Segment Type A (SR-MPLS Label)
+- SRPOL-SEG-B: SR Policy Segment Type B (SRv6 SID)
+- SRPOL-SEG-C: SR Policy Segment Type C (IPv4 Prefix Algo)
+- SRPOL-SEG-D: SR Policy Segment Type D (IPv6 Prefix Algo MPLS)
+- SRPOL-SEG-E: SR Policy Segment Type E (IPv4 Prefix Local Intf)
+- SRPOL-SEG-F: SR Policy Segment Type F (IPv4 Link Local Remote)
+- SRPOL-SEG-G: SR Policy Segment Type G (IPv6 Prefix Local Intf MPLS)
+- SRPOL-SEG-H: SR Policy Segment Type H (IPv6 Link Local Remote MPLS)
+- SRPOL-SEG-I: SR Policy Segment Type I (IPv6 Prefix Algo SRv6)
+- SRPOL-SEG-J: SR Policy Segment Type J (IPv6 Prefix Local Intf SRv6)
+- SRPOL-SEG-K: SR Policy Segment Type K (IPv6 Link Local Remote SRv6)
+- SRPOL-IDENT-001: SR Policy Identification (Headend, Color, Endpoint)
+- SRPOL-CP-001: SR Policy Candidate Path Preference
+- SRPOL-CP-002: SR Policy Candidate Path Protocol-Origin
+- SRPOL-BSID-001: SR Policy Binding SID (BSID)
+- SRPOL-STEER-001: Steering into SR Policy
+- SRPOL-VALID-001: SR Policy Validity
+- SRPOL-DROP-001: Drop-Upon-Invalid SR Policy
+
+### bgp_ls_updated
+Tests for BGP-LS Updated per RFC 9552:
+- BGPLS-NODE: BGP-LS NLRI Type: NODE (1)
+- BGPLS-LINK: BGP-LS NLRI Type: LINK (2)
+- BGPLS-IPV4_PREFIX: BGP-LS NLRI Type: IPV4_PREFIX (3)
+- BGPLS-IPV6_PREFIX: BGP-LS NLRI Type: IPV6_PREFIX (4)
+- BGPLS-PROTO-IS_IS_LEVEL_1: BGP-LS Protocol ID: IS_IS_LEVEL_1
+- BGPLS-PROTO-IS_IS_LEVEL_2: BGP-LS Protocol ID: IS_IS_LEVEL_2
+- BGPLS-PROTO-OSPFV2: BGP-LS Protocol ID: OSPFV2
+- BGPLS-PROTO-DIRECT: BGP-LS Protocol ID: DIRECT
+- BGPLS-PROTO-STATIC: BGP-LS Protocol ID: STATIC
+- BGPLS-PROTO-OSPFV3: BGP-LS Protocol ID: OSPFV3
+- BGPLS-NODE-DESC-001: BGP-LS Node Descriptor TLVs
+- BGPLS-LINK-DESC-001: BGP-LS Link Descriptor TLVs
+- BGPLS-PREFIX-DESC-001: BGP-LS Prefix Descriptor TLVs
+- BGPLS-ATTR-001: BGP-LS Attribute TLVs
+- BGPLS-VPN-001: BGP-LS VPN (SAFI 72)
+- BGPLS-UNKNOWN-001: BGP-LS Unknown NLRI Type Handling
+- BGPLS-ORDER-001: BGP-LS TLV Ordering
+
 ## References
 
 - [RFC 4271 - A Border Gateway Protocol 4 (BGP-4)](https://www.rfc-editor.org/rfc/rfc4271)
@@ -891,6 +1037,16 @@ Tests for BGP in Large-Scale Data Centers per RFC 7938:
 - [RFC 8195 - Use of BGP Large Communities](https://www.rfc-editor.org/rfc/rfc8195)
 - [RFC 8203 - BGP Administrative Shutdown Communication](https://www.rfc-editor.org/rfc/rfc8203)
 - [RFC 8277 - Using BGP to Bind MPLS Labels to Address Prefixes](https://www.rfc-editor.org/rfc/rfc8277)
+- [RFC 8326 - Graceful Shutdown of BGP Sessions](https://www.rfc-editor.org/rfc/rfc8326)
+- [RFC 8365 - A Network Virtualization Overlay Solution Using EVPN](https://www.rfc-editor.org/rfc/rfc8365)
+- [RFC 8402 - Segment Routing Architecture](https://www.rfc-editor.org/rfc/rfc8402)
+- [RFC 9029 - Carrying MPLS Labels in the BGP-LS Address Family](https://www.rfc-editor.org/rfc/rfc9029)
+- [RFC 9135 - Integrated Routing and Bridging in EVPN](https://www.rfc-editor.org/rfc/rfc9135)
+- [RFC 9136 - EVPN IP Prefix Advertisement](https://www.rfc-editor.org/rfc/rfc9136)
+- [RFC 9234 - The BGP Role AS-In Attribute and Service Oriented BGP](https://www.rfc-editor.org/rfc/rfc9234)
+- [RFC 9252 - BGP Overlay for SRv6](https://www.rfc-editor.org/rfc/rfc9252)
+- [RFC 9256 - BGP SR Policy](https://www.rfc-editor.org/rfc/rfc9256)
+- [RFC 9552 - Updated Specification for BGP-LS](https://www.rfc-editor.org/rfc/rfc9552)
 - [RFC 1105 - BGP (obsolete)](https://www.rfc-editor.org/rfc/rfc1105)
 - [RFC 1163 - BGP-2 (obsolete)](https://www.rfc-editor.org/rfc/rfc1163)
 - [RFC 1267 - BGP-3 (obsolete)](https://www.rfc-editor.org/rfc/rfc1267)

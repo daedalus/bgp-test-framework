@@ -730,3 +730,168 @@ class TestNewTESTCLASSESConstantRFCs:
         assert "mpls_label_binding" in TEST_CLASSES
         assert "large_community_usage" in TEST_CLASSES
         assert "datacenter_bgp" in TEST_CLASSES
+
+
+class TestGracefulShutdownAssessments:
+    def test_get_tests(self):
+        from bgp_test_framework.assessments import GracefulShutdownAssessments
+
+        tests = GracefulShutdownAssessments.get_tests()
+        assert len(tests) == 10
+        assert all(t.category == TestCategory.GRACEFUL_SHUTDOWN for t in tests)
+
+    def test_specific_tests_exist(self):
+        from bgp_test_framework.assessments import GracefulShutdownAssessments
+
+        tests = {t.test_id: t for t in GracefulShutdownAssessments.get_tests()}
+        assert "GSD-001" in tests
+        assert "GSD-005" in tests
+        assert "GSD-010" in tests
+
+
+class TestEVPNNVOAssessments:
+    def test_get_tests(self):
+        from bgp_test_framework.assessments import EVPNNVOAssessments
+
+        tests = EVPNNVOAssessments.get_tests()
+        assert len(tests) >= 10
+        assert all(t.category == TestCategory.EVPN_NVO for t in tests)
+
+    def test_specific_tests_exist(self):
+        from bgp_test_framework.assessments import EVPNNVOAssessments
+
+        tests = {t.test_id: t for t in EVPNNVOAssessments.get_tests()}
+        assert "EVPN-TUN-08" in tests
+        assert "EVPN-001" in tests
+        assert "EVPN-003" in tests
+
+
+class TestSegmentRoutingAssessments:
+    def test_get_tests(self):
+        from bgp_test_framework.assessments import SegmentRoutingAssessments
+
+        tests = SegmentRoutingAssessments.get_tests()
+        assert len(tests) >= 8
+        assert all(t.category == TestCategory.SEGMENT_ROUTING for t in tests)
+
+    def test_specific_tests_exist(self):
+        from bgp_test_framework.assessments import SegmentRoutingAssessments
+
+        tests = {t.test_id: t for t in SegmentRoutingAssessments.get_tests()}
+        assert "SR-ALGO-0" in tests
+        assert "SR-ALGO-1" in tests
+        assert "SR-001" in tests
+
+
+class TestIRBAssessments:
+    def test_get_tests(self):
+        from bgp_test_framework.assessments import IRBAssessments
+
+        tests = IRBAssessments.get_tests()
+        assert len(tests) >= 7
+        assert all(t.category == TestCategory.EVPN_IRB for t in tests)
+
+    def test_specific_tests_exist(self):
+        from bgp_test_framework.assessments import IRBAssessments
+
+        tests = {t.test_id: t for t in IRBAssessments.get_tests()}
+        assert "IRB-SYMMETRIC-001" in tests
+        assert "IRB-ANYCAST-001" in tests
+
+
+class TestEVPNIPPrefixAssessments:
+    def test_get_tests(self):
+        from bgp_test_framework.assessments import EVPNIPPrefixAssessments
+
+        tests = EVPNIPPrefixAssessments.get_tests()
+        assert len(tests) >= 11
+        assert all(t.category == TestCategory.EVPN_IP_PREFIX for t in tests)
+
+    def test_specific_tests_exist(self):
+        from bgp_test_framework.assessments import EVPNIPPrefixAssessments
+
+        tests = {t.test_id: t for t in EVPNIPPrefixAssessments.get_tests()}
+        assert "RT5-IPv4-001" in tests
+        assert "RT5-IPv6-001" in tests
+        assert "RT5-RECURSIVE-001" in tests
+
+
+class TestBGPRoleAssessments:
+    def test_get_tests(self):
+        from bgp_test_framework.assessments import BGPRoleAssessments
+
+        tests = BGPRoleAssessments.get_tests()
+        assert len(tests) >= 15
+        assert all(t.category == TestCategory.BGP_ROLE for t in tests)
+
+    def test_specific_tests_exist(self):
+        from bgp_test_framework.assessments import BGPRoleAssessments
+
+        tests = {t.test_id: t for t in BGPRoleAssessments.get_tests()}
+        assert "ROLE-PROVIDER" in tests
+        assert "ROLE-CUSTOMER" in tests
+        assert "ROLE-OTC-001" in tests
+
+
+class TestSRv6BGPOverlayAssessments:
+    def test_get_tests(self):
+        from bgp_test_framework.assessments import SRv6BGPOverlayAssessments
+
+        tests = SRv6BGPOverlayAssessments.get_tests()
+        assert len(tests) >= 17
+        assert all(t.category == TestCategory.SRV6_BGP_OVERLAY for t in tests)
+
+    def test_specific_tests_exist(self):
+        from bgp_test_framework.assessments import SRv6BGPOverlayAssessments
+
+        tests = {t.test_id: t for t in SRv6BGPOverlayAssessments.get_tests()}
+        assert "SRV6-L3_SERVICE-001" in tests
+        assert "SRV6-SID-END_DX4" in tests
+        assert "SRV6-L3VPN-001" in tests
+
+
+class TestSRPolicyAssessments:
+    def test_get_tests(self):
+        from bgp_test_framework.assessments import SRPolicyAssessments
+
+        tests = SRPolicyAssessments.get_tests()
+        assert len(tests) >= 18
+        assert all(t.category == TestCategory.SR_POLICY for t in tests)
+
+    def test_specific_tests_exist(self):
+        from bgp_test_framework.assessments import SRPolicyAssessments
+
+        tests = {t.test_id: t for t in SRPolicyAssessments.get_tests()}
+        assert "SRPOL-SEG-A" in tests
+        assert "SRPOL-IDENT-001" in tests
+        assert "SRPOL-BSID-001" in tests
+
+
+class TestBGP_LS_UpdatedAssessments:
+    def test_get_tests(self):
+        from bgp_test_framework.assessments import BGP_LS_UpdatedAssessments
+
+        tests = BGP_LS_UpdatedAssessments.get_tests()
+        assert len(tests) >= 17
+        assert all(t.category == TestCategory.BGP_LS_UPDATED for t in tests)
+
+    def test_specific_tests_exist(self):
+        from bgp_test_framework.assessments import BGP_LS_UpdatedAssessments
+
+        tests = {t.test_id: t for t in BGP_LS_UpdatedAssessments.get_tests()}
+        assert "BGPLS-NODE" in tests
+        assert "BGPLS-LINK" in tests
+        assert "BGPLS-ATTR-001" in tests
+
+
+class TestNewTESTCLASSESEVPNSR:
+    def test_new_categories_registered(self):
+        assert "graceful_shutdown" in TEST_CLASSES
+        assert "evpn_nvo" in TEST_CLASSES
+        assert "segment_routing" in TEST_CLASSES
+        assert "evpn_irb" in TEST_CLASSES
+        assert "evpn_ip_prefix" in TEST_CLASSES
+        assert "bgp_role" in TEST_CLASSES
+        assert "srv6_bgp_overlay" in TEST_CLASSES
+        assert "sr_policy" in TEST_CLASSES
+        assert "bgp_ls_updated" in TEST_CLASSES
