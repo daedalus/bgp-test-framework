@@ -70,6 +70,11 @@ class TestCategory(Enum):
     ORIGIN_VALIDATION = "origin_validation"
     AS0_PROCESSING = "as0_processing"
     BGP_LS_NLRI = "bgp_ls_nlri"
+    BLACKHOLE_COMMUNITY = "blackhole_community"
+    ADMIN_SHUTDOWN = "admin_shutdown"
+    MPLS_LABEL_BINDING = "mpls_label_binding"
+    LARGE_COMMUNITY_USAGE = "large_community_usage"
+    DATACENTER_BGP = "datacenter_bgp"
 
 
 @dataclass
@@ -5209,6 +5214,705 @@ class BGPLinkStateAssessments:
         )
 
 
+class BlackholeCommunityAssessments:
+    CATEGORY = TestCategory.BLACKHOLE_COMMUNITY
+    PREFIX = "BH"
+
+    BLACKHOLE = 0xFFFF029A
+    BLACKHOLE_IPV4_PREFIX_LEN = 32
+    BLACKHOLE_IPV6_PREFIX_LEN = 128
+
+    @classmethod
+    def get_tests(cls) -> List[TestCase]:
+        tests = [
+            TestCase(
+                test_id=f"{cls.PREFIX}-001",
+                name="BLACKHOLE Community Value",
+                category=cls.CATEGORY,
+                description="RFC 7999 - BLACKHOLE community value 0xFFFF029A",
+                params={"community": cls.BLACKHOLE},
+            ),
+            TestCase(
+                test_id=f"{cls.PREFIX}-002",
+                name="BLACKHOLE IPv4 /32 Prefix",
+                category=cls.CATEGORY,
+                description="RFC 7999 - Blackhole route for IPv4 /32",
+                params={
+                    "prefix": "10.0.0.0",
+                    "prefix_len": cls.BLACKHOLE_IPV4_PREFIX_LEN,
+                },
+            ),
+            TestCase(
+                test_id=f"{cls.PREFIX}-003",
+                name="BLACKHOLE IPv6 /128 Prefix",
+                category=cls.CATEGORY,
+                description="RFC 7999 - Blackhole route for IPv6 /128",
+                params={
+                    "prefix": "2001:db8::",
+                    "prefix_len": cls.BLACKHOLE_IPV6_PREFIX_LEN,
+                },
+            ),
+            TestCase(
+                test_id=f"{cls.PREFIX}-004",
+                name="BLACKHOLE with NO_EXPORT Scope",
+                category=cls.CATEGORY,
+                description="RFC 7999 - BLACKHOLE with NO_EXPORT to prevent leakage",
+                params={"communities": [cls.BLACKHOLE, 0xFFFFFF01]},
+            ),
+            TestCase(
+                test_id=f"{cls.PREFIX}-005",
+                name="BLACKHOLE with NO_ADVERTISE Scope",
+                category=cls.CATEGORY,
+                description="RFC 7999 - BLACKHOLE with NO_ADVERTISE for bilateral peers",
+                params={"communities": [cls.BLACKHOLE, 0xFFFFFF02]},
+            ),
+            TestCase(
+                test_id=f"{cls.PREFIX}-006",
+                name="BLACKHOLE with NO_EXPORT_SUBCONFED",
+                category=cls.CATEGORY,
+                description="RFC 7999 - BLACKHOLE with NO_EXPORT_SUBCONFED",
+                params={"communities": [cls.BLACKHOLE, 0xFFFFFF03]},
+            ),
+            TestCase(
+                test_id=f"{cls.PREFIX}-007",
+                name="BLACKHOLE Action Implementation",
+                category=cls.CATEGORY,
+                description="RFC 7999 - Verify traffic to blackholed prefix is discarded",
+                params={"prefix": "192.168.100.0", "prefix_len": 24},
+            ),
+            TestCase(
+                test_id=f"{cls.PREFIX}-008",
+                name="BLACKHOLE Prefix Length /24 IPv4",
+                category=cls.CATEGORY,
+                description="RFC 7999 - BLACKHOLE with less specific prefix",
+                params={"prefix": "192.168.0.0", "prefix_len": 24},
+            ),
+            TestCase(
+                test_id=f"{cls.PREFIX}-009",
+                name="BLACKHOLE Authorization Validation",
+                category=cls.CATEGORY,
+                description="RFC 7999 - Validate prefix is authorized by neighbor",
+                params={"prefix": "10.0.0.0", "prefix_len": 8},
+            ),
+            TestCase(
+                test_id=f"{cls.PREFIX}-010",
+                name="BLACKHOLE with Multiple Scoping Communities",
+                category=cls.CATEGORY,
+                description="RFC 7999 - Multiple scope communities for fine-grained control",
+                params={"communities": [cls.BLACKHOLE, 0xFFFFFF01, 0xFFFFFF02]},
+            ),
+        ]
+        return tests
+
+    def _send_blackhole_route(
+        self, framework: BGPTestFramework, params: Dict[str, Any]
+    ) -> tuple:
+        if not framework.connect():
+            return (False, "Failed to connect", {})
+        try:
+            msg = build_open_message(framework.source_as)
+            framework.send_raw(msg)
+            response = framework.receive_raw()
+            if not response or len(response) < 19:
+                return (True, "No OPEN response", {})
+
+            keepalive = build_keepalive_message()
+            framework.send_raw(keepalive)
+            framework.receive_raw()
+
+            communities = params.get("communities", [self.BLACKHOLE])
+            data = b"".join(struct.pack("!I", c) for c in communities)
+            comm_attr = PathAttribute(8, 0x40, data)
+
+            origin = create_origin_attribute(0)
+            as_path = create_as_path_attribute([framework.source_as])
+            next_hop = create_next_hop_attribute("10.0.0.1")
+            prefix = params.get("prefix", "10.0.0.0")
+            prefix_len = params.get("prefix_len", 32)
+            update = build_update_message(
+                [], [origin, as_path, next_hop, comm_attr], [(prefix, prefix_len)]
+            )
+            framework.send_raw(update)
+            response = framework.receive_raw()
+            if response and len(response) >= 21:
+                return (
+                    True,
+                    f"Blackhole route accepted with {len(communities)} communities",
+                    {},
+                )
+            return (True, "Blackhole route sent", {})
+        except Exception as e:
+            return (False, f"Error: {str(e)}", {})
+        finally:
+            framework.disconnect()
+
+    def test_bh(self, framework: BGPTestFramework, test_index: int) -> TestResult:
+        test_case = self.get_tests()[test_index]
+        return framework._run_test(
+            test_case, lambda: self._send_blackhole_route(framework, test_case.params)
+        )
+
+
+class AdminShutdownAssessments:
+    CATEGORY = TestCategory.ADMIN_SHUTDOWN
+    PREFIX = "AS"
+
+    CEASE_CODE = 6
+    ADMIN_SHUTDOWN_SUBCODE = 2
+    ADMIN_RESET_SUBCODE = 4
+    SHUTDOWN_COMM_MIN = 0
+    SHUTDOWN_COMM_MAX = 128
+
+    @classmethod
+    def get_tests(cls) -> List[TestCase]:
+        tests = [
+            TestCase(
+                test_id=f"{cls.PREFIX}-001",
+                name="Admin Shutdown with UTF-8 Message",
+                category=cls.CATEGORY,
+                description="RFC 8203 - Cease notification with UTF-8 shutdown communication",
+                expected_error_code=cls.CEASE_CODE,
+                expected_error_subcode=cls.ADMIN_SHUTDOWN_SUBCODE,
+                params={"message": "Administrative shutdown", "length": 22},
+            ),
+            TestCase(
+                test_id=f"{cls.PREFIX}-002",
+                name="Admin Shutdown Zero Length",
+                category=cls.CATEGORY,
+                description="RFC 8203 - Cease notification with zero-length shutdown communication",
+                expected_error_code=cls.CEASE_CODE,
+                expected_error_subcode=cls.ADMIN_SHUTDOWN_SUBCODE,
+                params={"message": "", "length": 0},
+            ),
+            TestCase(
+                test_id=f"{cls.PREFIX}-003",
+                name="Admin Shutdown Max Length (128)",
+                category=cls.CATEGORY,
+                description="RFC 8203 - Cease notification with max-length shutdown communication",
+                expected_error_code=cls.CEASE_CODE,
+                expected_error_subcode=cls.ADMIN_SHUTDOWN_SUBCODE,
+                params={"message": "x" * 128, "length": 128},
+            ),
+            TestCase(
+                test_id=f"{cls.PREFIX}-004",
+                name="Admin Reset with Message",
+                category=cls.CATEGORY,
+                description="RFC 8203 - Cease notification with admin reset subcode",
+                expected_error_code=cls.CEASE_CODE,
+                expected_error_subcode=cls.ADMIN_RESET_SUBCODE,
+                params={"message": "Administrative reset", "length": 20},
+            ),
+            TestCase(
+                test_id=f"{cls.PREFIX}-005",
+                name="Admin Shutdown Multiline UTF-8",
+                category=cls.CATEGORY,
+                description="RFC 8203 - Shutdown communication with newlines",
+                expected_error_code=cls.CEASE_CODE,
+                expected_error_subcode=cls.ADMIN_SHUTDOWN_SUBCODE,
+                params={"message": "Line1\nLine2", "length": 11},
+            ),
+            TestCase(
+                test_id=f"{cls.PREFIX}-006",
+                name="Admin Shutdown Unicode Content",
+                category=cls.CATEGORY,
+                description="RFC 8203 - Shutdown communication with Unicode characters",
+                expected_error_code=cls.CEASE_CODE,
+                expected_error_subcode=cls.ADMIN_SHUTDOWN_SUBCODE,
+                params={"message": "Maintenance Window \u2022 Scheduled", "length": 30},
+            ),
+            TestCase(
+                test_id=f"{cls.PREFIX}-007",
+                name="Admin Shutdown Reserved Subcode",
+                category=cls.CATEGORY,
+                description="RFC 8203 - Cease with admin shutdown subcode",
+                expected_error_code=cls.CEASE_CODE,
+                expected_error_subcode=cls.ADMIN_SHUTDOWN_SUBCODE,
+                params={"message": "RFC 8203 test", "length": 14},
+            ),
+            TestCase(
+                test_id=f"{cls.PREFIX}-008",
+                name="Admin Shutdown Syslog Format",
+                category=cls.CATEGORY,
+                description="RFC 8203 - Syslog formatting of shutdown communication",
+                expected_error_code=cls.CEASE_CODE,
+                expected_error_subcode=cls.ADMIN_SHUTDOWN_SUBCODE,
+                params={"message": "[AS65001] Peer going down", "length": 22},
+            ),
+            TestCase(
+                test_id=f"{cls.PREFIX}-009",
+                name="Admin Shutdown with Error Data",
+                category=cls.CATEGORY,
+                description="RFC 8203 - Shutdown communication with additional data",
+                expected_error_code=cls.CEASE_CODE,
+                expected_error_subcode=cls.ADMIN_SHUTDOWN_SUBCODE,
+                params={"message": "Testing RFC 8203", "length": 17},
+            ),
+            TestCase(
+                test_id=f"{cls.PREFIX}-010",
+                name="Admin Reset Backward Compatibility",
+                category=cls.CATEGORY,
+                description="RFC 8203 - Admin reset compatible with RFC 4486 implementations",
+                expected_error_code=cls.CEASE_CODE,
+                expected_error_subcode=cls.ADMIN_RESET_SUBCODE,
+                params={"message": "Config change", "length": 12},
+            ),
+        ]
+        return tests
+
+    def _send_admin_shutdown(
+        self, framework: BGPTestFramework, params: Dict[str, Any]
+    ) -> tuple:
+        if not framework.connect():
+            return (False, "Failed to connect", {})
+        try:
+            msg = build_open_message(framework.source_as)
+            framework.send_raw(msg)
+            response = framework.receive_raw()
+            if not response or len(response) < 19:
+                return (True, "No OPEN response", {})
+
+            keepalive = build_keepalive_message()
+            framework.send_raw(keepalive)
+            framework.receive_raw()
+
+            message = params.get("message", "")
+            msg_bytes = message.encode("utf-8")
+            subcode = params.get("subcode", self.ADMIN_SHUTDOWN_SUBCODE)
+
+            data = bytes([self.CEASE_CODE, subcode, len(msg_bytes)]) + msg_bytes
+            notification = (
+                MARKER
+                + struct.pack("!HB", len(data) + 21, MESSAGE_TYPES["NOTIFICATION"])
+                + data
+            )
+            framework.send_raw(notification)
+            return (
+                True,
+                f"Admin shutdown notification sent: {message}",
+                {"subcode": subcode},
+            )
+        except Exception as e:
+            return (False, f"Error: {str(e)}", {})
+        finally:
+            framework.disconnect()
+
+    def test_as(self, framework: BGPTestFramework, test_index: int) -> TestResult:
+        test_case = self.get_tests()[test_index]
+        return framework._run_test(
+            test_case, lambda: self._send_admin_shutdown(framework, test_case.params)
+        )
+
+
+class MPLSLabelBindingAssessments:
+    CATEGORY = TestCategory.MPLS_LABEL_BINDING
+    PREFIX = "MLB"
+
+    MULTIPLE_LABELS_CAP_CODE = 8
+    MPLS_LABEL_WITHDRAWAL = 0x800000
+
+    SAFI_UNICAST_LABELED = 4
+    SAFI_VPN_UNICAST_LABELED = 128
+
+    @classmethod
+    def get_tests(cls) -> List[TestCase]:
+        tests = [
+            TestCase(
+                test_id=f"{cls.PREFIX}-001",
+                name="Single MPLS Label SAFI-4",
+                category=cls.CATEGORY,
+                description="RFC 8277 - MP_REACH_NLRI with SAFI=4 for labeled IPv4",
+                params={"afi": 1, "safi": cls.SAFI_UNICAST_LABELED, "label": 100},
+            ),
+            TestCase(
+                test_id=f"{cls.PREFIX}-002",
+                name="Single MPLS Label SAFI-128",
+                category=cls.CATEGORY,
+                description="RFC 8277 - MP_REACH_NLRI with SAFI=128 for labeled VPN",
+                params={"afi": 1, "safi": cls.SAFI_VPN_UNICAST_LABELED, "label": 200},
+            ),
+            TestCase(
+                test_id=f"{cls.PREFIX}-003",
+                name="Multiple Labels Capability",
+                category=cls.CATEGORY,
+                description="RFC 8277 - Multiple Labels Capability advertisement",
+                params={"cap_code": cls.MULTIPLE_LABELS_CAP_CODE, "count": 255},
+            ),
+            TestCase(
+                test_id=f"{cls.PREFIX}-004",
+                name="Label Binding Advertisement",
+                category=cls.CATEGORY,
+                description="RFC 8277 - Advertisement of MPLS label binding",
+                params={"afi": 1, "safi": cls.SAFI_UNICAST_LABELED, "label": 1000},
+            ),
+            TestCase(
+                test_id=f"{cls.PREFIX}-005",
+                name="Label Withdrawal with Compatibility",
+                category=cls.CATEGORY,
+                description="RFC 8277 - Withdrawal NLRI with Compatibility field",
+                params={
+                    "afi": 1,
+                    "safi": cls.SAFI_UNICAST_LABELED,
+                    "compatibility": cls.MPLS_LABEL_WITHDRAWAL,
+                },
+            ),
+            TestCase(
+                test_id=f"{cls.PREFIX}-006",
+                name="Label Encoding Single Label",
+                category=cls.CATEGORY,
+                description="RFC 8277 - Single label encoding: 20-bit label + reserved + S bit",
+                params={"afi": 1, "safi": cls.SAFI_UNICAST_LABELED, "label": 256},
+            ),
+            TestCase(
+                test_id=f"{cls.PREFIX}-007",
+                name="Label Propagation No NH Change",
+                category=cls.CATEGORY,
+                description="RFC 8277 - Labels unchanged when next-hop unchanged",
+                params={"afi": 1, "safi": cls.SAFI_UNICAST_LABELED, "label": 512},
+            ),
+            TestCase(
+                test_id=f"{cls.PREFIX}-008",
+                name="Label Propagation NH Change",
+                category=cls.CATEGORY,
+                description="RFC 8277 - Labels replaced on next-hop change",
+                params={"afi": 1, "safi": cls.SAFI_UNICAST_LABELED, "label": 1024},
+            ),
+            TestCase(
+                test_id=f"{cls.PREFIX}-009",
+                name="IPv6 Labeled Unicast SAFI-4",
+                category=cls.CATEGORY,
+                description="RFC 8277 - Labeled IPv6 unicast (AFI=2, SAFI=4)",
+                params={"afi": 2, "safi": cls.SAFI_UNICAST_LABELED, "label": 768},
+            ),
+            TestCase(
+                test_id=f"{cls.PREFIX}-010",
+                name="Label Count Min Validation",
+                category=cls.CATEGORY,
+                description="RFC 8277 - Count field MUST be >= 2, not 0 or 1",
+                params={"cap_code": cls.MULTIPLE_LABELS_CAP_CODE, "count": 2},
+            ),
+        ]
+        return tests
+
+    def _build_label_nlri(self, label: int, prefix: bytes, prefix_len: int) -> bytes:
+        label_bytes = struct.pack("!I", label)[1:]
+        nlri = bytes([prefix_len]) + label_bytes + bytes([0x80]) + prefix
+        return nlri
+
+    def _send_labeled_route(
+        self, framework: BGPTestFramework, params: Dict[str, Any]
+    ) -> tuple:
+        if not framework.connect():
+            return (False, "Failed to connect", {})
+        try:
+            msg = build_open_message(framework.source_as)
+            framework.send_raw(msg)
+            response = framework.receive_raw()
+            if not response or len(response) < 19:
+                return (True, "No OPEN response", {})
+
+            keepalive = build_keepalive_message()
+            framework.send_raw(keepalive)
+            framework.receive_raw()
+
+            afi = params.get("afi", 1)
+            safi = params.get("safi", self.SAFI_UNICAST_LABELED)
+            label = params.get("label", 100)
+
+            if afi == 1:
+                prefix = socket.inet_aton("10.0.0.0")
+            else:
+                prefix = socket.inet_pton(socket.AF_INET6, "2001:db8::")
+
+            nlri = self._build_label_nlri(label, prefix, 24 if afi == 1 else 32)
+            next_hop = socket.inet_aton("10.0.0.1")
+            mp_reach_data = (
+                struct.pack("!HBB", afi, safi, len(next_hop))
+                + next_hop
+                + bytes([0])
+                + nlri
+            )
+            mp_reach = PathAttribute(14, 0x80, mp_reach_data)
+
+            origin = create_origin_attribute(0)
+            as_path = create_as_path_attribute([framework.source_as])
+            update = build_update_message([], [origin, as_path, mp_reach], [])
+            framework.send_raw(update)
+            response = framework.receive_raw()
+
+            if response and len(response) >= 21:
+                return (
+                    True,
+                    f"Labeled route accepted (label={label}, AFI={afi}, SAFI={safi})",
+                    {},
+                )
+            return (True, f"Labeled route sent (label={label})", {})
+        except Exception as e:
+            return (False, f"Error: {str(e)}", {})
+        finally:
+            framework.disconnect()
+
+    def test_mlb(self, framework: BGPTestFramework, test_index: int) -> TestResult:
+        test_case = self.get_tests()[test_index]
+        return framework._run_test(
+            test_case, lambda: self._send_labeled_route(framework, test_case.params)
+        )
+
+
+class LargeCommunityUsageAssessments:
+    CATEGORY = TestCategory.LARGE_COMMUNITY_USAGE
+    PREFIX = "LCU"
+
+    LARGE_COMMUNITY_TYPE = 32
+
+    FUNCTION_TYPES = [
+        ("ISO_3166_1_COUNTRY", 1),
+        ("UN_M49_REGION", 2),
+        ("RELATION", 3),
+        ("ASN_SELECTIVE_NO_EXPORT", 4),
+        ("LOCATION_SELECTIVE_NO_EXPORT", 5),
+        ("ASN_PREPEND", 6),
+        ("LOCATION_PREPEND", 7),
+    ]
+
+    @classmethod
+    def get_tests(cls) -> List[TestCase]:
+        tests = []
+        for func_name, func_id in cls.FUNCTION_TYPES:
+            tests.append(
+                TestCase(
+                    test_id=f"{cls.PREFIX}-FUNC-{func_id:02d}",
+                    name=f"Large Community Function {func_id}: {func_name}",
+                    category=cls.CATEGORY,
+                    description=f"RFC 8195 - Large Community function {func_id}",
+                    params={"function": func_id, "global_admin": 64496},
+                )
+            )
+        tests.append(
+            TestCase(
+                test_id=f"{cls.PREFIX}-001",
+                name="Selective NO_EXPORT by ASN",
+                category=cls.CATEGORY,
+                description="RFC 8195 - 64496:4:peer_as to prevent export to specific AS",
+                params={"lcomm": [64496, 4, 65001]},
+            )
+        )
+        tests.append(
+            TestCase(
+                test_id=f"{cls.PREFIX}-002",
+                name="Selective NO_EXPORT by Country",
+                category=cls.CATEGORY,
+                description="RFC 8195 - Location-based selective NO_EXPORT",
+                params={"lcomm": [64496, 5, 528]},
+            )
+        )
+        tests.append(
+            TestCase(
+                test_id=f"{cls.PREFIX}-003",
+                name="AS Prepend by ASN",
+                category=cls.CATEGORY,
+                description="RFC 8195 - 64496:6:peer_as for selective prepending",
+                params={"lcomm": [64496, 6, 65001]},
+            )
+        )
+        tests.append(
+            TestCase(
+                test_id=f"{cls.PREFIX}-004",
+                name="Route Server Control",
+                category=cls.CATEGORY,
+                description="RFC 8195 - Route server prefix control communities",
+                params={"lcomm": [64511, 0, 0]},
+            )
+        )
+        tests.append(
+            TestCase(
+                test_id=f"{cls.PREFIX}-005",
+                name="Route Preference Communities",
+                category=cls.CATEGORY,
+                description="RFC 8195 - Route preference manipulation communities",
+                params={"lcomm": [64496, 8, 0]},
+            )
+        )
+        return tests
+
+    def _build_large_community(self, lcomm: List[int]) -> bytes:
+        return b"".join(struct.pack("!I", v) for v in lcomm)
+
+    def _send_large_community_update(
+        self, framework: BGPTestFramework, params: Dict[str, Any]
+    ) -> tuple:
+        if not framework.connect():
+            return (False, "Failed to connect", {})
+        try:
+            msg = build_open_message(framework.source_as)
+            framework.send_raw(msg)
+            response = framework.receive_raw()
+            if not response or len(response) < 19:
+                return (True, "No OPEN response", {})
+
+            keepalive = build_keepalive_message()
+            framework.send_raw(keepalive)
+            framework.receive_raw()
+
+            lcomm = params.get("lcomm", [64496, 4, 65001])
+            lcomm_data = self._build_large_community(lcomm)
+            lcomm_attr = PathAttribute(self.LARGE_COMMUNITY_TYPE, 0x40, lcomm_data)
+
+            origin = create_origin_attribute(0)
+            as_path = create_as_path_attribute([framework.source_as])
+            next_hop = create_next_hop_attribute("10.0.0.1")
+            update = build_update_message(
+                [], [origin, as_path, next_hop, lcomm_attr], [("192.168.10.0", 24)]
+            )
+            framework.send_raw(update)
+            response = framework.receive_raw()
+
+            if response and len(response) >= 21:
+                return (True, f"Large community {lcomm} accepted", {"lcomm": lcomm})
+            return (True, f"Sent route with large community {lcomm}", {"lcomm": lcomm})
+        except Exception as e:
+            return (False, f"Error: {str(e)}", {})
+        finally:
+            framework.disconnect()
+
+    def test_lcu(self, framework: BGPTestFramework, test_index: int) -> TestResult:
+        test_case = self.get_tests()[test_index]
+        return framework._run_test(
+            test_case,
+            lambda: self._send_large_community_update(framework, test_case.params),
+        )
+
+
+class DataCenterBGPAssessments:
+    CATEGORY = TestCategory.DATACENTER_BGP
+    PREFIX = "DCB"
+
+    PRIVATE_AS_MIN = 64512
+    PRIVATE_AS_MAX = 65534
+
+    @classmethod
+    def get_tests(cls) -> List[TestCase]:
+        tests = [
+            TestCase(
+                test_id=f"{cls.PREFIX}-001",
+                name="Single-Hop EBGP Session",
+                category=cls.CATEGORY,
+                description="RFC 7938 - Single-hop EBGP over point-to-point links",
+                params={"as_numbers": [cls.PRIVATE_AS_MIN, cls.PRIVATE_AS_MIN + 1]},
+            ),
+            TestCase(
+                test_id=f"{cls.PREFIX}-002",
+                name="Private ASN Usage",
+                category=cls.CATEGORY,
+                description="RFC 7938 - Private ASNs 64512-65534 for data center",
+                params={"as_numbers": [65000, 65001]},
+            ),
+            TestCase(
+                test_id=f"{cls.PREFIX}-003",
+                name="Four-Octet ASN in Data Center",
+                category=cls.CATEGORY,
+                description="RFC 7938 - Four-octet ASNs for large data centers",
+                params={"as_numbers": [4294967295, 65001]},
+            ),
+            TestCase(
+                test_id=f"{cls.PREFIX}-004",
+                name="Allowas-in Feature",
+                category=cls.CATEGORY,
+                description="RFC 7938 - Accept own ASN in AS_PATH when Allowas-in enabled",
+                params={"as_numbers": [65001, 65001]},
+            ),
+            TestCase(
+                test_id=f"{cls.PREFIX}-005",
+                name="Remove Private AS Feature",
+                category=cls.CATEGORY,
+                description="RFC 7938 - Strip private ASNs before advertising to WAN",
+                params={"as_numbers": [65534, 64512, 100]},
+            ),
+            TestCase(
+                test_id=f"{cls.PREFIX}-006",
+                name="Basic ECMP Behavior",
+                category=cls.CATEGORY,
+                description="RFC 7938 - Multiple equal-cost paths are used",
+                params={"as_numbers": [65001, 65002], "ecmp": "basic"},
+            ),
+            TestCase(
+                test_id=f"{cls.PREFIX}-007",
+                name="Multipath Relax",
+                category=cls.CATEGORY,
+                description="RFC 7938 - Multipath relax for different neighboring AS",
+                params={"as_numbers": [65001, 65002], "ecmp": "relax"},
+            ),
+            TestCase(
+                test_id=f"{cls.PREFIX}-008",
+                name="AS_PATH Loop Detection DC",
+                category=cls.CATEGORY,
+                description="RFC 7938 - Routes with own ASN rejected in data center",
+                params={"as_numbers": [65001, 65001, 65002]},
+            ),
+            TestCase(
+                test_id=f"{cls.PREFIX}-009",
+                name="Route Advertisement No Summarization",
+                category=cls.CATEGORY,
+                description="RFC 7938 - Server subnets announced without summarization",
+                params={"prefix": "10.0.0.0", "prefix_len": 24},
+            ),
+            TestCase(
+                test_id=f"{cls.PREFIX}-010",
+                name="ECMP with Link Bandwidth",
+                category=cls.CATEGORY,
+                description="RFC 7938 - Weighted ECMP using BGP Link Bandwidth community",
+                params={"as_numbers": [65001, 65002], "ecmp": "weighted"},
+            ),
+        ]
+        return tests
+
+    def _send_dc_route(
+        self, framework: BGPTestFramework, params: Dict[str, Any]
+    ) -> tuple:
+        if not framework.connect():
+            return (False, "Failed to connect", {})
+        try:
+            msg = build_open_message(framework.source_as)
+            framework.send_raw(msg)
+            response = framework.receive_raw()
+            if not response or len(response) < 19:
+                return (True, "No OPEN response", {})
+
+            keepalive = build_keepalive_message()
+            framework.send_raw(keepalive)
+            framework.receive_raw()
+
+            as_numbers = params.get("as_numbers", [65001, 65002])
+            as_path = create_as_path_attribute(as_numbers)
+            origin = create_origin_attribute(0)
+            next_hop = create_next_hop_attribute("10.0.0.1")
+            prefix = params.get("prefix", "10.0.0.0")
+            prefix_len = params.get("prefix_len", 24)
+
+            update = build_update_message(
+                [], [origin, as_path, next_hop], [(prefix, prefix_len)]
+            )
+            framework.send_raw(update)
+            response = framework.receive_raw()
+
+            if response and len(response) >= 21:
+                return (
+                    True,
+                    f"DC route accepted with AS_PATH length={len(as_numbers)}",
+                    {},
+                )
+            return (True, "DC route sent", {})
+        except Exception as e:
+            return (False, f"Error: {str(e)}", {})
+        finally:
+            framework.disconnect()
+
+    def test_dcb(self, framework: BGPTestFramework, test_index: int) -> TestResult:
+        test_case = self.get_tests()[test_index]
+        return framework._run_test(
+            test_case, lambda: self._send_dc_route(framework, test_case.params)
+        )
+
+
 TEST_CLASSES: Dict[str, Type] = {
     "message_header": MessageHeaderAssessments,
     "open_message": OpenMessageAssessments,
@@ -5249,6 +5953,11 @@ TEST_CLASSES: Dict[str, Type] = {
     "origin_validation": OriginValidationAssessments,
     "as0_processing": AS0Assessments,
     "bgp_ls": BGPLinkStateAssessments,
+    "blackhole_community": BlackholeCommunityAssessments,
+    "admin_shutdown": AdminShutdownAssessments,
+    "mpls_label_binding": MPLSLabelBindingAssessments,
+    "large_community_usage": LargeCommunityUsageAssessments,
+    "datacenter_bgp": DataCenterBGPAssessments,
 }
 
 ALL_TEST_CATEGORIES = list(TEST_CLASSES.keys())

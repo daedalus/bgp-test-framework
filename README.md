@@ -786,6 +786,73 @@ Tests for BGP Link-State Distribution per RFC 7752:
 - BGPLS-NLRI-*: NLRI Type Tests (Node=1, Link=2, IPv4 Prefix=3, IPv6 Prefix=4)
 - BGPLS-PROT-*: Protocol ID Tests (IS-IS, OSPF, Direct, Static, OSPFv3)
 
+### blackhole_community
+Tests for BLACKHOLE Community per RFC 7999:
+- BH-001: BLACKHOLE Community Value (0xFFFF029A)
+- BH-002: BLACKHOLE IPv4 /32 Prefix
+- BH-003: BLACKHOLE IPv6 /128 Prefix
+- BH-004: BLACKHOLE with NO_EXPORT Scope
+- BH-005: BLACKHOLE with NO_ADVERTISE Scope
+- BH-006: BLACKHOLE with NO_EXPORT_SUBCONFED
+- BH-007: BLACKHOLE Action Implementation
+- BH-008: BLACKHOLE Prefix Length /24 IPv4
+- BH-009: BLACKHOLE Authorization Validation
+- BH-010: BLACKHOLE with Multiple Scoping Communities
+
+### admin_shutdown
+Tests for BGP Administrative Shutdown Communication per RFC 8203:
+- AS-001: Admin Shutdown with UTF-8 Message
+- AS-002: Admin Shutdown Zero Length
+- AS-003: Admin Shutdown Max Length (128)
+- AS-004: Admin Reset with Message
+- AS-005: Admin Shutdown Multiline UTF-8
+- AS-006: Admin Shutdown Unicode Content
+- AS-007: Admin Shutdown Reserved Subcode
+- AS-008: Admin Shutdown Syslog Format
+- AS-009: Admin Shutdown with Error Data
+- AS-010: Admin Reset Backward Compatibility
+
+### mpls_label_binding
+Tests for MPLS Label Binding to Address Prefixes per RFC 8277:
+- MLB-001: Single MPLS Label SAFI-4
+- MLB-002: Single MPLS Label SAFI-128
+- MLB-003: Multiple Labels Capability
+- MLB-004: Label Binding Advertisement
+- MLB-005: Label Withdrawal with Compatibility
+- MLB-006: Label Encoding Single Label
+- MLB-007: Label Propagation No NH Change
+- MLB-008: Label Propagation NH Change
+- MLB-009: IPv6 Labeled Unicast SAFI-4
+- MLB-010: Label Count Min Validation
+
+### large_community_usage
+Tests for BGP Large Community Usage per RFC 8195:
+- LCU-FUNC-01: Large Community Function: ISO 3166-1 Country
+- LCU-FUNC-02: Large Community Function: UN M49 Region
+- LCU-FUNC-03: Large Community Function: Relation
+- LCU-FUNC-04: Large Community Function: ASN Selective NO_EXPORT
+- LCU-FUNC-05: Large Community Function: Location Selective NO_EXPORT
+- LCU-FUNC-06: Large Community Function: ASN Prepend
+- LCU-FUNC-07: Large Community Function: Location Prepend
+- LCU-001: Selective NO_EXPORT by ASN
+- LCU-002: Selective NO_EXPORT by Country
+- LCU-003: AS Prepend by ASN
+- LCU-004: Route Server Control
+- LCU-005: Route Preference Communities
+
+### datacenter_bgp
+Tests for BGP in Large-Scale Data Centers per RFC 7938:
+- DCB-001: Single-Hop EBGP Session
+- DCB-002: Private ASN Usage
+- DCB-003: Four-Octet ASN in Data Center
+- DCB-004: Allowas-in Feature
+- DCB-005: Remove Private AS Feature
+- DCB-006: Basic ECMP Behavior
+- DCB-007: Multipath Relax
+- DCB-008: AS_PATH Loop Detection DC
+- DCB-009: Route Advertisement No Summarization
+- DCB-010: ECMP with Link Bandwidth
+
 ## References
 
 - [RFC 4271 - A Border Gateway Protocol 4 (BGP-4)](https://www.rfc-editor.org/rfc/rfc4271)
@@ -819,6 +886,11 @@ Tests for BGP Link-State Distribution per RFC 7752:
 - [RFC 6811 - BGP Prefix Origin Validation](https://www.rfc-editor.org/rfc/rfc6811)
 - [RFC 7607 - Codification of AS 0 Processing](https://www.rfc-editor.org/rfc/rfc7607)
 - [RFC 7752 - North-Bound Distribution of Link-State and TE Information](https://www.rfc-editor.org/rfc/rfc7752)
+- [RFC 7938 - Use of BGP for Routing in Large-Scale Data Centers](https://www.rfc-editor.org/rfc/rfc7938)
+- [RFC 7999 - BLACKHOLE Community](https://www.rfc-editor.org/rfc/rfc7999)
+- [RFC 8195 - Use of BGP Large Communities](https://www.rfc-editor.org/rfc/rfc8195)
+- [RFC 8203 - BGP Administrative Shutdown Communication](https://www.rfc-editor.org/rfc/rfc8203)
+- [RFC 8277 - Using BGP to Bind MPLS Labels to Address Prefixes](https://www.rfc-editor.org/rfc/rfc8277)
 - [RFC 1105 - BGP (obsolete)](https://www.rfc-editor.org/rfc/rfc1105)
 - [RFC 1163 - BGP-2 (obsolete)](https://www.rfc-editor.org/rfc/rfc1163)
 - [RFC 1267 - BGP-3 (obsolete)](https://www.rfc-editor.org/rfc/rfc1267)

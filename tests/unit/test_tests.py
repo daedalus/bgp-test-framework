@@ -205,7 +205,7 @@ class TestSecurityAssessments:
 
 class TestTestCategories:
     def test_all_categories_defined(self):
-        assert len(TestCategory) == 41
+        assert len(TestCategory) == 46
         assert TestCategory.MESSAGE_HEADER.value == "message_header"
         assert TestCategory.OPEN_MESSAGE.value == "open_message"
         assert TestCategory.UPDATE_MESSAGE.value == "update_message"
@@ -630,3 +630,103 @@ class TestTestCategoryNewEntries:
         assert TestCategory.ORIGIN_VALIDATION.value == "origin_validation"
         assert TestCategory.AS0_PROCESSING.value == "as0_processing"
         assert TestCategory.BGP_LS_NLRI.value == "bgp_ls_nlri"
+        assert TestCategory.BLACKHOLE_COMMUNITY.value == "blackhole_community"
+        assert TestCategory.ADMIN_SHUTDOWN.value == "admin_shutdown"
+        assert TestCategory.MPLS_LABEL_BINDING.value == "mpls_label_binding"
+        assert TestCategory.LARGE_COMMUNITY_USAGE.value == "large_community_usage"
+        assert TestCategory.DATACENTER_BGP.value == "datacenter_bgp"
+
+
+class TestBlackholeCommunityAssessments:
+    def test_get_tests(self):
+        from bgp_test_framework.assessments import BlackholeCommunityAssessments
+
+        tests = BlackholeCommunityAssessments.get_tests()
+        assert len(tests) == 10
+        assert all(t.category == TestCategory.BLACKHOLE_COMMUNITY for t in tests)
+
+    def test_specific_tests_exist(self):
+        from bgp_test_framework.assessments import BlackholeCommunityAssessments
+
+        tests = {t.test_id: t for t in BlackholeCommunityAssessments.get_tests()}
+        assert "BH-001" in tests
+        assert "BH-004" in tests
+        assert "BH-010" in tests
+
+
+class TestAdminShutdownAssessments:
+    def test_get_tests(self):
+        from bgp_test_framework.assessments import AdminShutdownAssessments
+
+        tests = AdminShutdownAssessments.get_tests()
+        assert len(tests) == 10
+        assert all(t.category == TestCategory.ADMIN_SHUTDOWN for t in tests)
+
+    def test_specific_tests_exist(self):
+        from bgp_test_framework.assessments import AdminShutdownAssessments
+
+        tests = {t.test_id: t for t in AdminShutdownAssessments.get_tests()}
+        assert "AS-001" in tests
+        assert "AS-003" in tests
+        assert "AS-010" in tests
+
+
+class TestMPLSLabelBindingAssessments:
+    def test_get_tests(self):
+        from bgp_test_framework.assessments import MPLSLabelBindingAssessments
+
+        tests = MPLSLabelBindingAssessments.get_tests()
+        assert len(tests) == 10
+        assert all(t.category == TestCategory.MPLS_LABEL_BINDING for t in tests)
+
+    def test_specific_tests_exist(self):
+        from bgp_test_framework.assessments import MPLSLabelBindingAssessments
+
+        tests = {t.test_id: t for t in MPLSLabelBindingAssessments.get_tests()}
+        assert "MLB-001" in tests
+        assert "MLB-003" in tests
+        assert "MLB-005" in tests
+
+
+class TestLargeCommunityUsageAssessments:
+    def test_get_tests(self):
+        from bgp_test_framework.assessments import LargeCommunityUsageAssessments
+
+        tests = LargeCommunityUsageAssessments.get_tests()
+        assert len(tests) >= 11
+        assert all(t.category == TestCategory.LARGE_COMMUNITY_USAGE for t in tests)
+
+    def test_specific_tests_exist(self):
+        from bgp_test_framework.assessments import LargeCommunityUsageAssessments
+
+        tests = {t.test_id: t for t in LargeCommunityUsageAssessments.get_tests()}
+        assert "LCU-FUNC-01" in tests
+        assert "LCU-FUNC-04" in tests
+        assert "LCU-001" in tests
+        assert "LCU-004" in tests
+
+
+class TestDataCenterBGPAssessments:
+    def test_get_tests(self):
+        from bgp_test_framework.assessments import DataCenterBGPAssessments
+
+        tests = DataCenterBGPAssessments.get_tests()
+        assert len(tests) == 10
+        assert all(t.category == TestCategory.DATACENTER_BGP for t in tests)
+
+    def test_specific_tests_exist(self):
+        from bgp_test_framework.assessments import DataCenterBGPAssessments
+
+        tests = {t.test_id: t for t in DataCenterBGPAssessments.get_tests()}
+        assert "DCB-001" in tests
+        assert "DCB-004" in tests
+        assert "DCB-007" in tests
+
+
+class TestNewTESTCLASSESConstantRFCs:
+    def test_new_categories_registered(self):
+        assert "blackhole_community" in TEST_CLASSES
+        assert "admin_shutdown" in TEST_CLASSES
+        assert "mpls_label_binding" in TEST_CLASSES
+        assert "large_community_usage" in TEST_CLASSES
+        assert "datacenter_bgp" in TEST_CLASSES
