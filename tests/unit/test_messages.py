@@ -289,9 +289,7 @@ class TestConfederationAttributes:
         assert data[1] == 2
 
     def test_create_confed_sequence_with_as_sequence(self):
-        attr = create_confed_sequence_with_as_sequence(
-            [65001, 65002], [100, 200]
-        )
+        attr = create_confed_sequence_with_as_sequence([65001, 65002], [100, 200])
         assert attr.attr_type == PATH_ATTRIBUTE_TYPES["AS_PATH"]
         data = attr.value
         assert data[0] == AS_CONFED_PATH_SEGMENT_TYPES["AS_CONFED_SEQUENCE"]
@@ -327,7 +325,9 @@ class TestBGPLegacyVersions:
         assert msg[19] == BGP_VERSIONS["BGP_V2"]
 
     def test_legacy_open_v3_format(self):
-        msg = build_legacy_open_message_v3(my_as=65001, hold_time=180, bgp_id=0x0A000001)
+        msg = build_legacy_open_message_v3(
+            my_as=65001, hold_time=180, bgp_id=0x0A000001
+        )
         assert len(msg) >= 19
         assert msg[0:16] == MARKER
         assert msg[19] == BGP_VERSIONS["BGP_V3"]
@@ -350,4 +350,3 @@ class TestLegacyPathAttributes:
         attr = create_inter_as_metric_attribute(100)
         assert attr.attr_type == LEGACY_PATH_ATTRIBUTE_TYPES_RFC1163["INTER_AS_METRIC"]
         assert attr.value == struct.pack("!H", 100)
-

@@ -1,0 +1,32 @@
+dclavijo@debian12testing:~/code/bgp_test_framework/RFCs$ curl https://www.rfc-editor.org/rfc/rfc2858.txt > rfc2858.txt
+  % Total    % Received % Xferd  Average Speed   Time    Time     Time  Current
+                                 Dload  Upload   Total   Spent    Left  Speed
+100 23305  100 23305    0     0  31340      0 --:--:-- --:--:-- --:--:-- 31323
+dclavijo@debian12testing:~/code/bgp_test_framework/RFCs$ curl https://www.rfc-editor.org/rfc/rfc1939.txt > rfc1930.txt
+  % Total    % Received % Xferd  Average Speed   Time    Time     Time  Current
+                                 Dload  Upload   Total   Spent    Left  Speed
+100 47018    0 47018    0     0   100k      0 --:--:-- --:--:-- --:--:--  100k
+dclavijo@debian12testing:~/code/bgp_test_framework/RFCs$ curl https://www.rfc-editor.org/rfc/rfc1930.txt > rfc1930.txt
+  % Total    % Received % Xferd  Average Speed   Time    Time     Time  Current
+                                 Dload  Upload   Total   Spent    Left  Speed
+100 22073    0 22073    0     0  47639      0 --:--:-- --:--:-- --:--:-- 47673
+dclavijo@debian12testing:~/code/bgp_test_framework/RFCs$ curl https://www.rfc-editor.org/rfc/rfc2439.txt > rfc2439.txt
+  % Total    % Received % Xferd  Average Speed   Time    Time     Time  Current
+                                 Dload  Upload   Total   Spent    Left  Speed
+100 86402    0 86402    0     0   160k      0 --:--:-- --:--:-- --:--:--  160k
+dclavijo@debian12testing:~/code/bgp_test_framework/RFCs$ curl https://www.rfc-editor.org/rfc/rfc3345.txt > rfc3345.txt
+  % Total    % Received % Xferd  Average Speed   Time    Time     Time  Current
+                                 Dload  Upload   Total   Spent    Left  Speed
+100 38137    0 38137    0     0  68177      0 --:--:-- --:--:-- --:--:-- 68101
+dclavijo@debian12testing:~/code/bgp_test_framework/RFCs$ curl https://www.rfc-editor.org/rfc/rfc1997.txt > rfc1997.txt
+  % Total    % Received % Xferd  Average Speed   Time    Time     Time  Current
+                                 Dload  Upload   Total   Spent    Left  Speed
+100  8275    0  8275    0     0  18612      0 --:--:-- --:--:-- --:--:-- 18637
+dclavijo@debian12testing:~/code/bgp_test_framework/RFCs$ curl https://www.rfc-editor.org/rfc/rfc1998.txt > rfc1998.txt
+  % Total    % Received % Xferd  Average Speed   Time    Time     Time  Current
+                                 Dload  Upload   Total   Spent    Left  Speed
+100 16953    0 16953    0     0  40844      0 --:--:-- --:--:-- --:--:-- 40949
+dclavijo@debian12testing:~/code/bgp_test_framework/RFCs$ curl https://www.rfc-editor.org/rfc/rfc8092.txt > rfc8092.txt
+  % Total    % Received % Xferd  Average Speed   Time    Time     Time  Current
+                                 Dload  Upload   Total   Spent    Left  Speed
+100 15979    0 15979    0     0  34985      0 --:--:-- --:--:-- --:--:-- 35041

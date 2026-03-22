@@ -44,6 +44,17 @@ from .tests import (
     NotificationMessageTests,  # noqa: F401
     VersionNegotiationTests,  # noqa: F401
     ConnectionCollisionTests,  # noqa: F401
+    MultiprotocolTests,  # noqa: F401
+    RouteReflectionTests,  # noqa: F401
+    GracefulRestartTests,  # noqa: F401
+    EnhancedRouteRefreshTests,  # noqa: F401
+    ExtendedMessageTests,  # noqa: F401
+    ORFFilteringTests,  # noqa: F401
+    DynamicCapabilityTests,  # noqa: F401
+    CommunitiesTests,  # noqa: F401
+    LargeCommunitiesTests,  # noqa: F401
+    RouteFlapDampingTests,  # noqa: F401
+    ASNumberTests,  # noqa: F401
 )
 
 
@@ -210,6 +221,11 @@ class ComplianceMetrics:
             "RFC 4271 Section 6": "security",
             "RFC 4271 Section 9.2": "route_aggregation",
             "RFC 4271 Section 9.1": "decision_process",
+            "RFC 1997": "communities",
+            "RFC 8092": "large_communities",
+            "RFC 2439/3345": "route_flap_damping",
+            "RFC 1930": "as_number",
+            "RFC 2858": "multiprotocol",
         }
 
         compliance: Dict[str, Dict[str, Any]] = {}
@@ -1046,6 +1062,17 @@ Examples:
             "notification_message",
             "version_negotiation",
             "connection_collision",
+            "multiprotocol",
+            "route_reflection",
+            "graceful_restart",
+            "enhanced_route_refresh",
+            "extended_messages",
+            "orf_filtering",
+            "dynamic_capability",
+            "communities",
+            "large_communities",
+            "route_flap_damping",
+            "as_number",
         ],
         help="Test categories to run",
     )

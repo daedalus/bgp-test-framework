@@ -1,6 +1,7 @@
 """
 Pytest configuration for BGP Test Framework
 """
+
 import os
 import sys
 

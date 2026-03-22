@@ -530,14 +530,84 @@ bgp_test_framework/
 │   ├── rfc1163.txt        # RFC 1163 (BGP-2, obsolete)
 │   ├── rfc1267.txt        # RFC 1267 (BGP-3, obsolete)
 │   ├── rfc1771.txt        # RFC 1771 (BGP-4, obsolete)
+│   ├── rfc1930.txt        # RFC 1930 (AS Number Guidelines)
+│   ├── rfc1997.txt        # RFC 1997 (BGP Communities)
+│   ├── rfc1998.txt        # RFC 1998 (Community in Multi-home)
+│   ├── rfc2439.txt        # RFC 2439 (Route Flap Damping)
+│   ├── rfc2858.txt        # RFC 2858 (Multiprotocol Extensions)
 │   ├── rfc2918.txt        # RFC 2918 (Route Refresh)
 │   ├── rfc3065.txt        # RFC 3065 (AS Confederations)
+│   ├── rfc3345.txt        # RFC 3345 (Route Flap Damping)
 │   ├── rfc4271.txt        # RFC 4271 (BGP-4)
-│   └── rfc4272.txt        # RFC 4272 (BGP Security)
+│   ├── rfc4272.txt        # RFC 4272 (BGP Security)
+│   └── rfc8092.txt        # RFC 8092 (BGP Large Communities)
 ├── config.yaml            # Example configuration
 ├── pyproject.toml        # Project configuration
 └── README.md
 ```
+
+### communities
+Tests for BGP Communities attribute per RFC 1997:
+- COMM-001: Well-Known NO_EXPORT Community
+- COMM-002: Well-Known NO_ADVERTISE Community
+- COMM-003: Well-Known NO_EXPORT_SUBCONFED Community
+- COMM-004: Custom Community Format
+- COMM-005: Multiple Communities
+- COMM-006: Community Attribute Length Zero
+- COMM-007: Community Value Reserved Range
+- COMM-008: Community Value Reserved Upper Range
+- COMM-009: Community Aggregation
+- COMM-010: Community Propagation
+
+### large_communities
+Tests for BGP Large Communities attribute per RFC 8092:
+- LCOMM-001: Large Community Attribute
+- LCOMM-002: Large Community 12-Byte Value
+- LCOMM-003: Multiple Large Communities
+- LCOMM-004: Large Community Length Not Multiple of 12
+- LCOMM-005: Large Community Reserved AS in Global Admin
+- LCOMM-006: Large Community Duplicate Values
+- LCOMM-007: Large Community Aggregation
+- LCOMM-008: Large Community Attribute Zero Length
+- LCOMM-009: Large Community Global Administrator AS4
+- LCOMM-010: Large Community with Local Data Parts
+
+### route_flap_damping
+Tests for Route Flap Damping per RFC 2439 and RFC 3345:
+- DAMP-001: Route Withdrawal Increment
+- DAMP-002: Route Re-advertisement
+- DAMP-003: Damping Threshold Exceeded
+- DAMP-004: Route Reuse After Stability
+- DAMP-005: Maximum Hold Time
+- DAMP-006: Exponential Decay While Reachable
+- DAMP-007: Exponential Decay While Unreachable
+- DAMP-008: Rapid Route Flapping
+- DAMP-009: IBGP vs EBGP Damping
+- DAMP-010: Damping Parameter Persistence
+
+### as_number
+Tests for AS Number handling per RFC 1930 and RFC 6996:
+- AS-001: AS 0 Rejection
+- AS-002: Private AS 16-bit Range
+- AS-003: Private AS 32-bit Range
+- AS-004: AS 65535 Reserved
+- AS-005: AS 4294967295 Reserved
+- AS-006: Four-Octet AS Capability
+- AS-007: AS_PATH with 4-Byte AS Numbers
+- AS-008: AS4_AGGREGATOR Attribute
+- AS-009: AS_PATH Loop with 4-Byte AS
+- AS-010: Private AS Removal on EBGP
+
+### multiprotocol
+Tests for Multiprotocol Extensions per RFC 2858:
+- MP-001: MP_REACH_NLRI Invalid AFI
+- MP-002: MP_REACH_NLRI Invalid SAFI
+- MP-003: MP_UNREACH_NLRI Invalid AFI
+- MP-004: MP_REACH_NLRI IPv6
+- MP-005: MP_REACH_NLRI VPNv4
+- MP-006: MP_REACH_NLRI Next Hop Length Error
+- MP-007: MP_REACH_NLRI Reserved SNPA
+- MP-008: MP_REACH_NLRI Without Capability
 
 ## References
 
@@ -548,8 +618,15 @@ bgp_test_framework/
 - [RFC 4724 - Graceful Restart Mechanism for BGP](https://www.rfc-editor.org/rfc/rfc4724)
 - [RFC 7313 - Enhanced Route Refresh Capability for BGP-4](https://www.rfc-editor.org/rfc/rfc7313)
 - [RFC 4760 - Multiprotocol Extensions for BGP-4](https://www.rfc-editor.org/rfc/rfc4760)
+- [RFC 2858 - Multiprotocol Extensions for BGP-4](https://www.rfc-editor.org/rfc/rfc2858)
 - [RFC 4456 - Route Reflection](https://www.rfc-editor.org/rfc/rfc4456)
 - [RFC 4893 - BGP Support for Four-Octet AS Number Space](https://www.rfc-editor.org/rfc/rfc4893)
+- [RFC 1997 - BGP Communities Attribute](https://www.rfc-editor.org/rfc/rfc1997)
+- [RFC 8092 - BGP Large Communities Attribute](https://www.rfc-editor.org/rfc/rfc8092)
+- [RFC 1930 - Guidelines for Creation, Selection, and Registration of an AS](https://www.rfc-editor.org/rfc/rfc1930)
+- [RFC 2439 - BGP Route Flap Damping](https://www.rfc-editor.org/rfc/rfc2439)
+- [RFC 3345 - Border Gateway Protocol Route Flap Damping](https://www.rfc-editor.org/rfc/rfc3345)
+- [RFC 6996 - Private Autonomous System (AS) Numbers for BGP](https://www.rfc-editor.org/rfc/rfc6996)
 - [RFC 1105 - BGP (obsolete)](https://www.rfc-editor.org/rfc/rfc1105)
 - [RFC 1163 - BGP-2 (obsolete)](https://www.rfc-editor.org/rfc/rfc1163)
 - [RFC 1267 - BGP-3 (obsolete)](https://www.rfc-editor.org/rfc/rfc1267)

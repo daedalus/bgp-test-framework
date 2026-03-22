@@ -44,6 +44,10 @@ class TestCategory(Enum):
     EXTENDED_MESSAGES = "extended_messages"
     ORF_FILTERING = "orf_filtering"
     DYNAMIC_CAPABILITY = "dynamic_capability"
+    COMMUNITIES = "communities"
+    LARGE_COMMUNITIES = "large_communities"
+    ROUTE_FLAP_DAMPING = "route_flap_damping"
+    AS_NUMBER = "as_number"
 
 
 @dataclass
@@ -1948,5 +1952,273 @@ class DynamicCapabilityTests:
                 name="Multiple Capabilities",
                 category=TestCategory.DYNAMIC_CAPABILITY,
                 description="Multiple capabilities in single OPEN - RFC 5492",
+            ),
+        ]
+
+
+class CommunitiesTests:
+    @staticmethod
+    def get_tests() -> List[TestCase]:
+        return [
+            TestCase(
+                test_id="COMM-001",
+                name="Well-Known NO_EXPORT Community",
+                category=TestCategory.COMMUNITIES,
+                description="UPDATE with NO_EXPORT community - RFC 1997",
+            ),
+            TestCase(
+                test_id="COMM-002",
+                name="Well-Known NO_ADVERTISE Community",
+                category=TestCategory.COMMUNITIES,
+                description="UPDATE with NO_ADVERTISE community - RFC 1997",
+            ),
+            TestCase(
+                test_id="COMM-003",
+                name="Well-Known NO_EXPORT_SUBCONFED Community",
+                category=TestCategory.COMMUNITIES,
+                description="UPDATE with NO_EXPORT_SUBCONFED - RFC 1997",
+            ),
+            TestCase(
+                test_id="COMM-004",
+                name="Custom Community Format",
+                category=TestCategory.COMMUNITIES,
+                description="UPDATE with custom AS:value community - RFC 1997",
+            ),
+            TestCase(
+                test_id="COMM-005",
+                name="Multiple Communities",
+                category=TestCategory.COMMUNITIES,
+                description="UPDATE with multiple community values - RFC 1997",
+            ),
+            TestCase(
+                test_id="COMM-006",
+                name="Community Attribute Length Zero",
+                category=TestCategory.COMMUNITIES,
+                description="UPDATE with zero-length community attribute - RFC 1997",
+            ),
+            TestCase(
+                test_id="COMM-007",
+                name="Community Value Reserved Range",
+                category=TestCategory.COMMUNITIES,
+                description="UPDATE with community in 0x0000000-0x0000FFFF range - RFC 1997",
+            ),
+            TestCase(
+                test_id="COMM-008",
+                name="Community Value Reserved Upper Range",
+                category=TestCategory.COMMUNITIES,
+                description="UPDATE with community in 0xFFFF0000-0xFFFFFFFF range - RFC 1997",
+            ),
+            TestCase(
+                test_id="COMM-009",
+                name="Community Aggregation",
+                category=TestCategory.COMMUNITIES,
+                description="Aggregated routes should carry all communities - RFC 1997 Section 5",
+            ),
+            TestCase(
+                test_id="COMM-010",
+                name="Community Propagation",
+                category=TestCategory.COMMUNITIES,
+                description="Route without communities can have attribute appended - RFC 1997",
+            ),
+        ]
+
+
+class LargeCommunitiesTests:
+    @staticmethod
+    def get_tests() -> List[TestCase]:
+        return [
+            TestCase(
+                test_id="LCOMM-001",
+                name="Large Community Attribute",
+                category=TestCategory.LARGE_COMMUNITIES,
+                description="UPDATE with Large Community attribute - RFC 8092",
+            ),
+            TestCase(
+                test_id="LCOMM-002",
+                name="Large Community 12-Byte Value",
+                category=TestCategory.LARGE_COMMUNITIES,
+                description="Large Community must be 12 bytes - RFC 8092 Section 3",
+            ),
+            TestCase(
+                test_id="LCOMM-003",
+                name="Multiple Large Communities",
+                category=TestCategory.LARGE_COMMUNITIES,
+                description="UPDATE with multiple large community values - RFC 8092",
+            ),
+            TestCase(
+                test_id="LCOMM-004",
+                name="Large Community Length Not Multiple of 12",
+                category=TestCategory.LARGE_COMMUNITIES,
+                description="Malformed: length not multiple of 12 - RFC 8092 Section 6",
+            ),
+            TestCase(
+                test_id="LCOMM-005",
+                test_name="Large Community Reserved AS in Global Admin",
+                category=TestCategory.LARGE_COMMUNITIES,
+                description="Large Community with reserved AS (0, 65535, 4294967295) - RFC 8092",
+            ),
+            TestCase(
+                test_id="LCOMM-006",
+                name="Large Community Duplicate Values",
+                category=TestCategory.LARGE_COMMUNITIES,
+                description="Duplicate values should be silently removed - RFC 8092 Section 3",
+            ),
+            TestCase(
+                test_id="LCOMM-007",
+                name="Large Community Aggregation",
+                category=TestCategory.LARGE_COMMUNITIES,
+                description="Aggregated routes should carry all large communities - RFC 8092 Section 4",
+            ),
+            TestCase(
+                test_id="LCOMM-008",
+                name="Large Community Attribute Zero Length",
+                category=TestCategory.LARGE_COMMUNITIES,
+                description="Large Community attribute with zero length - RFC 8092",
+            ),
+            TestCase(
+                test_id="LCOMM-009",
+                name="Large Community Global Administrator AS4",
+                category=TestCategory.LARGE_COMMUNITIES,
+                description="Large Community with 4-byte AS in Global Admin - RFC 8092",
+            ),
+            TestCase(
+                test_id="LCOMM-010",
+                name="Large Community with Local Data Parts",
+                category=TestCategory.LARGE_COMMUNITIES,
+                description="Large Community with operator-defined local data - RFC 8092 Section 3",
+            ),
+        ]
+
+
+class RouteFlapDampingTests:
+    @staticmethod
+    def get_tests() -> List[TestCase]:
+        return [
+            TestCase(
+                test_id="DAMP-001",
+                name="Route Withdrawal Increment",
+                category=TestCategory.ROUTE_FLAP_DAMPING,
+                description="Route withdrawal increments stability figure - RFC 2439 Section 4",
+            ),
+            TestCase(
+                test_id="DAMP-002",
+                name="Route Re-advertisement",
+                category=TestCategory.ROUTE_FLAP_DAMPING,
+                description="Route re-advertisement after stable period - RFC 2439 Section 4",
+            ),
+            TestCase(
+                test_id="DAMP-003",
+                name="Damping Threshold Exceeded",
+                category=TestCategory.ROUTE_FLAP_DAMPING,
+                description="Route suppressed when cutoff threshold exceeded - RFC 2439 Section 4.2",
+            ),
+            TestCase(
+                test_id="DAMP-004",
+                name="Route Reuse After Stability",
+                category=TestCategory.ROUTE_FLAP_DAMPING,
+                description="Route reused when figure-of-merit falls below reuse - RFC 2439 Section 4.2",
+            ),
+            TestCase(
+                test_id="DAMP-005",
+                name="Maximum Hold Time",
+                category=TestCategory.ROUTE_FLAP_DAMPING,
+                description="Route not suppressed beyond max hold time - RFC 2439 Section 4.2",
+            ),
+            TestCase(
+                test_id="DAMP-006",
+                name="Exponential Decay While Reachable",
+                category=TestCategory.ROUTE_FLAP_DAMPING,
+                description="Stability figure decays exponentially when reachable - RFC 2439 Section 4",
+            ),
+            TestCase(
+                test_id="DAMP-007",
+                name="Exponential Decay While Unreachable",
+                category=TestCategory.ROUTE_FLAP_DAMPING,
+                description="Stability figure decays while route unreachable - RFC 2439 Section 4",
+            ),
+            TestCase(
+                test_id="DAMP-008",
+                name="Rapid Route Flapping",
+                category=TestCategory.ROUTE_FLAP_DAMPING,
+                description="Rapid withdrawals cause increased damping - RFC 2439 Section 4.3",
+            ),
+            TestCase(
+                test_id="DAMP-009",
+                name="IBGP vs EBGP Damping",
+                category=TestCategory.ROUTE_FLAP_DAMPING,
+                description="Damping applied only to EBGP - RFC 2439 Section 4",
+            ),
+            TestCase(
+                test_id="DAMP-010",
+                name="Damping Parameter Persistence",
+                category=TestCategory.ROUTE_FLAP_DAMPING,
+                description="Damping state maintained across sessions - RFC 3345 Section 3",
+            ),
+        ]
+
+
+class ASNumberTests:
+    @staticmethod
+    def get_tests() -> List[TestCase]:
+        return [
+            TestCase(
+                test_id="AS-001",
+                name="AS 0 Rejection",
+                category=TestCategory.AS_NUMBER,
+                description="AS 0 must not be used - RFC 1930 Section 3",
+            ),
+            TestCase(
+                test_id="AS-002",
+                name="Private AS 16-bit Range",
+                category=TestCategory.AS_NUMBER,
+                description="Private AS 64512-65534 for use in AS_PATH - RFC 1930",
+            ),
+            TestCase(
+                test_id="AS-003",
+                name="Private AS 32-bit Range",
+                category=TestCategory.AS_NUMBER,
+                description="Private AS 4200000000-4294967294 for 4-byte AS - RFC 6996",
+            ),
+            TestCase(
+                test_id="AS-004",
+                name="AS 65535 Reserved",
+                category=TestCategory.AS_NUMBER,
+                description="AS 65535 is reserved - RFC 1930 Section 3",
+            ),
+            TestCase(
+                test_id="AS-005",
+                name="AS 4294967295 Reserved",
+                category=TestCategory.AS_NUMBER,
+                description="AS 4294967295 is reserved for 4-byte AS - RFC 7300",
+            ),
+            TestCase(
+                test_id="AS-006",
+                name="Four-Octet AS Capability",
+                category=TestCategory.AS_NUMBER,
+                description="OPEN with 4-byte AS capability - RFC 4893",
+            ),
+            TestCase(
+                test_id="AS-007",
+                name="AS_PATH with 4-Byte AS Numbers",
+                category=TestCategory.AS_NUMBER,
+                description="AS_PATH with 4-byte AS numbers - RFC 4893",
+            ),
+            TestCase(
+                test_id="AS-008",
+                name="AS4_AGGREGATOR Attribute",
+                category=TestCategory.AS_NUMBER,
+                description="AS4_AGGREGATOR for routes with 4-byte AS - RFC 4893",
+            ),
+            TestCase(
+                test_id="AS-009",
+                name="AS_PATH Loop with 4-Byte AS",
+                category=TestCategory.AS_NUMBER,
+                description="AS_PATH loop detection with 4-byte AS - RFC 4893",
+            ),
+            TestCase(
+                test_id="AS-010",
+                name="Private AS Removal on EBGP",
+                category=TestCategory.AS_NUMBER,
+                description="Private AS numbers stripped on EBGP - RFC 1930",
             ),
         ]
