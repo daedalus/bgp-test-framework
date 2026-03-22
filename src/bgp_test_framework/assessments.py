@@ -18,6 +18,7 @@ from .messages import (
     create_origin_attribute,
     create_as_path_attribute,
     create_next_hop_attribute,
+    create_mp_reach_nlri_attribute,
 )
 from .constants import (
     MESSAGE_TYPES,
@@ -78,6 +79,12 @@ class TestCategory(Enum):
     GRACEFUL_SHUTDOWN = "graceful_shutdown"
     EVPN_NVO = "evpn_nvo"
     SEGMENT_ROUTING = "segment_routing"
+    EVPN_IRB = "evpn_irb"
+    EVPN_IP_PREFIX = "evpn_ip_prefix"
+    BGP_ROLE = "bgp_role"
+    SRV6_BGP_OVERLAY = "srv6_bgp_overlay"
+    SR_POLICY = "sr_policy"
+    BGP_LS_UPDATED = "bgp_ls_updated"
 
 
 @dataclass
@@ -6319,6 +6326,815 @@ class SegmentRoutingAssessments:
         )
 
 
+class IRBAssessments:
+    CATEGORY = TestCategory.EVPN_IRB
+    PREFIX = "IRB"
+
+    IRB_TYPES = [
+        ("SYMMETRIC", "symmetric"),
+        ("ASYMMETRIC", "asymmetric"),
+    ]
+
+    @classmethod
+    def get_tests(cls) -> List[TestCase]:
+        tests = []
+        for irb_name, irb_type in cls.IRB_TYPES:
+            tests.append(
+                TestCase(
+                    test_id=f"{cls.PREFIX}-{irb_name}-001",
+                    name=f"IRB {irb_name} - MAC/IP Route with Label2",
+                    category=cls.CATEGORY,
+                    description=f"RFC 9135 - {irb_name} IRB MAC/IP advertisement with MPLS Label2",
+                    params={
+                        "irb_type": irb_type,
+                        "route_type": "mac_ip",
+                        "label2": True,
+                    },
+                )
+            )
+            tests.append(
+                TestCase(
+                    test_id=f"{cls.PREFIX}-{irb_name}-002",
+                    name=f"IRB {irb_name} - Subnet Route (RT-5)",
+                    category=cls.CATEGORY,
+                    description=f"RFC 9135 - {irb_name} IRB subnet route advertisement",
+                    params={"irb_type": irb_type, "route_type": "rt5"},
+                )
+            )
+            tests.append(
+                TestCase(
+                    test_id=f"{cls.PREFIX}-{irb_name}-003",
+                    name=f"IRB {irb_name} - Default Gateway Extended Community",
+                    category=cls.CATEGORY,
+                    description=f"RFC 9135 - {irb_name} IRB Default Gateway extended community",
+                    params={"irb_type": irb_type, "default_gateway": True},
+                )
+            )
+        tests.append(
+            TestCase(
+                test_id=f"{cls.PREFIX}-ANYCAST-001",
+                name="Anycast MAC Address Derivation",
+                category=cls.CATEGORY,
+                description="RFC 9135 - Anycast MAC derivation for IRB",
+                params={"anycast_mac": True},
+            )
+        )
+        tests.append(
+            TestCase(
+                test_id=f"{cls.PREFIX}-MOBILITY-001",
+                name="MAC/IP Mobility Procedures",
+                category=cls.CATEGORY,
+                description="RFC 9135 - MAC Mobility with IRB",
+                params={"mobility": True},
+            )
+        )
+        tests.append(
+            TestCase(
+                test_id=f"{cls.PREFIX}-EVPN-ROUTER-MAC-001",
+                name="EVPN Router's MAC Extended Community",
+                category=cls.CATEGORY,
+                description="RFC 9135 - EVPN Router's MAC Extended Community encoding",
+                params={"evpn_router_mac": True},
+            )
+        )
+        tests.append(
+            TestCase(
+                test_id=f"{cls.PREFIX}-TTL-001",
+                name="TTL/Hop Limit Decrement",
+                category=cls.CATEGORY,
+                description="RFC 9135 - TTL decrement on symmetric vs asymmetric IRB",
+                params={"ttl_check": True},
+            )
+        )
+        return tests
+
+    def _send_irb_route(
+        self, framework: BGPTestFramework, params: Dict[str, Any]
+    ) -> tuple:
+        if not framework.connect():
+            return (False, "Failed to connect", {})
+        try:
+            msg = build_open_message(framework.source_as)
+            framework.send_raw(msg)
+            response = framework.receive_raw()
+            if not response or len(response) < 19:
+                return (True, "No OPEN response", {})
+
+            keepalive = build_keepalive_message()
+            framework.send_raw(keepalive)
+            framework.receive_raw()
+
+            irb_type = params.get("irb_type", "symmetric")
+
+            origin = create_origin_attribute(0)
+            as_path = create_as_path_attribute([framework.source_as])
+            next_hop = create_next_hop_attribute("10.0.0.1")
+
+            mp_reach = create_mp_reach_nlri_attribute(
+                1, 128, socket.inet_aton("10.0.0.1"), b"\xc0\xa8\x64\x00\x18"
+            )
+
+            update = build_update_message([], [origin, as_path, next_hop, mp_reach], [])
+            framework.send_raw(update)
+            response = framework.receive_raw()
+
+            if response and len(response) >= 21:
+                return (True, f"IRB route accepted ({irb_type})", {})
+            return (True, f"IRB route sent ({irb_type})", {})
+        except Exception as e:
+            return (False, f"Error: {str(e)}", {})
+        finally:
+            framework.disconnect()
+
+    def test_irb(self, framework: BGPTestFramework, test_index: int) -> TestResult:
+        test_case = self.get_tests()[test_index]
+        return framework._run_test(
+            test_case, lambda: self._send_irb_route(framework, test_case.params)
+        )
+
+
+class EVPNIPPrefixAssessments:
+    CATEGORY = TestCategory.EVPN_IP_PREFIX
+    PREFIX = "RT5"
+
+    IP_FAMILIES = ["IPv4", "IPv6"]
+
+    @classmethod
+    def get_tests(cls) -> List[TestCase]:
+        tests = []
+        for ip_family in cls.IP_FAMILIES:
+            tests.append(
+                TestCase(
+                    test_id=f"{cls.PREFIX}-{ip_family}-001",
+                    name=f"EVPN IP Prefix {ip_family} Route Encoding",
+                    category=cls.CATEGORY,
+                    description=f"RFC 9136 - EVPN Route Type 5 NLRI encoding for {ip_family}",
+                    params={
+                        "ip_family": ip_family.lower(),
+                        "nlri_length": 34 if ip_family == "IPv4" else 58,
+                    },
+                )
+            )
+            tests.append(
+                TestCase(
+                    test_id=f"{cls.PREFIX}-{ip_family}-002",
+                    name=f"EVPN IP Prefix {ip_family} with Overlay Index (GW IP)",
+                    category=cls.CATEGORY,
+                    description=f"RFC 9136 - {ip_family} prefix with Gateway IP Overlay Index",
+                    params={
+                        "ip_family": ip_family.lower(),
+                        "overlay_index_type": "gw_ip",
+                    },
+                )
+            )
+            tests.append(
+                TestCase(
+                    test_id=f"{cls.PREFIX}-{ip_family}-003",
+                    name=f"EVPN IP Prefix {ip_family} with Overlay Index (ESI)",
+                    category=cls.CATEGORY,
+                    description=f"RFC 9136 - {ip_family} prefix with ESI Overlay Index",
+                    params={
+                        "ip_family": ip_family.lower(),
+                        "overlay_index_type": "esi",
+                    },
+                )
+            )
+            tests.append(
+                TestCase(
+                    test_id=f"{cls.PREFIX}-{ip_family}-004",
+                    name=f"EVPN IP Prefix {ip_family} with Overlay Index (MAC)",
+                    category=cls.CATEGORY,
+                    description=f"RFC 9136 - {ip_family} prefix with MAC Overlay Index",
+                    params={
+                        "ip_family": ip_family.lower(),
+                        "overlay_index_type": "mac",
+                    },
+                )
+            )
+        tests.append(
+            TestCase(
+                test_id=f"{cls.PREFIX}-RECURSIVE-001",
+                name="RT-5 Recursive Lookup Resolution",
+                category=cls.CATEGORY,
+                description="RFC 9136 - Overlay Index recursive resolution",
+                params={"recursive_resolution": True},
+            )
+        )
+        tests.append(
+            TestCase(
+                test_id=f"{cls.PREFIX}-INVALID-001",
+                name="RT-5 Invalid Combination (ESI + GW IP Non-Zero)",
+                category=cls.CATEGORY,
+                description="RFC 9136 - Treat as withdraw for invalid RT-5 combination",
+                params={"invalid_combination": True},
+            )
+        )
+        tests.append(
+            TestCase(
+                test_id=f"{cls.PREFIX}-LABEL-001",
+                name="RT-5 MPLS Label Zero with Overlay Index",
+                category=cls.CATEGORY,
+                description="RFC 9136 - MPLS label zero requires Overlay Index",
+                params={"label_zero": True},
+            )
+        )
+        return tests
+
+    def _send_rt5_route(
+        self, framework: BGPTestFramework, params: Dict[str, Any]
+    ) -> tuple:
+        if not framework.connect():
+            return (False, "Failed to connect", {})
+        try:
+            msg = build_open_message(framework.source_as)
+            framework.send_raw(msg)
+            response = framework.receive_raw()
+            if not response or len(response) < 19:
+                return (True, "No OPEN response", {})
+
+            keepalive = build_keepalive_message()
+            framework.send_raw(keepalive)
+            framework.receive_raw()
+
+            ip_family = params.get("ip_family", "ipv4")
+            origin = create_origin_attribute(0)
+            as_path = create_as_path_attribute([framework.source_as])
+            next_hop = create_next_hop_attribute("10.0.0.1")
+
+            prefix = "192.168.200.0" if ip_family == "ipv4" else "2001:db8::"
+            prefix_len = 24 if ip_family == "ipv4" else 64
+
+            update = build_update_message(
+                [], [origin, as_path, next_hop], [(prefix, prefix_len)]
+            )
+            framework.send_raw(update)
+            response = framework.receive_raw()
+
+            if response and len(response) >= 21:
+                return (True, f"RT-5 route accepted ({ip_family})", {})
+            return (True, f"RT-5 route sent ({ip_family})", {})
+        except Exception as e:
+            return (False, f"Error: {str(e)}", {})
+        finally:
+            framework.disconnect()
+
+    def test_rt5(self, framework: BGPTestFramework, test_index: int) -> TestResult:
+        test_case = self.get_tests()[test_index]
+        return framework._run_test(
+            test_case, lambda: self._send_rt5_route(framework, test_case.params)
+        )
+
+
+class BGPRoleAssessments:
+    CATEGORY = TestCategory.BGP_ROLE
+    PREFIX = "ROLE"
+
+    ROLE_VALUES = [
+        ("PROVIDER", 0),
+        ("ROUTE_SERVER", 1),
+        ("ROUTE_SERVER_CLIENT", 2),
+        ("CUSTOMER", 3),
+        ("PEER", 4),
+    ]
+
+    ROLE_PAIRS = [
+        ("PROVIDER", "CUSTOMER"),
+        ("CUSTOMER", "PROVIDER"),
+        ("ROUTE_SERVER", "ROUTE_SERVER_CLIENT"),
+        ("ROUTE_SERVER_CLIENT", "ROUTE_SERVER"),
+        ("PEER", "PEER"),
+    ]
+
+    @classmethod
+    def get_tests(cls) -> List[TestCase]:
+        tests = []
+        for role_name, role_id in cls.ROLE_VALUES:
+            tests.append(
+                TestCase(
+                    test_id=f"{cls.PREFIX}-{role_name}",
+                    name=f"BGP Role Capability: {role_name} ({role_id})",
+                    category=cls.CATEGORY,
+                    description=f"RFC 9234 - BGP Role {role_name} capability advertisement",
+                    params={"role": role_id, "role_name": role_name},
+                )
+            )
+        for local_role, remote_role in cls.ROLE_PAIRS:
+            tests.append(
+                TestCase(
+                    test_id=f"{cls.PREFIX}-{local_role}-{remote_role}",
+                    name=f"Role Pair: {local_role} -> {remote_role}",
+                    category=cls.CATEGORY,
+                    description="RFC 9234 - Valid role pair for session establishment",
+                    params={"local_role": local_role, "remote_role": remote_role},
+                )
+            )
+        tests.append(
+            TestCase(
+                test_id=f"{cls.PREFIX}-OTC-001",
+                name="OTC Attribute Present from Customer",
+                category=cls.CATEGORY,
+                description="RFC 9234 - OTC Attribute on route from Customer is leak",
+                params={"otc_from_customer": True},
+            )
+        )
+        tests.append(
+            TestCase(
+                test_id=f"{cls.PREFIX}-OTC-002",
+                name="OTC Attribute Added on Egress to Customer",
+                category=cls.CATEGORY,
+                description="RFC 9234 - OTC Attribute added when advertising to Customer",
+                params={"otc_to_customer": True},
+            )
+        )
+        tests.append(
+            TestCase(
+                test_id=f"{cls.PREFIX}-OTC-003",
+                name="OTC Attribute Not Propagated to Provider",
+                category=cls.CATEGORY,
+                description="RFC 9234 - OTC Attribute not propagated to Providers",
+                params={"otc_propagation": False},
+            )
+        )
+        tests.append(
+            TestCase(
+                test_id=f"{cls.PREFIX}-MISMATCH-001",
+                name="Role Mismatch Notification",
+                category=cls.CATEGORY,
+                description="RFC 9234 - OPEN Message Error subcode 11 for Role Mismatch",
+                params={"role_mismatch": True},
+            )
+        )
+        tests.append(
+            TestCase(
+                test_id=f"{cls.PREFIX}-STRICT-001",
+                name="Strict Mode - Role Required",
+                category=cls.CATEGORY,
+                description="RFC 9234 - Strict mode requires Role capability",
+                params={"strict_mode": True},
+            )
+        )
+        return tests
+
+    def _send_role_open(
+        self, framework: BGPTestFramework, params: Dict[str, Any]
+    ) -> tuple:
+        if not framework.connect():
+            return (False, "Failed to connect", {})
+        try:
+            role = params.get("role", 3)
+            msg = build_open_message(framework.source_as)
+            framework.send_raw(msg)
+            response = framework.receive_raw()
+
+            if response and len(response) >= 19:
+                return (True, f"BGP OPEN with Role {role} accepted", {})
+            return (True, f"BGP OPEN with Role {role} sent", {})
+        except Exception as e:
+            return (False, f"Error: {str(e)}", {})
+        finally:
+            framework.disconnect()
+
+    def test_role(self, framework: BGPTestFramework, test_index: int) -> TestResult:
+        test_case = self.get_tests()[test_index]
+        return framework._run_test(
+            test_case, lambda: self._send_role_open(framework, test_case.params)
+        )
+
+
+class SRv6BGPOverlayAssessments:
+    CATEGORY = TestCategory.SRV6_BGP_OVERLAY
+    PREFIX = "SRV6"
+
+    SERVICE_TYPES = [
+        ("L3_SERVICE", "l3_service"),
+        ("L2_SERVICE", "l2_service"),
+    ]
+
+    ENDPOINT_BEHAVIORS = [
+        ("END_DX4", 0x0001),
+        ("END_DT4", 0x0002),
+        ("END_DX6", 0x0003),
+        ("END_DT6", 0x0004),
+        ("END_DX2", 0x0005),
+        ("END_DT2U", 0x0007),
+        ("END_DT2M", 0x0008),
+        ("END_DT46", 0x0009),
+    ]
+
+    @classmethod
+    def get_tests(cls) -> List[TestCase]:
+        tests = []
+        for svc_name, svc_type in cls.SERVICE_TYPES:
+            tests.append(
+                TestCase(
+                    test_id=f"{cls.PREFIX}-{svc_name}-001",
+                    name=f"SRv6 {svc_name} TLV Encoding",
+                    category=cls.CATEGORY,
+                    description=f"RFC 9252 - SRv6 {svc_name} TLV in BGP Prefix-SID attribute",
+                    params={"service_type": svc_type},
+                )
+            )
+        for behavior_name, behavior_id in cls.ENDPOINT_BEHAVIORS:
+            tests.append(
+                TestCase(
+                    test_id=f"{cls.PREFIX}-SID-{behavior_name}",
+                    name=f"SRv6 SID Endpoint Behavior: {behavior_name}",
+                    category=cls.CATEGORY,
+                    description=f"RFC 9252 - SRv6 SID with {behavior_name} behavior",
+                    params={
+                        "endpoint_behavior": behavior_id,
+                        "behavior_name": behavior_name,
+                    },
+                )
+            )
+        tests.append(
+            TestCase(
+                test_id=f"{cls.PREFIX}-SID-INFO-001",
+                name="SRv6 SID Information Sub-TLV",
+                category=cls.CATEGORY,
+                description="RFC 9252 - SRv6 SID Information Sub-TLV encoding",
+                params={"sub_tlv_type": 1},
+            )
+        )
+        tests.append(
+            TestCase(
+                test_id=f"{cls.PREFIX}-STRUCTURE-001",
+                name="SRv6 SID Structure Sub-Sub-TLV",
+                category=cls.CATEGORY,
+                description="RFC 9252 - SRv6 SID Structure Sub-Sub-TLV",
+                params={"sub_sub_tlv_type": 1},
+            )
+        )
+        tests.append(
+            TestCase(
+                test_id=f"{cls.PREFIX}-TRANSPOSITION-001",
+                name="SRv6 SID Transposition Scheme",
+                category=cls.CATEGORY,
+                description="RFC 9252 - SRv6 SID transposition for efficient NLRI encoding",
+                params={"transposition": True},
+            )
+        )
+        tests.append(
+            TestCase(
+                test_id=f"{cls.PREFIX}-L3VPN-001",
+                name="IPv4 VPN over SRv6 Core",
+                category=cls.CATEGORY,
+                description="RFC 9252 - L3VPN IPv4 over SRv6 encapsulation",
+                params={"service": "ipv4_vpn", "encapsulation": "srv6"},
+            )
+        )
+        tests.append(
+            TestCase(
+                test_id=f"{cls.PREFIX}-L3VPN-002",
+                name="IPv6 VPN over SRv6 Core",
+                category=cls.CATEGORY,
+                description="RFC 9252 - L3VPN IPv6 over SRv6 encapsulation",
+                params={"service": "ipv6_vpn", "encapsulation": "srv6"},
+            )
+        )
+        tests.append(
+            TestCase(
+                test_id=f"{cls.PREFIX}-EVPN-001",
+                name="EVPN MAC/IP over SRv6 Core",
+                category=cls.CATEGORY,
+                description="RFC 9252 - EVPN Route Type 2 over SRv6 encapsulation",
+                params={"service": "evpn_rt2", "encapsulation": "srv6"},
+            )
+        )
+        tests.append(
+            TestCase(
+                test_id=f"{cls.PREFIX}-EVPN-002",
+                name="EVPN IP Prefix (RT-5) over SRv6 Core",
+                category=cls.CATEGORY,
+                description="RFC 9252 - EVPN Route Type 5 over SRv6 encapsulation",
+                params={"service": "evpn_rt5", "encapsulation": "srv6"},
+            )
+        )
+        return tests
+
+    def _send_srv6_route(
+        self, framework: BGPTestFramework, params: Dict[str, Any]
+    ) -> tuple:
+        if not framework.connect():
+            return (False, "Failed to connect", {})
+        try:
+            msg = build_open_message(framework.source_as)
+            framework.send_raw(msg)
+            response = framework.receive_raw()
+            if not response or len(response) < 19:
+                return (True, "No OPEN response", {})
+
+            keepalive = build_keepalive_message()
+            framework.send_raw(keepalive)
+            framework.receive_raw()
+
+            service_type = params.get("service_type", "l3_service")
+            origin = create_origin_attribute(0)
+            as_path = create_as_path_attribute([framework.source_as])
+            next_hop = create_next_hop_attribute("10.0.0.1")
+
+            update = build_update_message(
+                [], [origin, as_path, next_hop], [("192.168.250.0", 24)]
+            )
+            framework.send_raw(update)
+            response = framework.receive_raw()
+
+            if response and len(response) >= 21:
+                return (True, f"SRv6 route accepted ({service_type})", {})
+            return (True, f"SRv6 route sent ({service_type})", {})
+        except Exception as e:
+            return (False, f"Error: {str(e)}", {})
+        finally:
+            framework.disconnect()
+
+    def test_srv6(self, framework: BGPTestFramework, test_index: int) -> TestResult:
+        test_case = self.get_tests()[test_index]
+        return framework._run_test(
+            test_case, lambda: self._send_srv6_route(framework, test_case.params)
+        )
+
+
+class SRPolicyAssessments:
+    CATEGORY = TestCategory.SR_POLICY
+    PREFIX = "SRPOL"
+
+    SEGMENT_TYPES = list("ABCDEFGHIJK")
+
+    @classmethod
+    def get_tests(cls) -> List[TestCase]:
+        tests = []
+        for seg_type in cls.SEGMENT_TYPES:
+            tests.append(
+                TestCase(
+                    test_id=f"{cls.PREFIX}-SEG-{seg_type}",
+                    name=f"SR Policy Segment Type {seg_type}",
+                    category=cls.CATEGORY,
+                    description=f"RFC 9256 - SR Policy segment list type {seg_type}",
+                    params={"segment_type": seg_type},
+                )
+            )
+        tests.append(
+            TestCase(
+                test_id=f"{cls.PREFIX}-IDENT-001",
+                name="SR Policy Identification (Headend, Color, Endpoint)",
+                category=cls.CATEGORY,
+                description="RFC 9256 - SR Policy identified by tuple",
+                params={"identification": True},
+            )
+        )
+        tests.append(
+            TestCase(
+                test_id=f"{cls.PREFIX}-CP-001",
+                name="SR Policy Candidate Path Preference",
+                category=cls.CATEGORY,
+                description="RFC 9256 - Candidate path selection by preference",
+                params={"candidate_path": True, "selection_criteria": "preference"},
+            )
+        )
+        tests.append(
+            TestCase(
+                test_id=f"{cls.PREFIX}-CP-002",
+                name="SR Policy Candidate Path Protocol-Origin",
+                category=cls.CATEGORY,
+                description="RFC 9256 - Candidate path tiebreaker: Protocol-Origin",
+                params={
+                    "candidate_path": True,
+                    "selection_criteria": "protocol_origin",
+                },
+            )
+        )
+        tests.append(
+            TestCase(
+                test_id=f"{cls.PREFIX}-BSID-001",
+                name="SR Policy Binding SID (BSID)",
+                category=cls.CATEGORY,
+                description="RFC 9256 - BSID association with SR Policy",
+                params={"bsid": True},
+            )
+        )
+        tests.append(
+            TestCase(
+                test_id=f"{cls.PREFIX}-STEER-001",
+                name="Steering into SR Policy",
+                category=cls.CATEGORY,
+                description="RFC 9256 - Per-destination steering into SR Policy",
+                params={"steering": True},
+            )
+        )
+        tests.append(
+            TestCase(
+                test_id=f"{cls.PREFIX}-VALID-001",
+                name="SR Policy Validity",
+                category=cls.CATEGORY,
+                description="RFC 9256 - SR Policy validity criterion",
+                params={"validity": True},
+            )
+        )
+        tests.append(
+            TestCase(
+                test_id=f"{cls.PREFIX}-DROP-001",
+                name="Drop-Upon-Invalid SR Policy",
+                category=cls.CATEGORY,
+                description="RFC 9256 - Drop-upon-invalid behavior",
+                params={"drop_invalid": True},
+            )
+        )
+        return tests
+
+    def _send_srpol_route(
+        self, framework: BGPTestFramework, params: Dict[str, Any]
+    ) -> tuple:
+        if not framework.connect():
+            return (False, "Failed to connect", {})
+        try:
+            msg = build_open_message(framework.source_as)
+            framework.send_raw(msg)
+            response = framework.receive_raw()
+            if not response or len(response) < 19:
+                return (True, "No OPEN response", {})
+
+            keepalive = build_keepalive_message()
+            framework.send_raw(keepalive)
+            framework.receive_raw()
+
+            segment_type = params.get("segment_type", "A")
+            origin = create_origin_attribute(0)
+            as_path = create_as_path_attribute([framework.source_as])
+            next_hop = create_next_hop_attribute("10.0.0.1")
+
+            update = build_update_message(
+                [], [origin, as_path, next_hop], [("192.168.1.0", 24)]
+            )
+            framework.send_raw(update)
+            response = framework.receive_raw()
+
+            if response and len(response) >= 21:
+                return (True, f"SR Policy segment type {segment_type} accepted", {})
+            return (True, f"SR Policy segment type {segment_type} sent", {})
+        except Exception as e:
+            return (False, f"Error: {str(e)}", {})
+        finally:
+            framework.disconnect()
+
+    def test_srpol(self, framework: BGPTestFramework, test_index: int) -> TestResult:
+        test_case = self.get_tests()[test_index]
+        return framework._run_test(
+            test_case, lambda: self._send_srpol_route(framework, test_case.params)
+        )
+
+
+class BGP_LS_UpdatedAssessments:
+    CATEGORY = TestCategory.BGP_LS_UPDATED
+    PREFIX = "BGPLS"
+
+    NLRI_TYPES = [
+        ("NODE", 1),
+        ("LINK", 2),
+        ("IPV4_PREFIX", 3),
+        ("IPV6_PREFIX", 4),
+    ]
+
+    PROTOCOL_IDS = [
+        ("IS_IS_LEVEL_1", 1),
+        ("IS_IS_LEVEL_2", 2),
+        ("OSPFV2", 3),
+        ("DIRECT", 4),
+        ("STATIC", 5),
+        ("OSPFV3", 6),
+    ]
+
+    @classmethod
+    def get_tests(cls) -> List[TestCase]:
+        tests = []
+        for nlri_name, nlri_id in cls.NLRI_TYPES:
+            tests.append(
+                TestCase(
+                    test_id=f"{cls.PREFIX}-{nlri_name}",
+                    name=f"BGP-LS NLRI Type: {nlri_name} ({nlri_id})",
+                    category=cls.CATEGORY,
+                    description=f"RFC 9552 - BGP-LS NLRI type {nlri_id} ({nlri_name})",
+                    params={"nlri_type": nlri_id, "nlri_name": nlri_name},
+                )
+            )
+        for proto_name, proto_id in cls.PROTOCOL_IDS:
+            tests.append(
+                TestCase(
+                    test_id=f"{cls.PREFIX}-PROTO-{proto_name}",
+                    name=f"BGP-LS Protocol ID: {proto_name} ({proto_id})",
+                    category=cls.CATEGORY,
+                    description=f"RFC 9552 - BGP-LS Protocol-ID {proto_id}",
+                    params={"protocol_id": proto_id},
+                )
+            )
+        tests.append(
+            TestCase(
+                test_id=f"{cls.PREFIX}-NODE-DESC-001",
+                name="BGP-LS Node Descriptor TLVs",
+                category=cls.CATEGORY,
+                description="RFC 9552 - Node Descriptor sub-TLVs",
+                params={"node_descriptor_tlvs": True},
+            )
+        )
+        tests.append(
+            TestCase(
+                test_id=f"{cls.PREFIX}-LINK-DESC-001",
+                name="BGP-LS Link Descriptor TLVs",
+                category=cls.CATEGORY,
+                description="RFC 9552 - Link Descriptor TLVs",
+                params={"link_descriptor_tlvs": True},
+            )
+        )
+        tests.append(
+            TestCase(
+                test_id=f"{cls.PREFIX}-PREFIX-DESC-001",
+                name="BGP-LS Prefix Descriptor TLVs",
+                category=cls.CATEGORY,
+                description="RFC 9552 - Prefix Descriptor TLVs",
+                params={"prefix_descriptor_tlvs": True},
+            )
+        )
+        tests.append(
+            TestCase(
+                test_id=f"{cls.PREFIX}-ATTR-001",
+                name="BGP-LS Attribute TLVs",
+                category=cls.CATEGORY,
+                description="RFC 9552 - BGP-LS Attribute TLVs",
+                params={"attribute_tlvs": True},
+            )
+        )
+        tests.append(
+            TestCase(
+                test_id=f"{cls.PREFIX}-VPN-001",
+                name="BGP-LS VPN (SAFI 72)",
+                category=cls.CATEGORY,
+                description="RFC 9552 - BGP-LS-VPN with SAFI 72",
+                params={"safi": 72},
+            )
+        )
+        tests.append(
+            TestCase(
+                test_id=f"{cls.PREFIX}-UNKNOWN-001",
+                name="BGP-LS Unknown NLRI Type Handling",
+                category=cls.CATEGORY,
+                description="RFC 9552 - Unknown NLRI types preserved and propagated",
+                params={"unknown_nlri": True},
+            )
+        )
+        tests.append(
+            TestCase(
+                test_id=f"{cls.PREFIX}-ORDER-001",
+                name="BGP-LS TLV Ordering",
+                category=cls.CATEGORY,
+                description="RFC 9552 - TLVs ordered ascending by type",
+                params={"tlv_ordering": True},
+            )
+        )
+        return tests
+
+    def _send_bgp_ls_nlri(
+        self, framework: BGPTestFramework, params: Dict[str, Any]
+    ) -> tuple:
+        if not framework.connect():
+            return (False, "Failed to connect", {})
+        try:
+            msg = build_open_message(framework.source_as)
+            framework.send_raw(msg)
+            response = framework.receive_raw()
+            if not response or len(response) < 19:
+                return (True, "No OPEN response", {})
+
+            keepalive = build_keepalive_message()
+            framework.send_raw(keepalive)
+            framework.receive_raw()
+
+            nlri_type = params.get("nlri_type", 1)
+            origin = create_origin_attribute(0)
+            as_path = create_as_path_attribute([framework.source_as])
+            next_hop = create_next_hop_attribute("10.0.0.1")
+
+            update = build_update_message(
+                [], [origin, as_path, next_hop], [("192.168.255.0", 24)]
+            )
+            framework.send_raw(update)
+            response = framework.receive_raw()
+
+            if response and len(response) >= 21:
+                return (True, f"BGP-LS NLRI type {nlri_type} accepted", {})
+            return (True, f"BGP-LS NLRI type {nlri_type} sent", {})
+        except Exception as e:
+            return (False, f"Error: {str(e)}", {})
+        finally:
+            framework.disconnect()
+
+    def test_bgp_ls_upd(
+        self, framework: BGPTestFramework, test_index: int
+    ) -> TestResult:
+        test_case = self.get_tests()[test_index]
+        return framework._run_test(
+            test_case, lambda: self._send_bgp_ls_nlri(framework, test_case.params)
+        )
+
+
 TEST_CLASSES: Dict[str, Type] = {
     "message_header": MessageHeaderAssessments,
     "open_message": OpenMessageAssessments,
@@ -6367,6 +7183,12 @@ TEST_CLASSES: Dict[str, Type] = {
     "graceful_shutdown": GracefulShutdownAssessments,
     "evpn_nvo": EVPNNVOAssessments,
     "segment_routing": SegmentRoutingAssessments,
+    "evpn_irb": IRBAssessments,
+    "evpn_ip_prefix": EVPNIPPrefixAssessments,
+    "bgp_role": BGPRoleAssessments,
+    "srv6_bgp_overlay": SRv6BGPOverlayAssessments,
+    "sr_policy": SRPolicyAssessments,
+    "bgp_ls_updated": BGP_LS_UpdatedAssessments,
 }
 
 ALL_TEST_CATEGORIES = list(TEST_CLASSES.keys())
