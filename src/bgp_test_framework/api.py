@@ -24,7 +24,7 @@ from .messages import (
     create_originator_id_attribute,
     create_cluster_list_attribute,
 )
-from .tests import (
+from .assessments import (
     BGPTestFramework,
     TestResult,
     TestCase,

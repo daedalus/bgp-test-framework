@@ -10,7 +10,7 @@ from bgp_test_framework.runner import (
     BGPLogger,
     ComplianceMetrics,
 )
-from bgp_test_framework.tests import TestCategory, TestResult
+from bgp_test_framework.assessments import TestCategory, TestResult
 
 
 class MockSocket:

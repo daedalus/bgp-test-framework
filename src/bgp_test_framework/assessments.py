@@ -203,7 +203,7 @@ class BGPTestFramework:
         return result
 
 
-class MessageHeaderTests:
+class MessageHeaderAssessments:
 
     @staticmethod
     def get_tests() -> List[TestCase]:
@@ -448,7 +448,7 @@ class MessageHeaderTests:
         return result
 
 
-class OpenMessageTests:
+class OpenMessageAssessments:
 
     @staticmethod
     def get_tests() -> List[TestCase]:
@@ -658,7 +658,7 @@ class OpenMessageTests:
         return result
 
 
-class UpdateMessageTests:
+class UpdateMessageAssessments:
 
     @staticmethod
     def get_tests() -> List[TestCase]:
@@ -906,7 +906,7 @@ class UpdateMessageTests:
         return result
 
 
-class AttributeTests:
+class AttributeAssessments:
 
     @staticmethod
     def get_tests() -> List[TestCase]:
@@ -1004,7 +1004,7 @@ class AttributeTests:
         ]
 
 
-class FSMTests:
+class FSMAssessments:
 
     @staticmethod
     def get_tests() -> List[TestCase]:
@@ -1102,7 +1102,7 @@ class FSMTests:
         ]
 
 
-class TimingTests:
+class TimingAssessments:
 
     @staticmethod
     def get_tests() -> List[TestCase]:
@@ -1170,7 +1170,7 @@ class TimingTests:
         ]
 
 
-class SecurityTests:
+class SecurityAssessments:
 
     @staticmethod
     def get_tests() -> List[TestCase]:
@@ -1298,7 +1298,7 @@ class SecurityTests:
         ]
 
 
-class RouteAggregationTests:
+class RouteAggregationAssessments:
 
     @staticmethod
     def get_tests() -> List[TestCase]:
@@ -1354,7 +1354,7 @@ class RouteAggregationTests:
         ]
 
 
-class DecisionProcessTests:
+class DecisionProcessAssessments:
 
     @staticmethod
     def get_tests() -> List[TestCase]:
@@ -1470,7 +1470,7 @@ class DecisionProcessTests:
         ]
 
 
-class KeepaliveMessageTests:
+class KeepaliveMessageAssessments:
     @staticmethod
     def get_tests() -> List[TestCase]:
         return [
@@ -1513,7 +1513,7 @@ class KeepaliveMessageTests:
         ]
 
 
-class NotificationMessageTests:
+class NotificationMessageAssessments:
     @staticmethod
     def get_tests() -> List[TestCase]:
         return [
@@ -1556,7 +1556,7 @@ class NotificationMessageTests:
         ]
 
 
-class VersionNegotiationTests:
+class VersionNegotiationAssessments:
     @staticmethod
     def get_tests() -> List[TestCase]:
         return [
@@ -1599,7 +1599,7 @@ class VersionNegotiationTests:
         ]
 
 
-class ConnectionCollisionTests:
+class ConnectionCollisionAssessments:
     @staticmethod
     def get_tests() -> List[TestCase]:
         return [
@@ -1630,7 +1630,7 @@ class ConnectionCollisionTests:
         ]
 
 
-class MultiprotocolTests:
+class MultiprotocolAssessments:
     MP_REACH_NLRI = 14
     MP_UNREACH_NLRI = 15
     AFI_IPV4 = 1
@@ -1867,7 +1867,7 @@ class MultiprotocolTests:
         )
 
 
-class RouteReflectionTests:
+class RouteReflectionAssessments:
     @staticmethod
     def get_tests() -> List[TestCase]:
         return [
@@ -1904,7 +1904,7 @@ class RouteReflectionTests:
         ]
 
 
-class BGPSecurityTests:
+class BGPSecurityAssessments:
     @staticmethod
     def get_tests() -> List[TestCase]:
         return [
@@ -1983,7 +1983,7 @@ class BGPSecurityTests:
         ]
 
 
-class GracefulRestartTests:
+class GracefulRestartAssessments:
     @staticmethod
     def get_tests() -> List[TestCase]:
         return [
@@ -2020,7 +2020,7 @@ class GracefulRestartTests:
         ]
 
 
-class EnhancedRouteRefreshTests:
+class EnhancedRouteRefreshAssessments:
     @staticmethod
     def get_tests() -> List[TestCase]:
         return [
@@ -2057,7 +2057,7 @@ class EnhancedRouteRefreshTests:
         ]
 
 
-class ExtendedMessageTests:
+class ExtendedMessageAssessments:
     @staticmethod
     def get_tests() -> List[TestCase]:
         return [
@@ -2094,7 +2094,7 @@ class ExtendedMessageTests:
         ]
 
 
-class ORFFilteringTests:
+class ORFFilteringAssessments:
     @staticmethod
     def get_tests() -> List[TestCase]:
         return [
@@ -2131,7 +2131,7 @@ class ORFFilteringTests:
         ]
 
 
-class DynamicCapabilityTests:
+class DynamicCapabilityAssessments:
     @staticmethod
     def get_tests() -> List[TestCase]:
         return [
@@ -2168,7 +2168,7 @@ class DynamicCapabilityTests:
         ]
 
 
-class CommunitiesTests:
+class CommunitiesAssessments:
     NO_EXPORT = 0xFFFFFF01
     NO_ADVERTISE = 0xFFFFFF02
     NO_EXPORT_SUBCONFED = 0xFFFFFF03
@@ -2387,7 +2387,7 @@ class CommunitiesTests:
             framework.disconnect()
 
 
-class LargeCommunitiesTests:
+class LargeCommunitiesAssessments:
     LARGE_COMMUNITY_TYPE = 32
     RESERVED_AS_VALUES = [0, 65535, 4294967295]
 
@@ -2616,7 +2616,7 @@ class LargeCommunitiesTests:
         )
 
 
-class RouteFlapDampingTests:
+class RouteFlapDampingAssessments:
     @staticmethod
     def get_tests() -> List[TestCase]:
         return [
@@ -2820,7 +2820,7 @@ class RouteFlapDampingTests:
         return framework._run_test(test_case, run_test)
 
 
-class ASNumberTests:
+class ASNumberAssessments:
     AS_PATH_TYPE = 2
 
     @staticmethod
@@ -2949,7 +2949,7 @@ class ASNumberTests:
         )
 
 
-class VPNTests:
+class VPNAssessments:
     MP_REACH_NLRI = 14
     AFI_IPV4 = 1
     SAFI_VPNV4 = 128
@@ -3161,7 +3161,7 @@ class VPNTests:
         )
 
 
-class CapabilitiesTests:
+class CapabilitiesAssessments:
     CAP_MULTIPROTOCOL = 1
     CAP_ROUTE_REFRESH = 2
     CAP_4BYTE_AS = 65
@@ -3307,7 +3307,7 @@ class CapabilitiesTests:
         )
 
 
-class RouteRefreshTests:
+class RouteRefreshAssessments:
     ROUTE_REFRESH_TYPE = 5
     AFI_IPV4 = 1
     AFI_IPV6 = 2
@@ -3451,7 +3451,7 @@ class RouteRefreshTests:
         )
 
 
-class MPLSLabelTests:
+class MPLSLabelAssessments:
     MP_REACH_NLRI = 14
     SAFI_MPLS_LABEL = 4
     MPLS_LABEL_IMPLICIT_NULL = 3
@@ -3620,7 +3620,7 @@ class MPLSLabelTests:
         return framework._run_test(test_case, run_test)
 
 
-class NOPEERCommunityTests:
+class NOPEERCommunityAssessments:
     NOPEER = 0xFFFFFF04
     NO_EXPORT = 0xFFFFFF01
     NO_ADVERTISE = 0xFFFFFF02
@@ -3713,7 +3713,7 @@ class NOPEERCommunityTests:
         )
 
 
-class RouteOscillationTests:
+class RouteOscillationAssessments:
     MED_TYPE = 4
 
     @staticmethod
@@ -3806,36 +3806,36 @@ class RouteOscillationTests:
 
 
 TEST_CLASSES: Dict[str, Type] = {
-    "message_header": MessageHeaderTests,
-    "open_message": OpenMessageTests,
-    "update_message": UpdateMessageTests,
-    "attribute": AttributeTests,
-    "fsm": FSMTests,
-    "timing": TimingTests,
-    "security": SecurityTests,
-    "route_aggregation": RouteAggregationTests,
-    "decision_process": DecisionProcessTests,
-    "keepalive_message": KeepaliveMessageTests,
-    "notification_message": NotificationMessageTests,
-    "version_negotiation": VersionNegotiationTests,
-    "connection_collision": ConnectionCollisionTests,
-    "multiprotocol": MultiprotocolTests,
-    "route_reflection": RouteReflectionTests,
-    "graceful_restart": GracefulRestartTests,
-    "enhanced_route_refresh": EnhancedRouteRefreshTests,
-    "extended_messages": ExtendedMessageTests,
-    "orf_filtering": ORFFilteringTests,
-    "dynamic_capability": DynamicCapabilityTests,
-    "communities": CommunitiesTests,
-    "large_communities": LargeCommunitiesTests,
-    "route_flap_damping": RouteFlapDampingTests,
-    "as_number": ASNumberTests,
-    "vpn": VPNTests,
-    "capabilities": CapabilitiesTests,
-    "route_refresh": RouteRefreshTests,
-    "mpls_labels": MPLSLabelTests,
-    "nopeer": NOPEERCommunityTests,
-    "route_oscillation": RouteOscillationTests,
+    "message_header": MessageHeaderAssessments,
+    "open_message": OpenMessageAssessments,
+    "update_message": UpdateMessageAssessments,
+    "attribute": AttributeAssessments,
+    "fsm": FSMAssessments,
+    "timing": TimingAssessments,
+    "security": SecurityAssessments,
+    "route_aggregation": RouteAggregationAssessments,
+    "decision_process": DecisionProcessAssessments,
+    "keepalive_message": KeepaliveMessageAssessments,
+    "notification_message": NotificationMessageAssessments,
+    "version_negotiation": VersionNegotiationAssessments,
+    "connection_collision": ConnectionCollisionAssessments,
+    "multiprotocol": MultiprotocolAssessments,
+    "route_reflection": RouteReflectionAssessments,
+    "graceful_restart": GracefulRestartAssessments,
+    "enhanced_route_refresh": EnhancedRouteRefreshAssessments,
+    "extended_messages": ExtendedMessageAssessments,
+    "orf_filtering": ORFFilteringAssessments,
+    "dynamic_capability": DynamicCapabilityAssessments,
+    "communities": CommunitiesAssessments,
+    "large_communities": LargeCommunitiesAssessments,
+    "route_flap_damping": RouteFlapDampingAssessments,
+    "as_number": ASNumberAssessments,
+    "vpn": VPNAssessments,
+    "capabilities": CapabilitiesAssessments,
+    "route_refresh": RouteRefreshAssessments,
+    "mpls_labels": MPLSLabelAssessments,
+    "nopeer": NOPEERCommunityAssessments,
+    "route_oscillation": RouteOscillationAssessments,
 }
 
 ALL_TEST_CATEGORIES = list(TEST_CLASSES.keys())

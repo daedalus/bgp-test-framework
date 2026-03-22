@@ -2,29 +2,29 @@
 Unit tests for BGP test cases
 """
 
-from bgp_test_framework.tests import (
+from bgp_test_framework.assessments import (
     TestCategory,
     TestResult,
     BGPTestFramework,
     TestCase,
-    MessageHeaderTests,
-    OpenMessageTests,
-    UpdateMessageTests,
-    AttributeTests,
-    FSMTests,
-    TimingTests,
-    SecurityTests,
-    CommunitiesTests,
-    LargeCommunitiesTests,
-    MultiprotocolTests,
-    RouteRefreshTests,
-    MPLSLabelTests,
-    NOPEERCommunityTests,
-    RouteFlapDampingTests,
-    ASNumberTests,
-    VPNTests,
-    CapabilitiesTests,
-    RouteOscillationTests,
+    MessageHeaderAssessments,
+    OpenMessageAssessments,
+    UpdateMessageAssessments,
+    AttributeAssessments,
+    FSMAssessments,
+    TimingAssessments,
+    SecurityAssessments,
+    CommunitiesAssessments,
+    LargeCommunitiesAssessments,
+    MultiprotocolAssessments,
+    RouteRefreshAssessments,
+    MPLSLabelAssessments,
+    NOPEERCommunityAssessments,
+    RouteFlapDampingAssessments,
+    ASNumberAssessments,
+    VPNAssessments,
+    CapabilitiesAssessments,
+    RouteOscillationAssessments,
     TEST_CLASSES,
     ALL_TEST_CATEGORIES,
 )
@@ -105,100 +105,100 @@ class TestBGPTestFramework:
         assert framework.timeout == 10.0
 
 
-class TestMessageHeaderTests:
+class TestMessageHeaderAssessments:
     def test_get_tests(self):
-        tests = MessageHeaderTests.get_tests()
+        tests = MessageHeaderAssessments.get_tests()
         assert len(tests) > 0
         assert all(t.category == TestCategory.MESSAGE_HEADER for t in tests)
 
     def test_specific_tests_exist(self):
-        tests = {t.test_id: t for t in MessageHeaderTests.get_tests()}
+        tests = {t.test_id: t for t in MessageHeaderAssessments.get_tests()}
         assert "MH-001" in tests
         assert "MH-003" in tests
         assert "MH-004" in tests
         assert "MH-006" in tests
 
 
-class TestOpenMessageTests:
+class TestOpenMessageAssessments:
     def test_get_tests(self):
-        tests = OpenMessageTests.get_tests()
+        tests = OpenMessageAssessments.get_tests()
         assert len(tests) > 0
         assert all(t.category == TestCategory.OPEN_MESSAGE for t in tests)
 
     def test_version_tests_exist(self):
-        tests = {t.test_id: t for t in OpenMessageTests.get_tests()}
+        tests = {t.test_id: t for t in OpenMessageAssessments.get_tests()}
         assert "OP-001" in tests
         assert "OP-002" in tests
         assert "OP-003" in tests
 
     def test_hold_time_tests_exist(self):
-        tests = {t.test_id: t for t in OpenMessageTests.get_tests()}
+        tests = {t.test_id: t for t in OpenMessageAssessments.get_tests()}
         assert "OP-004" in tests
         assert "OP-005" in tests
         assert "OP-006" in tests
 
 
-class TestUpdateMessageTests:
+class TestUpdateMessageAssessments:
     def test_get_tests(self):
-        tests = UpdateMessageTests.get_tests()
+        tests = UpdateMessageAssessments.get_tests()
         assert len(tests) > 0
         assert all(t.category == TestCategory.UPDATE_MESSAGE for t in tests)
 
     def test_mandatory_attribute_tests(self):
-        tests = {t.test_id: t for t in UpdateMessageTests.get_tests()}
+        tests = {t.test_id: t for t in UpdateMessageAssessments.get_tests()}
         assert "UP-001" in tests
         assert "UP-002" in tests
         assert "UP-003" in tests
 
     def test_origin_tests(self):
-        tests = {t.test_id: t for t in UpdateMessageTests.get_tests()}
+        tests = {t.test_id: t for t in UpdateMessageAssessments.get_tests()}
         assert "UP-004" in tests
 
 
-class TestAttributeTests:
+class TestAttributeAssessments:
     def test_get_tests(self):
-        tests = AttributeTests.get_tests()
+        tests = AttributeAssessments.get_tests()
         assert len(tests) > 0
         assert all(t.category == TestCategory.ATTRIBUTE for t in tests)
 
     def test_as_path_tests(self):
-        tests = {t.test_id: t for t in AttributeTests.get_tests()}
+        tests = {t.test_id: t for t in AttributeAssessments.get_tests()}
         assert "ATTR-001" in tests
         assert "ATTR-004" in tests
 
 
-class TestFSMTests:
+class TestFSMAssessments:
     def test_get_tests(self):
-        tests = FSMTests.get_tests()
+        tests = FSMAssessments.get_tests()
         assert len(tests) > 0
         assert all(t.category == TestCategory.FSM for t in tests)
 
     def test_update_in_wrong_state_tests(self):
-        tests = {t.test_id: t for t in FSMTests.get_tests()}
+        tests = {t.test_id: t for t in FSMAssessments.get_tests()}
         assert "FSM-001" in tests
         assert "FSM-002" in tests
 
 
-class TestTimingTests:
+class TestTimingAssessments:
     def test_get_tests(self):
-        tests = TimingTests.get_tests()
+        tests = TimingAssessments.get_tests()
         assert len(tests) > 0
         assert all(t.category == TestCategory.TIMING for t in tests)
 
     def test_keepalive_tests(self):
-        tests = {t.test_id: t for t in TimingTests.get_tests()}
+        tests = {t.test_id: t for t in TimingAssessments.get_tests()}
         assert "TIM-001" in tests
         assert "TIM-002" in tests
 
 
-class TestSecurityTests:
+class TestSecurityAssessments:
     def test_get_tests(self):
-        tests = SecurityTests.get_tests()
+        tests = SecurityAssessments.get_tests()
         assert len(tests) > 0
         assert all(t.category == TestCategory.SECURITY for t in tests)
 
     def test_collision_tests(self):
-        tests = {t.test_id: t for t in SecurityTests.get_tests()}
+        tests = {t.test_id: t for t in SecurityAssessments.get_tests()}
         assert "SEC-001" in tests
         assert "SEC-002" in tests
 
@@ -230,144 +230,144 @@ class TestTestCategories:
         assert TestCategory.DYNAMIC_CAPABILITY.value == "dynamic_capability"
 
 
-class TestCommunitiesTests:
+class TestCommunitiesAssessments:
     def test_get_tests(self):
-        tests = CommunitiesTests.get_tests()
+        tests = CommunitiesAssessments.get_tests()
         assert len(tests) == 10
         assert all(t.category == TestCategory.COMMUNITIES for t in tests)
 
     def test_specific_tests_exist(self):
-        tests = {t.test_id: t for t in CommunitiesTests.get_tests()}
+        tests = {t.test_id: t for t in CommunitiesAssessments.get_tests()}
         assert "COMM-001" in tests
         assert "COMM-005" in tests
         assert "COMM-010" in tests
 
 
-class TestLargeCommunitiesTests:
+class TestLargeCommunitiesAssessments:
     def test_get_tests(self):
-        tests = LargeCommunitiesTests.get_tests()
+        tests = LargeCommunitiesAssessments.get_tests()
         assert len(tests) == 10
         assert all(t.category == TestCategory.LARGE_COMMUNITIES for t in tests)
 
     def test_specific_tests_exist(self):
-        tests = {t.test_id: t for t in LargeCommunitiesTests.get_tests()}
+        tests = {t.test_id: t for t in LargeCommunitiesAssessments.get_tests()}
         assert "LCOMM-001" in tests
         assert "LCOMM-005" in tests
         assert "LCOMM-010" in tests
 
 
-class TestMultiprotocolTests:
+class TestMultiprotocolAssessments:
     def test_get_tests(self):
-        tests = MultiprotocolTests.get_tests()
+        tests = MultiprotocolAssessments.get_tests()
         assert len(tests) == 8
         assert all(t.category == TestCategory.MULTIPROTOCOL for t in tests)
 
     def test_specific_tests_exist(self):
-        tests = {t.test_id: t for t in MultiprotocolTests.get_tests()}
+        tests = {t.test_id: t for t in MultiprotocolAssessments.get_tests()}
         assert "MP-001" in tests
         assert "MP-004" in tests
         assert "MP-008" in tests
 
 
-class TestRouteRefreshTests:
+class TestRouteRefreshAssessments:
     def test_get_tests(self):
-        tests = RouteRefreshTests.get_tests()
+        tests = RouteRefreshAssessments.get_tests()
         assert len(tests) == 10
         assert all(t.category == TestCategory.ROUTE_REFRESH for t in tests)
 
     def test_specific_tests_exist(self):
-        tests = {t.test_id: t for t in RouteRefreshTests.get_tests()}
+        tests = {t.test_id: t for t in RouteRefreshAssessments.get_tests()}
         assert "RFR-001" in tests
         assert "RFR-005" in tests
         assert "RFR-010" in tests
 
 
-class TestMPLSLabelTests:
+class TestMPLSLabelAssessments:
     def test_get_tests(self):
-        tests = MPLSLabelTests.get_tests()
+        tests = MPLSLabelAssessments.get_tests()
         assert len(tests) == 10
         assert all(t.category == TestCategory.MPLS_LABELS for t in tests)
 
     def test_specific_tests_exist(self):
-        tests = {t.test_id: t for t in MPLSLabelTests.get_tests()}
+        tests = {t.test_id: t for t in MPLSLabelAssessments.get_tests()}
         assert "LABEL-001" in tests
         assert "LABEL-005" in tests
         assert "LABEL-010" in tests
 
 
-class TestNOPEERCommunityTests:
+class TestNOPEERCommunityAssessments:
     def test_get_tests(self):
-        tests = NOPEERCommunityTests.get_tests()
+        tests = NOPEERCommunityAssessments.get_tests()
         assert len(tests) == 5
         assert all(t.category == TestCategory.NOPEER for t in tests)
 
     def test_specific_tests_exist(self):
-        tests = {t.test_id: t for t in NOPEERCommunityTests.get_tests()}
+        tests = {t.test_id: t for t in NOPEERCommunityAssessments.get_tests()}
         assert "NOPEER-001" in tests
         assert "NOPEER-003" in tests
         assert "NOPEER-005" in tests
 
 
-class TestRouteFlapDampingTests:
+class TestRouteFlapDampingAssessments:
     def test_get_tests(self):
-        tests = RouteFlapDampingTests.get_tests()
+        tests = RouteFlapDampingAssessments.get_tests()
         assert len(tests) == 10
         assert all(t.category == TestCategory.ROUTE_FLAP_DAMPING for t in tests)
 
     def test_specific_tests_exist(self):
-        tests = {t.test_id: t for t in RouteFlapDampingTests.get_tests()}
+        tests = {t.test_id: t for t in RouteFlapDampingAssessments.get_tests()}
         assert "DAMP-001" in tests
         assert "DAMP-005" in tests
         assert "DAMP-010" in tests
 
 
-class TestASNumberTests:
+class TestASNumberAssessments:
     def test_get_tests(self):
-        tests = ASNumberTests.get_tests()
+        tests = ASNumberAssessments.get_tests()
         assert len(tests) == 10
         assert all(t.category == TestCategory.AS_NUMBER for t in tests)
 
     def test_specific_tests_exist(self):
-        tests = {t.test_id: t for t in ASNumberTests.get_tests()}
+        tests = {t.test_id: t for t in ASNumberAssessments.get_tests()}
         assert "AS-001" in tests
         assert "AS-005" in tests
         assert "AS-010" in tests
 
 
-class TestVPNTests:
+class TestVPNAssessments:
     def test_get_tests(self):
-        tests = VPNTests.get_tests()
+        tests = VPNAssessments.get_tests()
         assert len(tests) == 10
         assert all(t.category == TestCategory.VPN for t in tests)
 
     def test_specific_tests_exist(self):
-        tests = {t.test_id: t for t in VPNTests.get_tests()}
+        tests = {t.test_id: t for t in VPNAssessments.get_tests()}
         assert "VPN-001" in tests
         assert "VPN-005" in tests
         assert "VPN-010" in tests
 
 
-class TestCapabilitiesTests:
+class TestCapabilitiesAssessments:
     def test_get_tests(self):
-        tests = CapabilitiesTests.get_tests()
+        tests = CapabilitiesAssessments.get_tests()
         assert len(tests) == 8
         assert all(t.category == TestCategory.CAPABILITIES for t in tests)
 
     def test_specific_tests_exist(self):
-        tests = {t.test_id: t for t in CapabilitiesTests.get_tests()}
+        tests = {t.test_id: t for t in CapabilitiesAssessments.get_tests()}
         assert "CAP-001" in tests
         assert "CAP-004" in tests
         assert "CAP-008" in tests
 
 
-class TestRouteOscillationTests:
+class TestRouteOscillationAssessments:
     def test_get_tests(self):
-        tests = RouteOscillationTests.get_tests()
+        tests = RouteOscillationAssessments.get_tests()
         assert len(tests) == 5
         assert all(t.category == TestCategory.ROUTE_OSCILLATION for t in tests)
 
     def test_specific_tests_exist(self):
-        tests = {t.test_id: t for t in RouteOscillationTests.get_tests()}
+        tests = {t.test_id: t for t in RouteOscillationAssessments.get_tests()}
         assert "OSCIL-001" in tests
         assert "OSCIL-003" in tests
         assert "OSCIL-005" in tests

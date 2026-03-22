@@ -26,7 +26,7 @@ from .messages import (
     create_as_path_attribute,
     create_next_hop_attribute,
 )
-from .tests import (
+from .assessments import (
     BGPTestFramework,
     TestResult,
     TestCategory,
