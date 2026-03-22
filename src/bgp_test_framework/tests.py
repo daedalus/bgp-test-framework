@@ -5,7 +5,7 @@ Based on RFC 4271 specifications
 
 import socket
 import struct
-from typing import Optional, List, Dict, Any, Callable
+from typing import Optional, List, Dict, Any, Callable, Type
 from dataclasses import dataclass, field
 from enum import Enum
 from .messages import (
@@ -2560,3 +2560,39 @@ class RouteOscillationTests:
                 description="MED comparable only between routes from same neighboring AS - RFC 3345",
             ),
         ]
+
+
+TEST_CLASSES: Dict[str, Type] = {
+    "message_header": MessageHeaderTests,
+    "open_message": OpenMessageTests,
+    "update_message": UpdateMessageTests,
+    "attribute": AttributeTests,
+    "fsm": FSMTests,
+    "timing": TimingTests,
+    "security": SecurityTests,
+    "route_aggregation": RouteAggregationTests,
+    "decision_process": DecisionProcessTests,
+    "keepalive_message": KeepaliveMessageTests,
+    "notification_message": NotificationMessageTests,
+    "version_negotiation": VersionNegotiationTests,
+    "connection_collision": ConnectionCollisionTests,
+    "multiprotocol": MultiprotocolTests,
+    "route_reflection": RouteReflectionTests,
+    "graceful_restart": GracefulRestartTests,
+    "enhanced_route_refresh": EnhancedRouteRefreshTests,
+    "extended_messages": ExtendedMessageTests,
+    "orf_filtering": ORFFilteringTests,
+    "dynamic_capability": DynamicCapabilityTests,
+    "communities": CommunitiesTests,
+    "large_communities": LargeCommunitiesTests,
+    "route_flap_damping": RouteFlapDampingTests,
+    "as_number": ASNumberTests,
+    "vpn": VPNTests,
+    "capabilities": CapabilitiesTests,
+    "route_refresh": RouteRefreshTests,
+    "mpls_labels": MPLSLabelTests,
+    "nopeer": NOPEERCommunityTests,
+    "route_oscillation": RouteOscillationTests,
+}
+
+ALL_TEST_CATEGORIES = list(TEST_CLASSES.keys())

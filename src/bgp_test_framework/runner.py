@@ -31,36 +31,8 @@ from .tests import (
     TestResult,
     TestCategory,
     TestCase,
-    MessageHeaderTests,
-    OpenMessageTests,
-    UpdateMessageTests,
-    AttributeTests,
-    FSMTests,
-    TimingTests,
-    SecurityTests,
-    RouteAggregationTests,
-    DecisionProcessTests,
-    KeepaliveMessageTests,  # noqa: F401
-    NotificationMessageTests,  # noqa: F401
-    VersionNegotiationTests,  # noqa: F401
-    ConnectionCollisionTests,  # noqa: F401
-    MultiprotocolTests,  # noqa: F401
-    RouteReflectionTests,  # noqa: F401
-    GracefulRestartTests,  # noqa: F401
-    EnhancedRouteRefreshTests,  # noqa: F401
-    ExtendedMessageTests,  # noqa: F401
-    ORFFilteringTests,  # noqa: F401
-    DynamicCapabilityTests,  # noqa: F401
-    CommunitiesTests,  # noqa: F401
-    LargeCommunitiesTests,  # noqa: F401
-    RouteFlapDampingTests,  # noqa: F401
-    ASNumberTests,  # noqa: F401
-    VPNTests,  # noqa: F401
-    CapabilitiesTests,  # noqa: F401
-    RouteRefreshTests,  # noqa: F401
-    MPLSLabelTests,  # noqa: F401
-    NOPEERCommunityTests,  # noqa: F401
-    RouteOscillationTests,  # noqa: F401
+    TEST_CLASSES,
+    ALL_TEST_CATEGORIES,
 )
 
 
@@ -301,26 +273,13 @@ class TestRunner:
 
     def _get_all_tests(self) -> List[Tuple[TestCase, callable]]:
         tests = []
-        test_classes = [
-            MessageHeaderTests,
-            OpenMessageTests,
-            UpdateMessageTests,
-            AttributeTests,
-            FSMTests,
-            TimingTests,
-            SecurityTests,
-            RouteAggregationTests,
-            DecisionProcessTests,
-        ]
-
-        for test_class in test_classes:
+        for test_class in TEST_CLASSES.values():
             for test in test_class.get_tests():
                 method_name = f"test_{test.test_id.lower().replace('-', '_')}"
                 if hasattr(test_class, method_name):
                     tests.append((test, getattr(test_class, method_name)))
                 else:
                     tests.append((test, self._generic_test))
-
         return tests
 
     def _filter_tests(
@@ -1054,32 +1013,7 @@ Examples:
     parser.add_argument(
         "--categories",
         nargs="+",
-        choices=[
-            "message_header",
-            "open_message",
-            "update_message",
-            "attribute",
-            "fsm",
-            "timing",
-            "security",
-            "route_aggregation",
-            "decision_process",
-            "keepalive_message",
-            "notification_message",
-            "version_negotiation",
-            "connection_collision",
-            "multiprotocol",
-            "route_reflection",
-            "graceful_restart",
-            "enhanced_route_refresh",
-            "extended_messages",
-            "orf_filtering",
-            "dynamic_capability",
-            "communities",
-            "large_communities",
-            "route_flap_damping",
-            "as_number",
-        ],
+        choices=ALL_TEST_CATEGORIES,
         help="Test categories to run",
     )
     parser.add_argument("--test-ids", nargs="+", help="Specific test IDs to run")
