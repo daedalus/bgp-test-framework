@@ -57,14 +57,16 @@ class TestOptions:
 class BGPTestHarness:
     TEST_CLASSES = TEST_CLASSES
 
-    def __init__(self, config: BGPTestConfig):
+    def __init__(self, config: BGPTestConfig, debug: bool = False):
         self.config = config
+        self.debug = debug
         self.framework = BGPTestFramework(
             target_host=config.target_host,
             target_port=config.target_port,
             source_as=config.source_as,
             source_ip=config.source_ip,
             timeout=config.timeout,
+            debug=debug,
         )
 
     def get_all_tests(self, category: Optional[str] = None) -> List[TestCase]:
@@ -229,7 +231,7 @@ def run_bgp_tests(
         debug=debug,
     )
 
-    harness = BGPTestHarness(config)
+    harness = BGPTestHarness(config, debug=debug)
     results = harness.run_all(options)
     report = harness.get_compliance_report(results)
 

@@ -269,6 +269,7 @@ class TestRunner:
             source_as=self.config.source_as,
             source_ip=self.config.source_ip,
             timeout=self.config.timeout,
+            debug=self.config.debug,
         )
 
     def _get_all_tests(self) -> List[Tuple[TestCase, callable]]:

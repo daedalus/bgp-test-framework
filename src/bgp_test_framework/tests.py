@@ -96,12 +96,14 @@ class BGPTestFramework:
         source_as: int = 65001,
         source_ip: str = "0.0.0.1",
         timeout: float = 5.0,
+        debug: bool = False,
     ):
         self.target_host = target_host
         self.target_port = target_port
         self.source_as = source_as
         self.source_ip = source_ip
         self.timeout = timeout
+        self.debug = debug
         self.sock: Optional[socket.socket] = None
         self.results: List[TestResult] = []
         self._connect_retry_counter = 0
@@ -129,10 +131,21 @@ class BGPTestFramework:
             self.sock = None
         self._state = "Idle"
 
+    def _hex_dump(self, data: bytes, direction: str) -> str:
+        lines = []
+        for i in range(0, len(data), 16):
+            chunk = data[i : i + 16]
+            hex_chunk = " ".join(f"{b:02x}" for b in chunk)
+            ascii_chunk = "".join(chr(b) if 32 <= b < 127 else "." for b in chunk)
+            lines.append(f"{i:04x}: {hex_chunk:<48}  {ascii_chunk}")
+        return f"\n{direction} ({len(data)} bytes):\n" + "\n".join(lines)
+
     def send_raw(self, data: bytes) -> bool:
         if not self.sock:
             return False
         try:
+            if self.debug:
+                print(self._hex_dump(data, "TX"))
             self.sock.sendall(data)
             return True
         except Exception:
@@ -142,7 +155,10 @@ class BGPTestFramework:
         if not self.sock:
             return None
         try:
-            return self.sock.recv(size)
+            data = self.sock.recv(size)
+            if self.debug and data:
+                print(self._hex_dump(data, "RX"))
+            return data
         except Exception:
             return None
 
