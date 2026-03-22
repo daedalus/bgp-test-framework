@@ -520,6 +520,36 @@ class OpenMessageTests:
                 category=TestCategory.OPEN_MESSAGE,
                 description="Send OPEN with AS = 65535 - RFC 4271 Section 4.2",
             ),
+            TestCase(
+                test_id="OP-016",
+                name="Multiple Capabilities",
+                category=TestCategory.OPEN_MESSAGE,
+                description="OPEN with multiple capability parameters - RFC 5492",
+            ),
+            TestCase(
+                test_id="OP-017",
+                name="Duplicate Capability Code",
+                category=TestCategory.OPEN_MESSAGE,
+                description="OPEN with duplicate capability codes - RFC 5492 Section 4",
+            ),
+            TestCase(
+                test_id="OP-018",
+                name="Authentication Parameter Deprecated",
+                category=TestCategory.OPEN_MESSAGE,
+                description="OPEN with Authentication parameter (deprecated) - RFC 4271 Section 4.2",
+            ),
+            TestCase(
+                test_id="OP-019",
+                name="AS 4-Byte Capability Mismatch",
+                category=TestCategory.OPEN_MESSAGE,
+                description="OPEN with 4-byte AS capability mismatch - RFC 4893",
+            ),
+            TestCase(
+                test_id="OP-020",
+                name="Hold Time协商",
+                category=TestCategory.OPEN_MESSAGE,
+                description="OPEN with hold time negotiation - RFC 4271 Section 4.2",
+            ),
         ]
 
     @staticmethod
@@ -787,6 +817,36 @@ class UpdateMessageTests:
                 name="Empty AS_PATH on EBGP",
                 category=TestCategory.UPDATE_MESSAGE,
                 description="Send UPDATE with empty AS_PATH on external peer - RFC 4271 Section 5.1.2",
+            ),
+            TestCase(
+                test_id="UP-026",
+                name="AS_SET Before AS_SEQUENCE Invalid",
+                category=TestCategory.UPDATE_MESSAGE,
+                description="AS_SET cannot precede AS_SEQUENCE - RFC 4271 Section 5.1.2",
+            ),
+            TestCase(
+                test_id="UP-027",
+                name="Multiple NLRI Prefixes",
+                category=TestCategory.UPDATE_MESSAGE,
+                description="UPDATE with multiple NLRI prefixes - RFC 4271 Section 4.3",
+            ),
+            TestCase(
+                test_id="UP-028",
+                name="Overlapping NLRI Prefixes",
+                category=TestCategory.UPDATE_MESSAGE,
+                description="UPDATE with overlapping NLRI prefixes - RFC 4271 Section 4.3",
+            ),
+            TestCase(
+                test_id="UP-029",
+                name="NLRI Prefix Length Mismatch",
+                category=TestCategory.UPDATE_MESSAGE,
+                description="UPDATE with NLRI prefix length mismatch - RFC 4271 Section 4.3",
+            ),
+            TestCase(
+                test_id="UP-030",
+                name="Withdrawn Routes Overflow",
+                category=TestCategory.UPDATE_MESSAGE,
+                description="UPDATE with withdrawn routes exceeding message - RFC 4271 Section 4.3",
             ),
         ]
 
@@ -1320,6 +1380,30 @@ class DecisionProcessTests:
                 category=TestCategory.DECISION_PROCESS,
                 description="Routes with own AS in path should be rejected - RFC 4271 Section 9.1.2",
             ),
+            TestCase(
+                test_id="DEC-011",
+                name="Tie-Breaking - Lowest BGP Identifier",
+                category=TestCategory.DECISION_PROCESS,
+                description="Route from peer with lowest BGP ID selected - RFC 4271 Section 9.1.2.2.f",
+            ),
+            TestCase(
+                test_id="DEC-012",
+                name="Tie-Breaking - Lowest Peer Address",
+                category=TestCategory.DECISION_PROCESS,
+                description="Route from peer with lowest address selected - RFC 4271 Section 9.1.2.2.g",
+            ),
+            TestCase(
+                test_id="DEC-013",
+                name="Phase 3 Route Dissemination",
+                category=TestCategory.DECISION_PROCESS,
+                description="Loc-RIB routes disseminated to Adj-RIBs-Out - RFC 4271 Section 9.1.3",
+            ),
+            TestCase(
+                test_id="DEC-014",
+                name="Phase 3 Policy Filtering",
+                category=TestCategory.DECISION_PROCESS,
+                description="Route policy applied before advertisement - RFC 4271 Section 9.1.3",
+            ),
         ]
 
 
@@ -1562,7 +1646,7 @@ class RouteReflectionTests:
             ),
             TestCase(
                 test_id="RR-004",
-                test_name="CLUSTER_LIST Length Error",
+                name="CLUSTER_LIST Length Error",
                 category=TestCategory.ROUTE_REFLECTION,
                 description="CLUSTER_LIST length not multiple of 4 - RFC 4456",
             ),
