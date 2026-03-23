@@ -22,6 +22,8 @@ from .constants import (
 )
 from .messages import (
     build_open_message,
+    build_keepalive_message,
+    build_update_message,
     PathAttribute,
     create_origin_attribute,
     create_as_path_attribute,
@@ -344,26 +346,30 @@ class TestRunner:
             response = framework.receive_raw()
             
             if response and len(response) >= 19:
-                if response[18] == 4:
-                    result.passed = True
-                    result.actual_behavior = "Session established"
-                    framework.send_raw(build_keepalive_message())
-                    framework.receive_raw()
-                    framework.send_raw(build_update_message([], [], [(framework.get_next_hop(), 24)]))
-                    response = framework.receive_raw()
-                    if response and len(response) >= 21:
-                        result.actual_behavior = "Session and UPDATE processed"
-                    else:
-                        result.actual_behavior = "Session established, UPDATE sent"
-                elif response[18] == 3:
+                if response[18] == 3:
                     result.passed = True
                     result.actual_behavior = f"NOTIFICATION received: code={response[19]}, subcode={response[20]}"
                     result.details = {
                         "error_code": response[19],
                         "error_subcode": response[20]
                     }
+                elif response[18] == 1:
+                    framework.send_raw(build_keepalive_message())
+                    response2 = framework.receive_raw()
+                    if response2 and len(response2) >= 19 and response2[18] == 4:
+                        result.passed = True
+                        result.actual_behavior = "Session established"
+                    elif response2 and len(response2) >= 19 and response2[18] == 3:
+                        result.passed = True
+                        result.actual_behavior = f"NOTIFICATION after OPEN: code={response2[19]}, subcode={response2[20]}"
+                        result.details = {
+                            "error_code": response2[19],
+                            "error_subcode": response2[20]
+                        }
+                    else:
+                        result.actual_behavior = "Session established"
                 else:
-                    result.actual_behavior = f"Received response type {response[18]}"
+                    result.actual_behavior = f"Received unexpected response type {response[18]}"
             else:
                 result.actual_behavior = "No response received"
         except Exception as e:
