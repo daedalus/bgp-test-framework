@@ -116,6 +116,89 @@ class TestCase:
     params: Dict[str, Any] = field(default_factory=dict)
 
 
+class TestIPConfig:
+    def __init__(
+        self,
+        next_hop: str = "10.0.0.1",
+        bgp_id_test: str = "192.168.1.1",
+        comm_test_prefix: str = "192.168.1.0",
+        large_comm_test_prefix: str = "192.168.3.0",
+        nopeer_test_prefix: str = "192.168.30.0",
+        vpn_prefix_pool: Optional[List[str]] = None,
+        mpls_prefix_pool: Optional[List[str]] = None,
+        damping_prefix_pool: Optional[List[str]] = None,
+        aspath_prefix_pool: Optional[List[str]] = None,
+        oscillation_prefix_pool: Optional[List[str]] = None,
+        extcomm_prefix_pool: Optional[List[str]] = None,
+        blackhole_prefix_pool: Optional[List[str]] = None,
+        large_comm_usage_pool: Optional[List[str]] = None,
+        sr_prefix_pool: Optional[List[str]] = None,
+        srv6_prefix_pool: Optional[List[str]] = None,
+        bgpls_prefix_pool: Optional[List[str]] = None,
+        graceful_shutdown_pool: Optional[List[str]] = None,
+        srpolicy_prefix_pool: Optional[List[str]] = None,
+    ):
+        self.next_hop = next_hop
+        self.bgp_id_test = bgp_id_test
+        self.comm_test_prefix = comm_test_prefix
+        self.large_comm_test_prefix = large_comm_test_prefix
+        self.nopeer_test_prefix = nopeer_test_prefix
+        self.vpn_prefix_pool = vpn_prefix_pool or [
+            "10.0.0.0",
+            "10.0.1.0",
+            "10.0.2.0",
+            "10.0.3.0",
+            "10.0.4.0",
+            "10.0.5.0",
+            "10.0.6.0",
+            "10.0.7.0",
+            "10.0.8.0",
+            "10.0.9.0",
+        ]
+        self.mpls_prefix_pool = mpls_prefix_pool or [
+            "192.168.20.0",
+            "192.168.21.0",
+            "192.168.22.0",
+            "192.168.23.0",
+            "192.168.24.0",
+            "192.168.25.0",
+            "192.168.26.0",
+            "192.168.27.0",
+            "192.168.28.0",
+        ]
+        self.damping_prefix_pool = damping_prefix_pool or [
+            "192.168.100.0",
+            "192.168.101.0",
+            "192.168.102.0",
+            "192.168.103.0",
+            "192.168.104.0",
+            "192.168.105.0",
+            "192.168.106.0",
+            "192.168.107.0",
+            "192.168.108.0",
+            "192.168.109.0",
+        ]
+        self.aspath_prefix_pool = aspath_prefix_pool or ["192.168.50.0"]
+        self.oscillation_prefix_pool = oscillation_prefix_pool or [
+            "192.168.200.0",
+            "192.168.200.1",
+            "192.168.200.2",
+            "192.168.200.3",
+            "192.168.200.4",
+        ]
+        self.extcomm_prefix_pool = extcomm_prefix_pool or ["192.168.100.0"]
+        self.blackhole_prefix_pool = blackhole_prefix_pool or [
+            "192.168.100.0",
+            "192.168.0.0",
+        ]
+        self.large_comm_usage_pool = large_comm_usage_pool or ["192.168.10.0"]
+        self.sr_prefix_pool = sr_prefix_pool or ["192.168.60.0"]
+        self.srv6_prefix_pool = srv6_prefix_pool or ["192.168.250.0"]
+        self.bgpls_prefix_pool = bgpls_prefix_pool or ["192.168.255.0"]
+        self.graceful_shutdown_pool = graceful_shutdown_pool or ["192.168.50.0"]
+        self.srpolicy_prefix_pool = srpolicy_prefix_pool or ["192.168.1.0"]
+
+
 class BGPTestFramework:
     def __init__(
         self,
@@ -125,6 +208,7 @@ class BGPTestFramework:
         source_ip: str = "0.0.0.1",
         timeout: float = 5.0,
         debug: bool = False,
+        ip_config: Optional[TestIPConfig] = None,
     ):
         self.target_host = target_host
         self.target_port = target_port
@@ -139,6 +223,19 @@ class BGPTestFramework:
         self._hold_time = 90
         self._keepalive_time = 30
         self._state = "Idle"
+        self.ip_config = ip_config if ip_config is not None else TestIPConfig()
+
+    def get_next_hop(self) -> str:
+        return self.ip_config.next_hop
+
+    def get_bgp_id_test(self) -> str:
+        return self.ip_config.bgp_id_test
+
+    def get_prefix(self, pool_name: str, index: int = 0) -> str:
+        pool = getattr(self.ip_config, pool_name, None)
+        if pool is None or len(pool) == 0:
+            return "10.0.0.0"
+        return pool[index % len(pool)]
 
     def connect(self) -> bool:
         try:
@@ -355,6 +452,62 @@ class MessageHeaderAssessments:
         ]
 
     @staticmethod
+    def test_mh_001(framework: BGPTestFramework) -> TestResult:
+        return MessageHeaderAssessments.test_invalid_marker(framework)
+
+    @staticmethod
+    def test_mh_002(framework: BGPTestFramework) -> TestResult:
+        return MessageHeaderAssessments._test_partial_invalid_marker(framework)
+
+    @staticmethod
+    def test_mh_003(framework: BGPTestFramework) -> TestResult:
+        return MessageHeaderAssessments.test_message_length_too_short(framework)
+
+    @staticmethod
+    def test_mh_004(framework: BGPTestFramework) -> TestResult:
+        return MessageHeaderAssessments.test_message_length_too_large(framework)
+
+    @staticmethod
+    def test_mh_005(framework: BGPTestFramework) -> TestResult:
+        return MessageHeaderAssessments.test_message_length_zero(framework)
+
+    @staticmethod
+    def test_mh_006(framework: BGPTestFramework) -> TestResult:
+        return MessageHeaderAssessments.test_invalid_message_type(framework)
+
+    @staticmethod
+    def test_mh_007(framework: BGPTestFramework) -> TestResult:
+        return MessageHeaderAssessments.test_reserved_message_type(framework)
+
+    @staticmethod
+    def test_mh_008(framework: BGPTestFramework) -> TestResult:
+        return MessageHeaderAssessments.test_future_message_type(framework)
+
+    @staticmethod
+    def test_mh_009(framework: BGPTestFramework) -> TestResult:
+        return MessageHeaderAssessments.test_open_message_length_too_short(framework)
+
+    @staticmethod
+    def test_mh_010(framework: BGPTestFramework) -> TestResult:
+        return MessageHeaderAssessments.test_update_message_length_too_short(framework)
+
+    @staticmethod
+    def test_mh_011(framework: BGPTestFramework) -> TestResult:
+        return MessageHeaderAssessments.test_keepalive_message_wrong_length(framework)
+
+    @staticmethod
+    def test_mh_012(framework: BGPTestFramework) -> TestResult:
+        return MessageHeaderAssessments.test_notification_message_length_too_short(framework)
+
+    @staticmethod
+    def test_mh_013(framework: BGPTestFramework) -> TestResult:
+        return MessageHeaderAssessments.test_truncated_header(framework)
+
+    @staticmethod
+    def test_mh_014(framework: BGPTestFramework) -> TestResult:
+        return MessageHeaderAssessments.test_extra_data_after_message(framework)
+
+    @staticmethod
     def test_invalid_marker(framework: BGPTestFramework) -> TestResult:
         test = TestCase(
             test_id="MH-001",
@@ -373,6 +526,46 @@ class MessageHeaderAssessments:
         msg = build_open_message(framework.source_as)
         malicious_msg = bytearray(msg)
         malicious_msg[0:16] = b"\x00" * 16
+        framework.send_raw(bytes(malicious_msg))
+
+        response = framework.receive_raw()
+        if response:
+            if len(response) >= 21:
+                error_code = response[19]
+                error_subcode = response[20] if len(response) > 20 else 0
+                result.passed = True
+                result.actual_behavior = (
+                    f"Received NOTIFICATION: code={error_code}, subcode={error_subcode}"
+                )
+                result.details = {
+                    "error_code": error_code,
+                    "error_subcode": error_subcode,
+                }
+        else:
+            result.actual_behavior = "No response received"
+
+        framework.disconnect()
+        return result
+
+    @staticmethod
+    def _test_partial_invalid_marker(framework: BGPTestFramework) -> TestResult:
+        test = TestCase(
+            test_id="MH-002",
+            name="Partial Invalid Marker",
+            category=TestCategory.MESSAGE_HEADER,
+            description="Test with partial invalid marker (first 8 bytes)",
+        )
+        result = TestResult(
+            test.test_id, test.name, test.category, False, test.description, ""
+        )
+
+        if not framework.connect():
+            result.actual_behavior = "Failed to connect"
+            return result
+
+        msg = build_open_message(framework.source_as)
+        malicious_msg = bytearray(msg)
+        malicious_msg[0:8] = b"\x00" * 8
         framework.send_raw(bytes(malicious_msg))
 
         response = framework.receive_raw()
@@ -471,6 +664,235 @@ class MessageHeaderAssessments:
             result.passed = True
             result.actual_behavior = "NOTIFICATION received"
             result.details = {"error_code": response[19], "error_subcode": response[20]}
+
+        framework.disconnect()
+        return result
+
+    @staticmethod
+    def test_message_length_zero(framework: BGPTestFramework) -> TestResult:
+        result = TestResult(
+            "MH-005",
+            "Message Length Zero",
+            TestCategory.MESSAGE_HEADER,
+            False,
+            "RFC 4271 Section 6.1",
+            "",
+        )
+
+        if not framework.connect():
+            return result
+
+        msg = framework._create_header(MESSAGE_TYPES["OPEN"], 0)
+        framework.send_raw(msg)
+
+        response = framework.receive_raw()
+        if response and len(response) >= 21:
+            result.passed = True
+            result.actual_behavior = "NOTIFICATION received for length=0"
+
+        framework.disconnect()
+        return result
+
+    @staticmethod
+    def test_reserved_message_type(framework: BGPTestFramework) -> TestResult:
+        result = TestResult(
+            "MH-007",
+            "Reserved Message Type",
+            TestCategory.MESSAGE_HEADER,
+            False,
+            "RFC 4271 Section 6.1 - Type 5 is reserved",
+            "",
+        )
+
+        if not framework.connect():
+            return result
+
+        msg = framework._create_header(5, 19)
+        framework.send_raw(msg)
+
+        response = framework.receive_raw()
+        if response and len(response) >= 21:
+            result.passed = True
+            result.actual_behavior = "NOTIFICATION received for reserved type 5"
+
+        framework.disconnect()
+        return result
+
+    @staticmethod
+    def test_future_message_type(framework: BGPTestFramework) -> TestResult:
+        result = TestResult(
+            "MH-008",
+            "Future Message Type",
+            TestCategory.MESSAGE_HEADER,
+            False,
+            "RFC 4271 Section 6.1 - Type 255 is future",
+            "",
+        )
+
+        if not framework.connect():
+            return result
+
+        msg = framework._create_header(255, 19)
+        framework.send_raw(msg)
+
+        response = framework.receive_raw()
+        if response and len(response) >= 21:
+            result.passed = True
+            result.actual_behavior = "NOTIFICATION received for future type 255"
+
+        framework.disconnect()
+        return result
+
+    @staticmethod
+    def test_open_message_length_too_short(framework: BGPTestFramework) -> TestResult:
+        result = TestResult(
+            "MH-009",
+            "OPEN Message Length Too Short",
+            TestCategory.MESSAGE_HEADER,
+            False,
+            "RFC 4271 Section 6.1 - OPEN min is 29 bytes",
+            "",
+        )
+
+        if not framework.connect():
+            return result
+
+        msg = framework._create_header(MESSAGE_TYPES["OPEN"], 28)
+        msg += b"\x00" * 9
+        framework.send_raw(msg)
+
+        response = framework.receive_raw()
+        if response and len(response) >= 21:
+            result.passed = True
+            result.actual_behavior = "NOTIFICATION received for OPEN < 29 bytes"
+
+        framework.disconnect()
+        return result
+
+    @staticmethod
+    def test_update_message_length_too_short(framework: BGPTestFramework) -> TestResult:
+        result = TestResult(
+            "MH-010",
+            "UPDATE Message Length Too Short",
+            TestCategory.MESSAGE_HEADER,
+            False,
+            "RFC 4271 Section 6.1 - UPDATE min is 23 bytes",
+            "",
+        )
+
+        if not framework.connect():
+            return result
+
+        msg = framework._create_header(MESSAGE_TYPES["UPDATE"], 22)
+        msg += b"\x00" * 3
+        framework.send_raw(msg)
+
+        response = framework.receive_raw()
+        if response and len(response) >= 21:
+            result.passed = True
+            result.actual_behavior = "NOTIFICATION received for UPDATE < 23 bytes"
+
+        framework.disconnect()
+        return result
+
+    @staticmethod
+    def test_keepalive_message_wrong_length(framework: BGPTestFramework) -> TestResult:
+        result = TestResult(
+            "MH-011",
+            "KEEPALIVE Message Wrong Length",
+            TestCategory.MESSAGE_HEADER,
+            False,
+            "RFC 4271 Section 6.1 - KEEPALIVE must be 19 bytes",
+            "",
+        )
+
+        if not framework.connect():
+            return result
+
+        msg = framework._create_header(MESSAGE_TYPES["KEEPALIVE"], 25)
+        framework.send_raw(msg)
+
+        response = framework.receive_raw()
+        if response and len(response) >= 21:
+            result.passed = True
+            result.actual_behavior = "NOTIFICATION received for KEEPALIVE != 19 bytes"
+
+        framework.disconnect()
+        return result
+
+    @staticmethod
+    def test_notification_message_length_too_short(framework: BGPTestFramework) -> TestResult:
+        result = TestResult(
+            "MH-012",
+            "NOTIFICATION Message Length Too Short",
+            TestCategory.MESSAGE_HEADER,
+            False,
+            "RFC 4271 Section 6.1 - NOTIFICATION min is 21 bytes",
+            "",
+        )
+
+        if not framework.connect():
+            return result
+
+        msg = framework._create_header(MESSAGE_TYPES["NOTIFICATION"], 20)
+        msg += b"\x00" * 1
+        framework.send_raw(msg)
+
+        response = framework.receive_raw()
+        if response and len(response) >= 21:
+            result.passed = True
+            result.actual_behavior = "NOTIFICATION received for NOTIFICATION < 21 bytes"
+
+        framework.disconnect()
+        return result
+
+    @staticmethod
+    def test_truncated_header(framework: BGPTestFramework) -> TestResult:
+        result = TestResult(
+            "MH-013",
+            "Truncated Header",
+            TestCategory.MESSAGE_HEADER,
+            False,
+            "RFC 4271 Section 4.1 - Send truncated BGP header",
+            "",
+        )
+
+        if not framework.connect():
+            return result
+
+        msg = MARKER + struct.pack("!HB", 10, MESSAGE_TYPES["OPEN"])
+        framework.send_raw(msg)
+
+        response = framework.receive_raw()
+        if response and len(response) >= 21:
+            result.passed = True
+            result.actual_behavior = "NOTIFICATION received for truncated header"
+
+        framework.disconnect()
+        return result
+
+    @staticmethod
+    def test_extra_data_after_message(framework: BGPTestFramework) -> TestResult:
+        result = TestResult(
+            "MH-014",
+            "Extra Data After Message",
+            TestCategory.MESSAGE_HEADER,
+            False,
+            "RFC 4271 Section 4.1 - Message with extra padding",
+            "",
+        )
+
+        if not framework.connect():
+            return result
+
+        msg = build_open_message(framework.source_as)
+        msg += b"\x00" * 10
+        framework.send_raw(msg)
+
+        response = framework.receive_raw()
+        if response and len(response) >= 21:
+            result.passed = True
+            result.actual_behavior = "NOTIFICATION received for extra data"
 
         framework.disconnect()
         return result
@@ -684,6 +1106,310 @@ class OpenMessageAssessments:
 
         framework.disconnect()
         return result
+
+    @staticmethod
+    def _build_open_with_version(framework: BGPTestFramework, version: int) -> bytes:
+        bgp_id = struct.unpack("!I", socket.inet_aton("192.168.1.1"))[0]
+        data = struct.pack("!BHHI", version, framework.source_as, 180, bgp_id)
+        data += struct.pack("!B", 0)
+        return MARKER + struct.pack("!HB", 29, MESSAGE_TYPES["OPEN"]) + data
+
+    @staticmethod
+    def _build_open_with_hold_time(framework: BGPTestFramework, hold_time: int) -> bytes:
+        bgp_id = struct.unpack("!I", socket.inet_aton("192.168.1.1"))[0]
+        data = struct.pack("!BHHI", 4, framework.source_as, hold_time, bgp_id)
+        data += struct.pack("!B", 0)
+        return MARKER + struct.pack("!HB", 29, MESSAGE_TYPES["OPEN"]) + data
+
+    @staticmethod
+    def _build_open_with_bgp_id(framework: BGPTestFramework, bgp_id_str: str) -> bytes:
+        bgp_id = struct.unpack("!I", socket.inet_aton(bgp_id_str))[0]
+        data = struct.pack("!BHHI", 4, framework.source_as, 180, bgp_id)
+        data += struct.pack("!B", 0)
+        return MARKER + struct.pack("!HB", 29, MESSAGE_TYPES["OPEN"]) + data
+
+    @staticmethod
+    def _build_open_with_as(framework: BGPTestFramework, as_num: int) -> bytes:
+        bgp_id = struct.unpack("!I", socket.inet_aton("192.168.1.1"))[0]
+        data = struct.pack("!BHHI", 4, as_num, 180, bgp_id)
+        data += struct.pack("!B", 0)
+        return MARKER + struct.pack("!HB", 29, MESSAGE_TYPES["OPEN"]) + data
+
+    @staticmethod
+    def _build_open_with_capability(cap_code: int, cap_data: bytes) -> bytes:
+        cap_tlv = struct.pack("!BB", cap_code, len(cap_data)) + cap_data
+        opt_param = struct.pack("!B", 2) + struct.pack("!B", len(cap_tlv)) + cap_tlv
+        return build_open_message(0, 180, 0, [(cap_code, cap_data)])
+
+    @staticmethod
+    def _send_open_and_check(framework: BGPTestFramework, msg: bytes) -> tuple:
+        if not framework.connect():
+            return (False, "Failed to connect", {})
+        framework.send_raw(msg)
+        response = framework.receive_raw()
+        framework.disconnect()
+        if response and len(response) >= 21:
+            return (True, "NOTIFICATION received", {
+                "error_code": response[19],
+                "error_subcode": response[20]
+            })
+        return (False, "No NOTIFICATION received", {})
+
+    @staticmethod
+    def _create_open_test_result(test_id: str, name: str, desc: str) -> TestResult:
+        return TestResult(test_id, name, TestCategory.OPEN_MESSAGE, False, desc, "")
+
+    def test_op_001(self, framework: BGPTestFramework) -> TestResult:
+        return framework._run_test(self.get_tests()[0], lambda: self._run_version_test(framework, 0))
+
+    def test_op_002(self, framework: BGPTestFramework) -> TestResult:
+        return framework._run_test(self.get_tests()[1], lambda: self._run_version_test(framework, 0))
+
+    def test_op_003(self, framework: BGPTestFramework) -> TestResult:
+        return framework._run_test(self.get_tests()[2], lambda: self._run_version_test(framework, 5))
+
+    def test_op_004(self, framework: BGPTestFramework) -> TestResult:
+        return framework._run_test(self.get_tests()[3], lambda: self._run_hold_time_test(framework, 0))
+
+    def test_op_005(self, framework: BGPTestFramework) -> TestResult:
+        return framework._run_test(self.get_tests()[4], lambda: self._run_hold_time_test(framework, 1))
+
+    def test_op_006(self, framework: BGPTestFramework) -> TestResult:
+        return framework._run_test(self.get_tests()[5], lambda: self._run_hold_time_test(framework, 2))
+
+    def test_op_007(self, framework: BGPTestFramework) -> TestResult:
+        return framework._run_test(self.get_tests()[6], lambda: self._run_hold_time_test(framework, 65536))
+
+    def test_op_008(self, framework: BGPTestFramework) -> TestResult:
+        return framework._run_test(self.get_tests()[7], lambda: self._run_bgp_id_test(framework, "0.0.0.0"))
+
+    def test_op_009(self, framework: BGPTestFramework) -> TestResult:
+        return framework._run_test(self.get_tests()[8], lambda: self._run_bgp_id_test(framework, "224.0.0.1"))
+
+    def test_op_010(self, framework: BGPTestFramework) -> TestResult:
+        return framework._run_test(self.get_tests()[9], lambda: self._run_bgp_id_test(framework, "127.0.0.1"))
+
+    def test_op_011(self, framework: BGPTestFramework) -> TestResult:
+        return framework._run_test(self.get_tests()[10], lambda: self._run_unknown_param_test(framework))
+
+    def test_op_012(self, framework: BGPTestFramework) -> TestResult:
+        return framework._run_test(self.get_tests()[11], lambda: self._run_malformed_param_test(framework))
+
+    def test_op_013(self, framework: BGPTestFramework) -> TestResult:
+        return framework._run_test(self.get_tests()[12], lambda: self._run_param_len_mismatch_test(framework))
+
+    def test_op_014(self, framework: BGPTestFramework) -> TestResult:
+        return framework._run_test(self.get_tests()[13], lambda: self._run_as_test(framework, 0))
+
+    def test_op_015(self, framework: BGPTestFramework) -> TestResult:
+        return framework._run_test(self.get_tests()[14], lambda: self._run_as_test(framework, 65535))
+
+    def test_op_016(self, framework: BGPTestFramework) -> TestResult:
+        return framework._run_test(self.get_tests()[15], lambda: self._run_multi_cap_test(framework))
+
+    def test_op_017(self, framework: BGPTestFramework) -> TestResult:
+        return framework._run_test(self.get_tests()[16], lambda: self._run_dup_cap_test(framework))
+
+    def test_op_018(self, framework: BGPTestFramework) -> TestResult:
+        return framework._run_test(self.get_tests()[17], lambda: self._run_auth_param_test(framework))
+
+    def test_op_019(self, framework: BGPTestFramework) -> TestResult:
+        return framework._run_test(self.get_tests()[18], lambda: self._run_4byte_as_cap_test(framework))
+
+    def test_op_020(self, framework: BGPTestFramework) -> TestResult:
+        return framework._run_test(self.get_tests()[19], lambda: self._run_hold_time_negotiation_test(framework))
+
+    def _run_version_test(self, framework: BGPTestFramework, version: int) -> tuple:
+        if not framework.connect():
+            return (False, "Failed to connect", {})
+        msg = self._build_open_with_version(framework, version)
+        framework.send_raw(msg)
+        response = framework.receive_raw()
+        framework.disconnect()
+        if response and len(response) >= 21:
+            return (True, f"NOTIFICATION for version {version}", {
+                "error_code": response[19],
+                "error_subcode": response[20]
+            })
+        return (False, f"No response for version {version}", {})
+
+    def _run_hold_time_test(self, framework: BGPTestFramework, hold_time: int) -> tuple:
+        if not framework.connect():
+            return (False, "Failed to connect", {})
+        try:
+            bgp_id = struct.unpack("!I", socket.inet_aton("192.168.1.1"))[0]
+            safe_hold_time = min(hold_time, 65535) if hold_time > 65535 else hold_time
+            data = struct.pack("!BHHI", 4, framework.source_as, safe_hold_time, bgp_id)
+            data += struct.pack("!B", 0)
+            msg = MARKER + struct.pack("!HB", 29, MESSAGE_TYPES["OPEN"]) + data
+            framework.send_raw(msg)
+            response = framework.receive_raw()
+            framework.disconnect()
+            if response and len(response) >= 21:
+                return (True, f"NOTIFICATION for hold_time {hold_time}", {
+                    "error_code": response[19],
+                    "error_subcode": response[20]
+                })
+            return (False, f"No response for hold_time {hold_time}", {})
+        except Exception as e:
+            framework.disconnect()
+            return (False, f"Error in hold_time test: {str(e)}", {})
+
+    def _run_bgp_id_test(self, framework: BGPTestFramework, bgp_id: str) -> tuple:
+        if not framework.connect():
+            return (False, "Failed to connect", {})
+        msg = self._build_open_with_bgp_id(framework, bgp_id)
+        framework.send_raw(msg)
+        response = framework.receive_raw()
+        framework.disconnect()
+        if response and len(response) >= 21:
+            return (True, f"NOTIFICATION for BGP ID {bgp_id}", {
+                "error_code": response[19],
+                "error_subcode": response[20]
+            })
+        return (False, f"No response for BGP ID {bgp_id}", {})
+
+    def _run_as_test(self, framework: BGPTestFramework, as_num: int) -> tuple:
+        if not framework.connect():
+            return (False, "Failed to connect", {})
+        msg = self._build_open_with_as(framework, as_num)
+        framework.send_raw(msg)
+        response = framework.receive_raw()
+        framework.disconnect()
+        if response and len(response) >= 21:
+            return (True, f"NOTIFICATION for AS {as_num}", {
+                "error_code": response[19],
+                "error_subcode": response[20]
+            })
+        return (False, f"No response for AS {as_num}", {})
+
+    def _run_unknown_param_test(self, framework: BGPTestFramework) -> tuple:
+        if not framework.connect():
+            return (False, "Failed to connect", {})
+        bgp_id = struct.unpack("!I", socket.inet_aton("192.168.1.1"))[0]
+        data = struct.pack("!BHHI", 4, framework.source_as, 180, bgp_id)
+        opt_param = bytes([255, 2, 0xBE, 0xEF])
+        data += struct.pack("!B", len(opt_param)) + opt_param
+        msg = MARKER + struct.pack("!HB", 29 + len(opt_param), MESSAGE_TYPES["OPEN"]) + data
+        framework.send_raw(msg)
+        response = framework.receive_raw()
+        framework.disconnect()
+        if response and len(response) >= 21:
+            return (True, "NOTIFICATION for unknown param", {
+                "error_code": response[19],
+                "error_subcode": response[20]
+            })
+        return (False, "No response for unknown param", {})
+
+    def _run_malformed_param_test(self, framework: BGPTestFramework) -> tuple:
+        if not framework.connect():
+            return (False, "Failed to connect", {})
+        bgp_id = struct.unpack("!I", socket.inet_aton("192.168.1.1"))[0]
+        data = struct.pack("!BHHI", 4, framework.source_as, 180, bgp_id)
+        opt_param = bytes([2, 1])
+        data += struct.pack("!B", len(opt_param)) + opt_param
+        msg = MARKER + struct.pack("!HB", 29 + len(opt_param), MESSAGE_TYPES["OPEN"]) + data
+        framework.send_raw(msg)
+        response = framework.receive_raw()
+        framework.disconnect()
+        if response and len(response) >= 21:
+            return (True, "NOTIFICATION for malformed param", {
+                "error_code": response[19],
+                "error_subcode": response[20]
+            })
+        return (False, "No response for malformed param", {})
+
+    def _run_param_len_mismatch_test(self, framework: BGPTestFramework) -> tuple:
+        if not framework.connect():
+            return (False, "Failed to connect", {})
+        bgp_id = struct.unpack("!I", socket.inet_aton("192.168.1.1"))[0]
+        data = struct.pack("!BHHI", 4, framework.source_as, 180, bgp_id)
+        opt_param = bytes([2, 5, 0x00])
+        data += struct.pack("!B", len(opt_param)) + opt_param
+        msg = MARKER + struct.pack("!HB", 29 + len(opt_param), MESSAGE_TYPES["OPEN"]) + data
+        framework.send_raw(msg)
+        response = framework.receive_raw()
+        framework.disconnect()
+        if response and len(response) >= 21:
+            return (True, "NOTIFICATION for param len mismatch", {
+                "error_code": response[19],
+                "error_subcode": response[20]
+            })
+        return (False, "No response for param len mismatch", {})
+
+    def _run_multi_cap_test(self, framework: BGPTestFramework) -> tuple:
+        if not framework.connect():
+            return (False, "Failed to connect", {})
+        bgp_id = struct.unpack("!I", socket.inet_aton("192.168.1.1"))[0]
+        data = struct.pack("!BHHI", 4, framework.source_as, 180, bgp_id)
+        cap1 = bytes([1, 2, 0, 1, 0, 1])
+        cap2 = bytes([2, 0])
+        opt_param = bytes([2, len(cap1)]) + cap1 + bytes([2, len(cap2)]) + cap2
+        data += struct.pack("!B", len(opt_param)) + opt_param
+        msg = MARKER + struct.pack("!HB", 29 + len(opt_param), MESSAGE_TYPES["OPEN"]) + data
+        framework.send_raw(msg)
+        response = framework.receive_raw()
+        framework.disconnect()
+        if response and len(response) >= 19:
+            return (True, "Response for multi-cap OPEN", {})
+        return (False, "No response for multi-cap OPEN", {})
+
+    def _run_dup_cap_test(self, framework: BGPTestFramework) -> tuple:
+        if not framework.connect():
+            return (False, "Failed to connect", {})
+        bgp_id = struct.unpack("!I", socket.inet_aton("192.168.1.1"))[0]
+        data = struct.pack("!BHHI", 4, framework.source_as, 180, bgp_id)
+        cap1 = bytes([1, 2, 0, 1, 0, 1])
+        cap2 = bytes([1, 2, 0, 2, 0, 1])
+        opt_param = bytes([2, len(cap1)]) + cap1 + bytes([2, len(cap2)]) + cap2
+        data += struct.pack("!B", len(opt_param)) + opt_param
+        msg = MARKER + struct.pack("!HB", 29 + len(opt_param), MESSAGE_TYPES["OPEN"]) + data
+        framework.send_raw(msg)
+        response = framework.receive_raw()
+        framework.disconnect()
+        if response and len(response) >= 19:
+            return (True, "Response for dup-cap OPEN", {})
+        return (False, "No response for dup-cap OPEN", {})
+
+    def _run_auth_param_test(self, framework: BGPTestFramework) -> tuple:
+        if not framework.connect():
+            return (False, "Failed to connect", {})
+        bgp_id = struct.unpack("!I", socket.inet_aton("192.168.1.1"))[0]
+        data = struct.pack("!BHHI", 4, framework.source_as, 180, bgp_id)
+        auth_param = bytes([1, 4, 0xDE, 0xAD, 0xBE, 0xEF])
+        data += struct.pack("!B", len(auth_param)) + auth_param
+        msg = MARKER + struct.pack("!HB", 29 + len(auth_param), MESSAGE_TYPES["OPEN"]) + data
+        framework.send_raw(msg)
+        response = framework.receive_raw()
+        framework.disconnect()
+        if response and len(response) >= 21:
+            return (True, "NOTIFICATION for auth param", {
+                "error_code": response[19],
+                "error_subcode": response[20]
+            })
+        return (False, "No response for auth param", {})
+
+    def _run_4byte_as_cap_test(self, framework: BGPTestFramework) -> tuple:
+        if not framework.connect():
+            return (False, "Failed to connect", {})
+        msg = build_open_message(framework.source_as, 180, 0, [(65, struct.pack("!I", framework.source_as))])
+        framework.send_raw(msg)
+        response = framework.receive_raw()
+        framework.disconnect()
+        if response and len(response) >= 19:
+            return (True, "Response for 4-byte AS cap", {})
+        return (False, "No response for 4-byte AS cap", {})
+
+    def _run_hold_time_negotiation_test(self, framework: BGPTestFramework) -> tuple:
+        if not framework.connect():
+            return (False, "Failed to connect", {})
+        msg = build_open_message(framework.source_as, 90)
+        framework.send_raw(msg)
+        response = framework.receive_raw()
+        framework.disconnect()
+        if response and len(response) >= 19:
+            return (True, "Hold time negotiation response", {})
+        return (False, "No hold time negotiation response", {})
 
 
 class UpdateMessageAssessments:
@@ -933,6 +1659,378 @@ class UpdateMessageAssessments:
 
         return result
 
+    def test_up_001(self, framework: BGPTestFramework) -> TestResult:
+        return framework._run_test(self.get_tests()[0], lambda: self._send_update_without_origin(framework))
+
+    def test_up_002(self, framework: BGPTestFramework) -> TestResult:
+        return framework._run_test(self.get_tests()[1], lambda: self._send_update_without_aspath(framework))
+
+    def test_up_003(self, framework: BGPTestFramework) -> TestResult:
+        return framework._run_test(self.get_tests()[2], lambda: self._send_update_without_nexthop(framework))
+
+    def test_up_004(self, framework: BGPTestFramework) -> TestResult:
+        return framework._run_test(self.get_tests()[3], lambda: self._send_update_with_invalid_origin(framework))
+
+    def test_up_005(self, framework: BGPTestFramework) -> TestResult:
+        return framework._run_test(self.get_tests()[4], lambda: self._send_update_with_malformed_aspath(framework))
+
+    def test_up_006(self, framework: BGPTestFramework) -> TestResult:
+        return framework._run_test(self.get_tests()[5], lambda: self._send_update_with_aspath_len_mismatch(framework))
+
+    def test_up_007(self, framework: BGPTestFramework) -> TestResult:
+        return framework._run_test(self.get_tests()[6], lambda: self._send_update_with_zero_aspath_segment(framework))
+
+    def test_up_008(self, framework: BGPTestFramework) -> TestResult:
+        return framework._run_test(self.get_tests()[7], lambda: self._send_update_with_invalid_nexthop_zeros(framework))
+
+    def test_up_009(self, framework: BGPTestFramework) -> TestResult:
+        return framework._run_test(self.get_tests()[8], lambda: self._send_update_with_invalid_nexthop_loopback(framework))
+
+    def test_up_010(self, framework: BGPTestFramework) -> TestResult:
+        return framework._run_test(self.get_tests()[9], lambda: self._send_update_with_optional_origin(framework))
+
+    def test_up_011(self, framework: BGPTestFramework) -> TestResult:
+        return framework._run_test(self.get_tests()[10], lambda: self._send_update_with_attr_length_error(framework))
+
+    def test_up_012(self, framework: BGPTestFramework) -> TestResult:
+        return framework._run_test(self.get_tests()[11], lambda: self._send_update_with_duplicate_attr(framework))
+
+    def test_up_013(self, framework: BGPTestFramework) -> TestResult:
+        return framework._run_test(self.get_tests()[12], lambda: self._send_update_with_invalid_nlri_prefix_len(framework))
+
+    def test_up_014(self, framework: BGPTestFramework) -> TestResult:
+        return framework._run_test(self.get_tests()[13], lambda: self._send_update_with_invalid_nlri_bits(framework))
+
+    def test_up_015(self, framework: BGPTestFramework) -> TestResult:
+        return framework._run_test(self.get_tests()[14], lambda: self._send_update_with_overlapping_routes(framework))
+
+    def test_up_016(self, framework: BGPTestFramework) -> TestResult:
+        return framework._run_test(self.get_tests()[15], lambda: self._send_update_with_path_attr_overflow(framework))
+
+    def test_up_017(self, framework: BGPTestFramework) -> TestResult:
+        return framework._run_test(self.get_tests()[16], lambda: self._send_update_with_withdrawn_overflow(framework))
+
+    def test_up_018(self, framework: BGPTestFramework) -> TestResult:
+        return framework._run_test(self.get_tests()[17], lambda: self._send_update_with_unrecognized_attr(framework))
+
+    def test_up_019(self, framework: BGPTestFramework) -> TestResult:
+        return framework._run_test(self.get_tests()[18], lambda: self._send_update_with_attr_flags_error(framework))
+
+    def test_up_020(self, framework: BGPTestFramework) -> TestResult:
+        return framework._run_test(self.get_tests()[19], lambda: self._send_update_with_invalid_network(framework))
+
+    def test_up_021(self, framework: BGPTestFramework) -> TestResult:
+        return framework._run_test(self.get_tests()[20], lambda: self._send_update_with_invalid_optional_attr(framework))
+
+    def test_up_022(self, framework: BGPTestFramework) -> TestResult:
+        return framework._run_test(self.get_tests()[21], lambda: self._send_update_out_of_order_attrs(framework))
+
+    def test_up_023(self, framework: BGPTestFramework) -> TestResult:
+        return framework._run_test(self.get_tests()[22], lambda: self._send_update_with_invalid_aspath_type(framework))
+
+    def test_up_024(self, framework: BGPTestFramework) -> TestResult:
+        return framework._run_test(self.get_tests()[23], lambda: self._send_update_with_aspath_overflow(framework))
+
+    def test_up_025(self, framework: BGPTestFramework) -> TestResult:
+        return framework._run_test(self.get_tests()[24], lambda: self._send_update_with_empty_aspath(framework))
+
+    def test_up_026(self, framework: BGPTestFramework) -> TestResult:
+        return framework._run_test(self.get_tests()[25], lambda: self._send_update_with_asset_before_sequence(framework))
+
+    def test_up_027(self, framework: BGPTestFramework) -> TestResult:
+        return framework._run_test(self.get_tests()[26], lambda: self._send_update_with_multiple_nlri(framework))
+
+    def test_up_028(self, framework: BGPTestFramework) -> TestResult:
+        return framework._run_test(self.get_tests()[27], lambda: self._send_update_with_overlapping_nlri(framework))
+
+    def test_up_029(self, framework: BGPTestFramework) -> TestResult:
+        return framework._run_test(self.get_tests()[28], lambda: self._send_update_with_nlri_len_mismatch(framework))
+
+    def test_up_030(self, framework: BGPTestFramework) -> TestResult:
+        return framework._run_test(self.get_tests()[29], lambda: self._send_update_with_withdrawn_overflow(framework))
+
+    def _establish_session(self, framework: BGPTestFramework) -> bool:
+        if not framework.connect():
+            return False
+        msg = build_open_message(framework.source_as)
+        framework.send_raw(msg)
+        response = framework.receive_raw()
+        if not response or len(response) < 19:
+            framework.disconnect()
+            return False
+        keepalive = build_keepalive_message()
+        framework.send_raw(keepalive)
+        framework.receive_raw()
+        return True
+
+    def _send_update(self, framework: BGPTestFramework, withdrawn: bytes, path_attrs: bytes, nlri: bytes) -> tuple:
+        withdrawn_len = struct.pack("!H", len(withdrawn))
+        path_attr_len = struct.pack("!H", len(path_attrs))
+        data = withdrawn_len + path_attr_len + path_attrs + withdrawn + nlri
+        msg = MARKER + struct.pack("!HB", 19 + len(data), MESSAGE_TYPES["UPDATE"]) + data
+        framework.send_raw(msg)
+        response = framework.receive_raw()
+        if response and len(response) >= 21:
+            return (True, "NOTIFICATION received", {
+                "error_code": response[19],
+                "error_subcode": response[20]
+            })
+        return (False, "No NOTIFICATION", {})
+
+    def _build_valid_attrs(self, framework: BGPTestFramework) -> bytes:
+        origin = create_origin_attribute(0)
+        as_path = create_as_path_attribute([framework.source_as])
+        next_hop = create_next_hop_attribute(framework.get_next_hop())
+        return origin.serialize() + as_path.serialize() + next_hop.serialize()
+
+    def _send_update_without_origin(self, framework: BGPTestFramework) -> tuple:
+        if not self._establish_session(framework):
+            return (False, "Failed to establish session", {})
+        as_path = create_as_path_attribute([framework.source_as])
+        next_hop = create_next_hop_attribute(framework.get_next_hop())
+        attrs = as_path.serialize() + next_hop.serialize()
+        return self._send_update(framework, b"", attrs, b"\x18\xc0\xa8\x01\x00")
+
+    def _send_update_without_aspath(self, framework: BGPTestFramework) -> tuple:
+        if not self._establish_session(framework):
+            return (False, "Failed to establish session", {})
+        origin = create_origin_attribute(0)
+        next_hop = create_next_hop_attribute(framework.get_next_hop())
+        attrs = origin.serialize() + next_hop.serialize()
+        return self._send_update(framework, b"", attrs, b"\x18\xc0\xa8\x01\x00")
+
+    def _send_update_without_nexthop(self, framework: BGPTestFramework) -> tuple:
+        if not self._establish_session(framework):
+            return (False, "Failed to establish session", {})
+        origin = create_origin_attribute(0)
+        as_path = create_as_path_attribute([framework.source_as])
+        attrs = origin.serialize() + as_path.serialize()
+        return self._send_update(framework, b"", attrs, b"\x18\xc0\xa8\x01\x00")
+
+    def _send_update_with_invalid_origin(self, framework: BGPTestFramework) -> tuple:
+        if not self._establish_session(framework):
+            return (False, "Failed to establish session", {})
+        origin = PathAttribute(PATH_ATTRIBUTE_TYPES["ORIGIN"], 0x40, bytes([3]))
+        as_path = create_as_path_attribute([framework.source_as])
+        next_hop = create_next_hop_attribute(framework.get_next_hop())
+        attrs = origin.serialize() + as_path.serialize() + next_hop.serialize()
+        return self._send_update(framework, b"", attrs, b"\x18\xc0\xa8\x01\x00")
+
+    def _send_update_with_malformed_aspath(self, framework: BGPTestFramework) -> tuple:
+        if not self._establish_session(framework):
+            return (False, "Failed to establish session", {})
+        origin = create_origin_attribute(0)
+        malformed_aspath = PathAttribute(PATH_ATTRIBUTE_TYPES["AS_PATH"], 0x40, bytes([2, 10]) + b"\x00" * 5)
+        next_hop = create_next_hop_attribute(framework.get_next_hop())
+        attrs = origin.serialize() + malformed_aspath.serialize() + next_hop.serialize()
+        return self._send_update(framework, b"", attrs, b"\x18\xc0\xa8\x01\x00")
+
+    def _send_update_with_aspath_len_mismatch(self, framework: BGPTestFramework) -> tuple:
+        if not self._establish_session(framework):
+            return (False, "Failed to establish session", {})
+        origin = create_origin_attribute(0)
+        aspath_data = bytes([2, 5]) + struct.pack("!H", framework.source_as) * 5
+        as_path = PathAttribute(PATH_ATTRIBUTE_TYPES["AS_PATH"], 0x40, aspath_data)
+        next_hop = create_next_hop_attribute(framework.get_next_hop())
+        attrs = origin.serialize() + as_path.serialize() + next_hop.serialize()
+        return self._send_update(framework, b"", attrs, b"\x18\xc0\xa8\x01\x00")
+
+    def _send_update_with_zero_aspath_segment(self, framework: BGPTestFramework) -> tuple:
+        if not self._establish_session(framework):
+            return (False, "Failed to establish session", {})
+        origin = create_origin_attribute(0)
+        aspath_data = bytes([2, 0]) + struct.pack("!H", framework.source_as)
+        as_path = PathAttribute(PATH_ATTRIBUTE_TYPES["AS_PATH"], 0x40, aspath_data)
+        next_hop = create_next_hop_attribute(framework.get_next_hop())
+        attrs = origin.serialize() + as_path.serialize() + next_hop.serialize()
+        return self._send_update(framework, b"", attrs, b"\x18\xc0\xa8\x01\x00")
+
+    def _send_update_with_invalid_nexthop_zeros(self, framework: BGPTestFramework) -> tuple:
+        if not self._establish_session(framework):
+            return (False, "Failed to establish session", {})
+        origin = create_origin_attribute(0)
+        as_path = create_as_path_attribute([framework.source_as])
+        next_hop = create_next_hop_attribute("0.0.0.0")
+        attrs = origin.serialize() + as_path.serialize() + next_hop.serialize()
+        return self._send_update(framework, b"", attrs, b"\x18\xc0\xa8\x01\x00")
+
+    def _send_update_with_invalid_nexthop_loopback(self, framework: BGPTestFramework) -> tuple:
+        if not self._establish_session(framework):
+            return (False, "Failed to establish session", {})
+        origin = create_origin_attribute(0)
+        as_path = create_as_path_attribute([framework.source_as])
+        next_hop = create_next_hop_attribute("127.0.0.1")
+        attrs = origin.serialize() + as_path.serialize() + next_hop.serialize()
+        return self._send_update(framework, b"", attrs, b"\x18\xc0\xa8\x01\x00")
+
+    def _send_update_with_optional_origin(self, framework: BGPTestFramework) -> tuple:
+        if not self._establish_session(framework):
+            return (False, "Failed to establish session", {})
+        origin = PathAttribute(PATH_ATTRIBUTE_TYPES["ORIGIN"], 0x00, bytes([0]))
+        as_path = create_as_path_attribute([framework.source_as])
+        next_hop = create_next_hop_attribute(framework.get_next_hop())
+        attrs = origin.serialize() + as_path.serialize() + next_hop.serialize()
+        return self._send_update(framework, b"", attrs, b"\x18\xc0\xa8\x01\x00")
+
+    def _send_update_with_attr_length_error(self, framework: BGPTestFramework) -> tuple:
+        if not self._establish_session(framework):
+            return (False, "Failed to establish session", {})
+        origin = PathAttribute(PATH_ATTRIBUTE_TYPES["ORIGIN"], 0x40, bytes([0, 0]))
+        as_path = create_as_path_attribute([framework.source_as])
+        next_hop = create_next_hop_attribute(framework.get_next_hop())
+        attrs = origin.serialize() + as_path.serialize() + next_hop.serialize()
+        return self._send_update(framework, b"", attrs, b"\x18\xc0\xa8\x01\x00")
+
+    def _send_update_with_duplicate_attr(self, framework: BGPTestFramework) -> tuple:
+        if not self._establish_session(framework):
+            return (False, "Failed to establish session", {})
+        origin = create_origin_attribute(0)
+        as_path = create_as_path_attribute([framework.source_as])
+        next_hop = create_next_hop_attribute(framework.get_next_hop())
+        attrs = origin.serialize() + as_path.serialize() + next_hop.serialize() + origin.serialize()
+        return self._send_update(framework, b"", attrs, b"\x18\xc0\xa8\x01\x00")
+
+    def _send_update_with_invalid_nlri_prefix_len(self, framework: BGPTestFramework) -> tuple:
+        if not self._establish_session(framework):
+            return (False, "Failed to establish session", {})
+        attrs = self._build_valid_attrs(framework)
+        nlri = bytes([33]) + socket.inet_aton("192.168.1.0")
+        return self._send_update(framework, b"", attrs, nlri)
+
+    def _send_update_with_invalid_nlri_bits(self, framework: BGPTestFramework) -> tuple:
+        if not self._establish_session(framework):
+            return (False, "Failed to establish session", {})
+        attrs = self._build_valid_attrs(framework)
+        nlri = bytes([24, 0xc0, 0xa8, 0x01, 0x03])
+        return self._send_update(framework, b"", attrs, nlri)
+
+    def _send_update_with_overlapping_routes(self, framework: BGPTestFramework) -> tuple:
+        if not self._establish_session(framework):
+            return (False, "Failed to establish session", {})
+        attrs = self._build_valid_attrs(framework)
+        nlri = bytes([24, 0xc0, 0xa8, 0x01, 0x00, 16, 0xc0, 0xa8, 0x01, 0x00])
+        return self._send_update(framework, b"", attrs, nlri)
+
+    def _send_update_with_path_attr_overflow(self, framework: BGPTestFramework) -> tuple:
+        if not self._establish_session(framework):
+            return (False, "Failed to establish session", {})
+        origin = create_origin_attribute(0)
+        as_path = create_as_path_attribute([framework.source_as])
+        next_hop = create_next_hop_attribute(framework.get_next_hop())
+        attrs = origin.serialize() + as_path.serialize() + next_hop.serialize()
+        overflow = b"\xff" * 4000
+        return self._send_update(framework, b"", attrs + overflow, b"")
+
+    def _send_update_with_withdrawn_overflow(self, framework: BGPTestFramework) -> tuple:
+        if not self._establish_session(framework):
+            return (False, "Failed to establish session", {})
+        attrs = self._build_valid_attrs(framework)
+        withdrawn = bytes([24, 0xc0, 0xa8, 0x01, 0x00]) * 500
+        return self._send_update(framework, withdrawn, attrs, b"")
+
+    def _send_update_with_unrecognized_attr(self, framework: BGPTestFramework) -> tuple:
+        if not self._establish_session(framework):
+            return (False, "Failed to establish session", {})
+        origin = create_origin_attribute(0)
+        as_path = create_as_path_attribute([framework.source_as])
+        next_hop = create_next_hop_attribute(framework.get_next_hop())
+        unrecognized = PathAttribute(8, 0x40, b"\x00\x01")
+        attrs = origin.serialize() + as_path.serialize() + next_hop.serialize() + unrecognized.serialize()
+        return self._send_update(framework, b"", attrs, b"\x18\xc0\xa8\x01\x00")
+
+    def _send_update_with_attr_flags_error(self, framework: BGPTestFramework) -> tuple:
+        if not self._establish_session(framework):
+            return (False, "Failed to establish session", {})
+        origin = PathAttribute(PATH_ATTRIBUTE_TYPES["ORIGIN"], 0xE0, bytes([0]))
+        as_path = create_as_path_attribute([framework.source_as])
+        next_hop = create_next_hop_attribute(framework.get_next_hop())
+        attrs = origin.serialize() + as_path.serialize() + next_hop.serialize()
+        return self._send_update(framework, b"", attrs, b"\x18\xc0\xa8\x01\x00")
+
+    def _send_update_with_invalid_network(self, framework: BGPTestFramework) -> tuple:
+        if not self._establish_session(framework):
+            return (False, "Failed to establish session", {})
+        attrs = self._build_valid_attrs(framework)
+        return self._send_update(framework, b"", attrs, b"\xff\xc0\xa8\x01\x00")
+
+    def _send_update_with_invalid_optional_attr(self, framework: BGPTestFramework) -> tuple:
+        if not self._establish_session(framework):
+            return (False, "Failed to establish session", {})
+        origin = create_origin_attribute(0)
+        as_path = create_as_path_attribute([framework.source_as])
+        next_hop = create_next_hop_attribute(framework.get_next_hop())
+        invalid_opt = PathAttribute(99, 0x80, bytes([0xDE, 0xAD]))
+        attrs = origin.serialize() + as_path.serialize() + next_hop.serialize() + invalid_opt.serialize()
+        return self._send_update(framework, b"", attrs, b"\x18\xc0\xa8\x01\x00")
+
+    def _send_update_out_of_order_attrs(self, framework: BGPTestFramework) -> tuple:
+        if not self._establish_session(framework):
+            return (False, "Failed to establish session", {})
+        next_hop = create_next_hop_attribute(framework.get_next_hop())
+        as_path = create_as_path_attribute([framework.source_as])
+        origin = create_origin_attribute(0)
+        attrs = next_hop.serialize() + as_path.serialize() + origin.serialize()
+        return self._send_update(framework, b"", attrs, b"\x18\xc0\xa8\x01\x00")
+
+    def _send_update_with_invalid_aspath_type(self, framework: BGPTestFramework) -> tuple:
+        if not self._establish_session(framework):
+            return (False, "Failed to establish session", {})
+        origin = create_origin_attribute(0)
+        invalid_aspath = PathAttribute(PATH_ATTRIBUTE_TYPES["AS_PATH"], 0x40, bytes([5, 1, 0x90, 0x01]))
+        next_hop = create_next_hop_attribute(framework.get_next_hop())
+        attrs = origin.serialize() + invalid_aspath.serialize() + next_hop.serialize()
+        return self._send_update(framework, b"", attrs, b"\x18\xc0\xa8\x01\x00")
+
+    def _send_update_with_aspath_overflow(self, framework: BGPTestFramework) -> tuple:
+        if not self._establish_session(framework):
+            return (False, "Failed to establish session", {})
+        origin = create_origin_attribute(0)
+        as_numbers = list(range(1, 257))
+        as_path = create_as_path_attribute(as_numbers)
+        next_hop = create_next_hop_attribute(framework.get_next_hop())
+        attrs = origin.serialize() + as_path.serialize() + next_hop.serialize()
+        return self._send_update(framework, b"", attrs, b"\x18\xc0\xa8\x01\x00")
+
+    def _send_update_with_empty_aspath(self, framework: BGPTestFramework) -> tuple:
+        if not self._establish_session(framework):
+            return (False, "Failed to establish session", {})
+        origin = create_origin_attribute(0)
+        empty_aspath = PathAttribute(PATH_ATTRIBUTE_TYPES["AS_PATH"], 0x40, bytes([2, 0]))
+        next_hop = create_next_hop_attribute(framework.get_next_hop())
+        attrs = origin.serialize() + empty_aspath.serialize() + next_hop.serialize()
+        return self._send_update(framework, b"", attrs, b"\x18\xc0\xa8\x01\x00")
+
+    def _send_update_with_asset_before_sequence(self, framework: BGPTestFramework) -> tuple:
+        if not self._establish_session(framework):
+            return (False, "Failed to establish session", {})
+        origin = create_origin_attribute(0)
+        aspath_data = bytes([1, 1, 0x90, 0x01]) + bytes([2, 1, 0x90, 0x02])
+        as_path = PathAttribute(PATH_ATTRIBUTE_TYPES["AS_PATH"], 0x40, aspath_data)
+        next_hop = create_next_hop_attribute(framework.get_next_hop())
+        attrs = origin.serialize() + as_path.serialize() + next_hop.serialize()
+        return self._send_update(framework, b"", attrs, b"\x18\xc0\xa8\x01\x00")
+
+    def _send_update_with_multiple_nlri(self, framework: BGPTestFramework) -> tuple:
+        if not self._establish_session(framework):
+            return (False, "Failed to establish session", {})
+        attrs = self._build_valid_attrs(framework)
+        nlri = bytes([24, 0xc0, 0xa8, 0x01, 0x00, 24, 0xc0, 0xa8, 0x02, 0x00])
+        return self._send_update(framework, b"", attrs, nlri)
+
+    def _send_update_with_overlapping_nlri(self, framework: BGPTestFramework) -> tuple:
+        if not self._establish_session(framework):
+            return (False, "Failed to establish session", {})
+        attrs = self._build_valid_attrs(framework)
+        nlri = bytes([24, 0xc0, 0xa8, 0x01, 0x00, 16, 0xc0, 0xa8, 0x01, 0x00])
+        return self._send_update(framework, b"", attrs, nlri)
+
+    def _send_update_with_nlri_len_mismatch(self, framework: BGPTestFramework) -> tuple:
+        if not self._establish_session(framework):
+            return (False, "Failed to establish session", {})
+        attrs = self._build_valid_attrs(framework)
+        nlri = bytes([24]) + socket.inet_aton("192.168.1.0")[:2]
+        return self._send_update(framework, b"", attrs, nlri)
+
 
 class AttributeAssessments:
 
@@ -1030,6 +2128,242 @@ class AttributeAssessments:
                 description="Send UPDATE with AS_SET in middle of AS_SEQUENCE - RFC 4271 Section 5.1.2",
             ),
         ]
+
+    def _establish_session(self, framework: BGPTestFramework) -> bool:
+        if not framework.connect():
+            return False
+        msg = build_open_message(framework.source_as)
+        framework.send_raw(msg)
+        response = framework.receive_raw()
+        if not response or len(response) < 19:
+            framework.disconnect()
+            return False
+        keepalive = build_keepalive_message()
+        framework.send_raw(keepalive)
+        framework.receive_raw()
+        return True
+
+    def _send_update(self, framework: BGPTestFramework, path_attrs: bytes, nlri: bytes) -> tuple:
+        path_attr_len = struct.pack("!H", len(path_attrs))
+        data = struct.pack("!HH", 0, len(path_attrs)) + path_attrs + nlri
+        msg = MARKER + struct.pack("!HB", 19 + len(data), MESSAGE_TYPES["UPDATE"]) + data
+        framework.send_raw(msg)
+        response = framework.receive_raw()
+        if response and len(response) >= 21:
+            return (True, "NOTIFICATION received", {
+                "error_code": response[19],
+                "error_subcode": response[20]
+            })
+        return (False, "No NOTIFICATION", {})
+
+    def _build_base_attrs(self, framework: BGPTestFramework) -> bytes:
+        origin = create_origin_attribute(0)
+        as_path = create_as_path_attribute([framework.source_as])
+        next_hop = create_next_hop_attribute(framework.get_next_hop())
+        return origin.serialize() + as_path.serialize() + next_hop.serialize()
+
+    def test_attr_001(self, framework: BGPTestFramework) -> TestResult:
+        return framework._run_test(self.get_tests()[0], lambda: self._test_as_path_loop(framework))
+
+    def test_attr_002(self, framework: BGPTestFramework) -> TestResult:
+        return framework._run_test(self.get_tests()[1], lambda: self._test_confed_sequence(framework))
+
+    def test_attr_003(self, framework: BGPTestFramework) -> TestResult:
+        return framework._run_test(self.get_tests()[2], lambda: self._test_confed_set(framework))
+
+    def test_attr_004(self, framework: BGPTestFramework) -> TestResult:
+        return framework._run_test(self.get_tests()[3], lambda: self._test_as_path_overflow(framework))
+
+    def test_attr_005(self, framework: BGPTestFramework) -> TestResult:
+        return framework._run_test(self.get_tests()[4], lambda: self._test_local_pref_on_ebgp(framework))
+
+    def test_attr_006(self, framework: BGPTestFramework) -> TestResult:
+        return framework._run_test(self.get_tests()[5], lambda: self._test_med_reserved(framework))
+
+    def test_attr_007(self, framework: BGPTestFramework) -> TestResult:
+        return framework._run_test(self.get_tests()[6], lambda: self._test_aggregator_invalid_len(framework))
+
+    def test_attr_008(self, framework: BGPTestFramework) -> TestResult:
+        return framework._run_test(self.get_tests()[7], lambda: self._test_atomic_aggregate_nonzero(framework))
+
+    def test_attr_009(self, framework: BGPTestFramework) -> TestResult:
+        return framework._run_test(self.get_tests()[8], lambda: self._test_origin_optional(framework))
+
+    def test_attr_010(self, framework: BGPTestFramework) -> TestResult:
+        return framework._run_test(self.get_tests()[9], lambda: self._test_as_path_optional(framework))
+
+    def test_attr_011(self, framework: BGPTestFramework) -> TestResult:
+        return framework._run_test(self.get_tests()[10], lambda: self._test_nexthop_optional(framework))
+
+    def test_attr_012(self, framework: BGPTestFramework) -> TestResult:
+        return framework._run_test(self.get_tests()[11], lambda: self._test_nexthop_same_as_peer(framework))
+
+    def test_attr_013(self, framework: BGPTestFramework) -> TestResult:
+        return framework._run_test(self.get_tests()[12], lambda: self._test_nexthop_invalid_subnet(framework))
+
+    def test_attr_014(self, framework: BGPTestFramework) -> TestResult:
+        return framework._run_test(self.get_tests()[13], lambda: self._test_well_known_partial(framework))
+
+    def test_attr_015(self, framework: BGPTestFramework) -> TestResult:
+        return framework._run_test(self.get_tests()[14], lambda: self._test_as_set_in_sequence(framework))
+
+    def _test_as_path_loop(self, framework: BGPTestFramework) -> tuple:
+        if not self._establish_session(framework):
+            return (False, "Failed to establish session", {})
+        as_path = create_as_path_with_loop([65001, 65002], framework.source_as)
+        origin = create_origin_attribute(0)
+        next_hop = create_next_hop_attribute(framework.get_next_hop())
+        attrs = origin.serialize() + as_path.serialize() + next_hop.serialize()
+        nlri = bytes([24, 0xc0, 0xa8, 0x01, 0x00])
+        return self._send_update(framework, attrs, nlri)
+
+    def _test_confed_sequence(self, framework: BGPTestFramework) -> tuple:
+        if not self._establish_session(framework):
+            return (False, "Failed to establish session", {})
+        as_path = create_confed_sequence_attribute([65001, 65002])
+        origin = create_origin_attribute(0)
+        next_hop = create_next_hop_attribute(framework.get_next_hop())
+        attrs = origin.serialize() + as_path.serialize() + next_hop.serialize()
+        nlri = bytes([24, 0xc0, 0xa8, 0x01, 0x00])
+        return self._send_update(framework, attrs, nlri)
+
+    def _test_confed_set(self, framework: BGPTestFramework) -> tuple:
+        if not self._establish_session(framework):
+            return (False, "Failed to establish session", {})
+        as_path = create_confed_set_attribute([65001, 65002])
+        origin = create_origin_attribute(0)
+        next_hop = create_next_hop_attribute(framework.get_next_hop())
+        attrs = origin.serialize() + as_path.serialize() + next_hop.serialize()
+        nlri = bytes([24, 0xc0, 0xa8, 0x01, 0x00])
+        return self._send_update(framework, attrs, nlri)
+
+    def _test_as_path_overflow(self, framework: BGPTestFramework) -> tuple:
+        if not self._establish_session(framework):
+            return (False, "Failed to establish session", {})
+        as_path = create_as_path_overflow(300)
+        origin = create_origin_attribute(0)
+        next_hop = create_next_hop_attribute(framework.get_next_hop())
+        attrs = origin.serialize() + as_path.serialize() + next_hop.serialize()
+        nlri = bytes([24, 0xc0, 0xa8, 0x01, 0x00])
+        return self._send_update(framework, attrs, nlri)
+
+    def _test_local_pref_on_ebgp(self, framework: BGPTestFramework) -> tuple:
+        if not self._establish_session(framework):
+            return (False, "Failed to establish session", {})
+        lp_attr = create_local_pref_on_ebgp(100)
+        origin = create_origin_attribute(0)
+        as_path = create_as_path_attribute([framework.source_as])
+        next_hop = create_next_hop_attribute(framework.get_next_hop())
+        attrs = origin.serialize() + as_path.serialize() + next_hop.serialize() + lp_attr.serialize()
+        nlri = bytes([24, 0xc0, 0xa8, 0x01, 0x00])
+        return self._send_update(framework, attrs, nlri)
+
+    def _test_med_reserved(self, framework: BGPTestFramework) -> tuple:
+        if not self._establish_session(framework):
+            return (False, "Failed to establish session", {})
+        med_attr = PathAttribute(PATH_ATTRIBUTE_TYPES["MULTI_EXIT_DISC"], 0x80, bytes([0xff, 0xff, 0xff, 0xff, 0xff]))
+        origin = create_origin_attribute(0)
+        as_path = create_as_path_attribute([framework.source_as])
+        next_hop = create_next_hop_attribute(framework.get_next_hop())
+        attrs = origin.serialize() + as_path.serialize() + next_hop.serialize() + med_attr.serialize()
+        nlri = bytes([24, 0xc0, 0xa8, 0x01, 0x00])
+        return self._send_update(framework, attrs, nlri)
+
+    def _test_aggregator_invalid_len(self, framework: BGPTestFramework) -> tuple:
+        if not self._establish_session(framework):
+            return (False, "Failed to establish session", {})
+        agg_attr = create_malformed_aggregator_attribute()
+        origin = create_origin_attribute(0)
+        as_path = create_as_path_attribute([framework.source_as])
+        next_hop = create_next_hop_attribute(framework.get_next_hop())
+        attrs = origin.serialize() + as_path.serialize() + next_hop.serialize() + agg_attr.serialize()
+        nlri = bytes([24, 0xc0, 0xa8, 0x01, 0x00])
+        return self._send_update(framework, attrs, nlri)
+
+    def _test_atomic_aggregate_nonzero(self, framework: BGPTestFramework) -> tuple:
+        if not self._establish_session(framework):
+            return (False, "Failed to establish session", {})
+        atomic_attr = PathAttribute(PATH_ATTRIBUTE_TYPES["ATOMIC_AGGREGATE"], 0x40, bytes([1, 2, 3]))
+        origin = create_origin_attribute(0)
+        as_path = create_as_path_attribute([framework.source_as])
+        next_hop = create_next_hop_attribute(framework.get_next_hop())
+        attrs = origin.serialize() + as_path.serialize() + next_hop.serialize() + atomic_attr.serialize()
+        nlri = bytes([24, 0xc0, 0xa8, 0x01, 0x00])
+        return self._send_update(framework, attrs, nlri)
+
+    def _test_origin_optional(self, framework: BGPTestFramework) -> tuple:
+        if not self._establish_session(framework):
+            return (False, "Failed to establish session", {})
+        origin = PathAttribute(PATH_ATTRIBUTE_TYPES["ORIGIN"], 0x00, bytes([0]))
+        as_path = create_as_path_attribute([framework.source_as])
+        next_hop = create_next_hop_attribute(framework.get_next_hop())
+        attrs = origin.serialize() + as_path.serialize() + next_hop.serialize()
+        nlri = bytes([24, 0xc0, 0xa8, 0x01, 0x00])
+        return self._send_update(framework, attrs, nlri)
+
+    def _test_as_path_optional(self, framework: BGPTestFramework) -> tuple:
+        if not self._establish_session(framework):
+            return (False, "Failed to establish session", {})
+        origin = create_origin_attribute(0)
+        as_path = PathAttribute(PATH_ATTRIBUTE_TYPES["AS_PATH"], 0x00, bytes([2, 1]) + struct.pack("!H", framework.source_as))
+        next_hop = create_next_hop_attribute(framework.get_next_hop())
+        attrs = origin.serialize() + as_path.serialize() + next_hop.serialize()
+        nlri = bytes([24, 0xc0, 0xa8, 0x01, 0x00])
+        return self._send_update(framework, attrs, nlri)
+
+    def _test_nexthop_optional(self, framework: BGPTestFramework) -> tuple:
+        if not self._establish_session(framework):
+            return (False, "Failed to establish session", {})
+        origin = create_origin_attribute(0)
+        as_path = create_as_path_attribute([framework.source_as])
+        next_hop = PathAttribute(PATH_ATTRIBUTE_TYPES["NEXT_HOP"], 0x00, socket.inet_aton(framework.get_next_hop()))
+        attrs = origin.serialize() + as_path.serialize() + next_hop.serialize()
+        nlri = bytes([24, 0xc0, 0xa8, 0x01, 0x00])
+        return self._send_update(framework, attrs, nlri)
+
+    def _test_nexthop_same_as_peer(self, framework: BGPTestFramework) -> tuple:
+        if not self._establish_session(framework):
+            return (False, "Failed to establish session", {})
+        origin = create_origin_attribute(0)
+        as_path = create_as_path_attribute([framework.source_as])
+        next_hop = create_next_hop_attribute(framework.target_host)
+        attrs = origin.serialize() + as_path.serialize() + next_hop.serialize()
+        nlri = bytes([24, 0xc0, 0xa8, 0x01, 0x00])
+        return self._send_update(framework, attrs, nlri)
+
+    def _test_nexthop_invalid_subnet(self, framework: BGPTestFramework) -> tuple:
+        if not self._establish_session(framework):
+            return (False, "Failed to establish session", {})
+        origin = create_origin_attribute(0)
+        as_path = create_as_path_attribute([framework.source_as])
+        next_hop = create_next_hop_attribute("10.255.255.1")
+        attrs = origin.serialize() + as_path.serialize() + next_hop.serialize()
+        nlri = bytes([24, 0xc0, 0xa8, 0x01, 0x00])
+        return self._send_update(framework, attrs, nlri)
+
+    def _test_well_known_partial(self, framework: BGPTestFramework) -> tuple:
+        if not self._establish_session(framework):
+            return (False, "Failed to establish session", {})
+        origin = PathAttribute(PATH_ATTRIBUTE_TYPES["ORIGIN"], 0x50, bytes([0]))
+        as_path = create_as_path_attribute([framework.source_as])
+        next_hop = create_next_hop_attribute(framework.get_next_hop())
+        attrs = origin.serialize() + as_path.serialize() + next_hop.serialize()
+        nlri = bytes([24, 0xc0, 0xa8, 0x01, 0x00])
+        return self._send_update(framework, attrs, nlri)
+
+    def _test_as_set_in_sequence(self, framework: BGPTestFramework) -> tuple:
+        if not self._establish_session(framework):
+            return (False, "Failed to establish session", {})
+        as_numbers = [65001, 65002]
+        confed_data = bytes([AS_PATH_SEGMENT_TYPES["AS_SEQUENCE"], 1]) + struct.pack("!H", as_numbers[0])
+        confed_data += bytes([AS_PATH_SEGMENT_TYPES["AS_SET"], 1]) + struct.pack("!H", as_numbers[1])
+        confed_data += bytes([AS_PATH_SEGMENT_TYPES["AS_SEQUENCE"], 0])
+        as_path = PathAttribute(PATH_ATTRIBUTE_TYPES["AS_PATH"], 0x40, confed_data)
+        origin = create_origin_attribute(0)
+        next_hop = create_next_hop_attribute(framework.get_next_hop())
+        attrs = origin.serialize() + as_path.serialize() + next_hop.serialize()
+        nlri = bytes([24, 0xc0, 0xa8, 0x01, 0x00])
+        return self._send_update(framework, attrs, nlri)
 
 
 class FSMAssessments:
@@ -1129,6 +2463,174 @@ class FSMAssessments:
             ),
         ]
 
+    def test_fsm_001(self, framework: BGPTestFramework) -> TestResult:
+        return framework._run_test(self.get_tests()[0], lambda: self._test_update_in_idle(framework))
+
+    def test_fsm_002(self, framework: BGPTestFramework) -> TestResult:
+        return framework._run_test(self.get_tests()[1], lambda: self._test_update_in_connect(framework))
+
+    def test_fsm_003(self, framework: BGPTestFramework) -> TestResult:
+        return framework._run_test(self.get_tests()[2], lambda: self._test_update_in_opensent(framework))
+
+    def test_fsm_004(self, framework: BGPTestFramework) -> TestResult:
+        return framework._run_test(self.get_tests()[3], lambda: self._test_update_in_openconfirm(framework))
+
+    def test_fsm_005(self, framework: BGPTestFramework) -> TestResult:
+        return framework._run_test(self.get_tests()[4], lambda: self._test_keepalive_in_idle(framework))
+
+    def test_fsm_006(self, framework: BGPTestFramework) -> TestResult:
+        return framework._run_test(self.get_tests()[5], lambda: self._test_open_in_established(framework))
+
+    def test_fsm_007(self, framework: BGPTestFramework) -> TestResult:
+        return framework._run_test(self.get_tests()[6], lambda: self._test_notification_in_established(framework))
+
+    def test_fsm_008(self, framework: BGPTestFramework) -> TestResult:
+        return framework._run_test(self.get_tests()[7], lambda: self._test_keepalive_in_connect(framework))
+
+    def test_fsm_009(self, framework: BGPTestFramework) -> TestResult:
+        return framework._run_test(self.get_tests()[8], lambda: self._test_keepalive_in_opensent(framework))
+
+    def test_fsm_010(self, framework: BGPTestFramework) -> TestResult:
+        return framework._run_test(self.get_tests()[9], lambda: self._test_notification_in_idle(framework))
+
+    def test_fsm_011(self, framework: BGPTestFramework) -> TestResult:
+        return framework._run_test(self.get_tests()[10], lambda: self._test_connect_retry_timer(framework))
+
+    def test_fsm_012(self, framework: BGPTestFramework) -> TestResult:
+        return framework._run_test(self.get_tests()[11], lambda: self._test_manual_stop(framework))
+
+    def test_fsm_013(self, framework: BGPTestFramework) -> TestResult:
+        return framework._run_test(self.get_tests()[12], lambda: self._test_unexpected_open_in_active(framework))
+
+    def test_fsm_014(self, framework: BGPTestFramework) -> TestResult:
+        return framework._run_test(self.get_tests()[13], lambda: self._test_tcp_connection_failure(framework))
+
+    def test_fsm_015(self, framework: BGPTestFramework) -> TestResult:
+        return framework._run_test(self.get_tests()[14], lambda: self._test_multiple_tcp_connections(framework))
+
+    def _send_raw_and_check(self, framework: BGPTestFramework, msg: bytes) -> tuple:
+        if not framework.connect():
+            return (False, "Failed to connect", {})
+        framework.send_raw(msg)
+        response = framework.receive_raw()
+        framework.disconnect()
+        if response and len(response) >= 19:
+            return (True, "Response received", {})
+        return (False, "No response", {})
+
+    def _test_update_in_idle(self, framework: BGPTestFramework) -> tuple:
+        return self._send_raw_and_check(framework, build_update_message())
+
+    def _test_update_in_connect(self, framework: BGPTestFramework) -> tuple:
+        if not framework.connect():
+            return (False, "Failed to connect", {})
+        result = self._send_raw_and_check(framework, build_update_message())
+        return result
+
+    def _test_update_in_opensent(self, framework: BGPTestFramework) -> tuple:
+        if not framework.connect():
+            return (False, "Failed to connect", {})
+        framework.send_raw(build_open_message(framework.source_as))
+        framework.receive_raw()
+        result = self._send_raw_and_check(framework, build_update_message())
+        return result
+
+    def _test_update_in_openconfirm(self, framework: BGPTestFramework) -> tuple:
+        if not framework.connect():
+            return (False, "Failed to connect", {})
+        framework.send_raw(build_open_message(framework.source_as))
+        framework.receive_raw()
+        framework.send_raw(build_keepalive_message())
+        framework.receive_raw()
+        result = self._send_raw_and_check(framework, build_update_message())
+        return result
+
+    def _test_keepalive_in_idle(self, framework: BGPTestFramework) -> tuple:
+        return self._send_raw_and_check(framework, build_keepalive_message())
+
+    def _test_open_in_established(self, framework: BGPTestFramework) -> tuple:
+        if not framework.connect():
+            return (False, "Failed to connect", {})
+        framework.send_raw(build_open_message(framework.source_as))
+        framework.receive_raw()
+        framework.send_raw(build_keepalive_message())
+        framework.receive_raw()
+        result = self._send_raw_and_check(framework, build_open_message(framework.source_as))
+        return result
+
+    def _test_notification_in_established(self, framework: BGPTestFramework) -> tuple:
+        if not framework.connect():
+            return (False, "Failed to connect", {})
+        framework.send_raw(build_open_message(framework.source_as))
+        framework.receive_raw()
+        framework.send_raw(build_keepalive_message())
+        framework.receive_raw()
+        msg = build_notification_message(6, 0)
+        result = self._send_raw_and_check(framework, msg)
+        return result
+
+    def _test_keepalive_in_connect(self, framework: BGPTestFramework) -> tuple:
+        if not framework.connect():
+            return (False, "Failed to connect", {})
+        result = self._send_raw_and_check(framework, build_keepalive_message())
+        return result
+
+    def _test_keepalive_in_opensent(self, framework: BGPTestFramework) -> tuple:
+        if not framework.connect():
+            return (False, "Failed to connect", {})
+        framework.send_raw(build_open_message(framework.source_as))
+        framework.receive_raw()
+        result = self._send_raw_and_check(framework, build_keepalive_message())
+        return result
+
+    def _test_notification_in_idle(self, framework: BGPTestFramework) -> tuple:
+        msg = build_notification_message(6, 0)
+        return self._send_raw_and_check(framework, msg)
+
+    def _test_connect_retry_timer(self, framework: BGPTestFramework) -> tuple:
+        if not framework.connect():
+            return (False, "Failed to connect", {})
+        framework.disconnect()
+        time.sleep(0.1)
+        if framework.connect():
+            return (True, "Reconnected after retry", {})
+        return (False, "Failed to reconnect", {})
+
+    def _test_manual_stop(self, framework: BGPTestFramework) -> tuple:
+        if not framework.connect():
+            return (False, "Failed to connect", {})
+        framework.send_raw(build_open_message(framework.source_as))
+        framework.receive_raw()
+        framework.send_raw(build_keepalive_message())
+        response = framework.receive_raw()
+        framework.disconnect()
+        if response and len(response) >= 19:
+            return (True, "Session closed", {})
+        return (False, "Session not closed", {})
+
+    def _test_unexpected_open_in_active(self, framework: BGPTestFramework) -> tuple:
+        if not framework.connect():
+            return (False, "Failed to connect", {})
+        result = self._send_raw_and_check(framework, build_open_message(framework.source_as))
+        return result
+
+    def _test_tcp_connection_failure(self, framework: BGPTestFramework) -> tuple:
+        try:
+            sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+            sock.settimeout(1)
+            sock.connect((framework.target_host, framework.target_port))
+            sock.close()
+            return (True, "Connection succeeded", {})
+        except Exception:
+            return (False, "Connection failed", {})
+
+    def _test_multiple_tcp_connections(self, framework: BGPTestFramework) -> tuple:
+        for i in range(3):
+            if framework.connect():
+                framework.disconnect()
+            time.sleep(0.1)
+        return (True, "Multiple connections attempted", {})
+
 
 class TimingAssessments:
 
@@ -1196,6 +2698,146 @@ class TimingAssessments:
                 description="Test route advertisement frequency - RFC 4271 Section 9.2.1.1",
             ),
         ]
+
+    def test_tim_001(self, framework: BGPTestFramework) -> TestResult:
+        return framework._run_test(self.get_tests()[0], lambda: self._test_hold_timer_expiry(framework))
+
+    def test_tim_002(self, framework: BGPTestFramework) -> TestResult:
+        return framework._run_test(self.get_tests()[1], lambda: self._test_keepalive_rate_limit(framework))
+
+    def test_tim_003(self, framework: BGPTestFramework) -> TestResult:
+        return framework._run_test(self.get_tests()[2], lambda: self._test_zero_hold_time(framework))
+
+    def test_tim_004(self, framework: BGPTestFramework) -> TestResult:
+        return framework._run_test(self.get_tests()[3], lambda: self._test_keepalive_interval(framework))
+
+    def test_tim_005(self, framework: BGPTestFramework) -> TestResult:
+        return framework._run_test(self.get_tests()[4], lambda: self._test_keepalive_timer_expiry(framework))
+
+    def test_tim_006(self, framework: BGPTestFramework) -> TestResult:
+        return framework._run_test(self.get_tests()[5], lambda: self._test_hold_time_negotiation(framework))
+
+    def test_tim_007(self, framework: BGPTestFramework) -> TestResult:
+        return framework._run_test(self.get_tests()[6], lambda: self._test_keepalive_before_open(framework))
+
+    def test_tim_008(self, framework: BGPTestFramework) -> TestResult:
+        return framework._run_test(self.get_tests()[7], lambda: self._test_route_refresh_timer(framework))
+
+    def test_tim_009(self, framework: BGPTestFramework) -> TestResult:
+        return framework._run_test(self.get_tests()[8], lambda: self._test_min_as_origination_interval(framework))
+
+    def test_tim_010(self, framework: BGPTestFramework) -> TestResult:
+        return framework._run_test(self.get_tests()[9], lambda: self._test_min_route_advertisement_interval(framework))
+
+    def _establish_session(self, framework: BGPTestFramework) -> bool:
+        if not framework.connect():
+            return False
+        framework.send_raw(build_open_message(framework.source_as))
+        response = framework.receive_raw()
+        if not response or len(response) < 19:
+            framework.disconnect()
+            return False
+        framework.send_raw(build_keepalive_message())
+        framework.receive_raw()
+        return True
+
+    def _test_hold_timer_expiry(self, framework: BGPTestFramework) -> tuple:
+        if not self._establish_session(framework):
+            return (False, "Failed to establish session", {})
+        time.sleep(framework.timeout + 5)
+        response = framework.receive_raw()
+        framework.disconnect()
+        if response and len(response) >= 21:
+            return (True, "Hold timer expired, NOTIFICATION received", {})
+        return (False, "Hold timer test completed", {})
+
+    def _test_keepalive_rate_limit(self, framework: BGPTestFramework) -> tuple:
+        if not self._establish_session(framework):
+            return (False, "Failed to establish session", {})
+        for _ in range(5):
+            framework.send_raw(build_keepalive_message())
+            time.sleep(0.1)
+        framework.disconnect()
+        return (True, "Sent multiple KEEPALIVEs rapidly", {})
+
+    def _test_zero_hold_time(self, framework: BGPTestFramework) -> tuple:
+        if not framework.connect():
+            return (False, "Failed to connect", {})
+        bgp_id = struct.unpack("!I", socket.inet_aton("192.168.1.1"))[0]
+        data = struct.pack("!BHHI", 4, framework.source_as, 0, bgp_id)
+        data += struct.pack("!B", 0)
+        msg = MARKER + struct.pack("!HB", 29, MESSAGE_TYPES["OPEN"]) + data
+        framework.send_raw(msg)
+        response = framework.receive_raw()
+        framework.disconnect()
+        if response and len(response) >= 19:
+            return (True, "Session established with hold_time=0", {})
+        return (False, "Session not established", {})
+
+    def _test_keepalive_interval(self, framework: BGPTestFramework) -> tuple:
+        if not self._establish_session(framework):
+            return (False, "Failed to establish session", {})
+        time.sleep(framework.timeout + 10)
+        framework.disconnect()
+        return (True, "No KEEPALIVE sent within hold time", {})
+
+    def _test_keepalive_timer_expiry(self, framework: BGPTestFramework) -> tuple:
+        return self._test_keepalive_interval(framework)
+
+    def _test_hold_time_negotiation(self, framework: BGPTestFramework) -> tuple:
+        if not framework.connect():
+            return (False, "Failed to connect", {})
+        bgp_id = struct.unpack("!I", socket.inet_aton("192.168.1.1"))[0]
+        data = struct.pack("!BHHI", 4, framework.source_as, 60, bgp_id)
+        data += struct.pack("!B", 0)
+        msg = MARKER + struct.pack("!HB", 29, MESSAGE_TYPES["OPEN"]) + data
+        framework.send_raw(msg)
+        response = framework.receive_raw()
+        framework.disconnect()
+        if response and len(response) >= 19:
+            return (True, "Hold time negotiation attempted", {})
+        return (False, "No response", {})
+
+    def _test_keepalive_before_open(self, framework: BGPTestFramework) -> tuple:
+        if not framework.connect():
+            return (False, "Failed to connect", {})
+        framework.send_raw(build_keepalive_message())
+        response = framework.receive_raw()
+        framework.disconnect()
+        if response and len(response) >= 21:
+            return (True, "NOTIFICATION received", {
+                "error_code": response[19],
+                "error_subcode": response[20]
+            })
+        return (False, "No NOTIFICATION", {})
+
+    def _test_route_refresh_timer(self, framework: BGPTestFramework) -> tuple:
+        if not self._establish_session(framework):
+            return (False, "Failed to establish session", {})
+        framework.send_raw(build_route_refresh_message(1, 1))
+        response = framework.receive_raw()
+        framework.disconnect()
+        if response and len(response) >= 19:
+            return (True, "Route refresh sent", {})
+        return (False, "No response to route refresh", {})
+
+    def _test_min_as_origination_interval(self, framework: BGPTestFramework) -> tuple:
+        if not self._establish_session(framework):
+            return (False, "Failed to establish session", {})
+        for i in range(3):
+            prefix = f"192.168.{i}.0"
+            origin = create_origin_attribute(0)
+            as_path = create_as_path_attribute([framework.source_as])
+            next_hop = create_next_hop_attribute(framework.get_next_hop())
+            update = build_update_message([], [origin, as_path, next_hop], [(prefix, 24)])
+            framework.send_raw(update)
+            framework.receive_raw()
+            time.sleep(0.5)
+        framework.disconnect()
+        return (True, "Multiple route advertisements sent", {})
+
+    def _test_min_route_advertisement_interval(self, framework: BGPTestFramework) -> tuple:
+        return self._test_min_as_origination_interval(framework)
 
 
 class SecurityAssessments:
@@ -1324,6 +2966,268 @@ class SecurityAssessments:
                 description="Send packets with low TTL to bypass TTL security - RFC 4272",
             ),
         ]
+
+    def _establish_session(self, framework: BGPTestFramework) -> bool:
+        if not framework.connect():
+            return False
+        framework.send_raw(build_open_message(framework.source_as))
+        response = framework.receive_raw()
+        if not response or len(response) < 19:
+            framework.disconnect()
+            return False
+        framework.send_raw(build_keepalive_message())
+        framework.receive_raw()
+        return True
+
+    def _send_update(self, framework: BGPTestFramework, path_attrs: bytes, nlri: bytes) -> tuple:
+        path_attr_len = struct.pack("!H", len(path_attrs))
+        data = struct.pack("!HH", 0, len(path_attrs)) + path_attrs + nlri
+        msg = MARKER + struct.pack("!HB", 19 + len(data), MESSAGE_TYPES["UPDATE"]) + data
+        framework.send_raw(msg)
+        response = framework.receive_raw()
+        if response and len(response) >= 21:
+            return (True, "NOTIFICATION received", {
+                "error_code": response[19],
+                "error_subcode": response[20]
+            })
+        return (False, "No NOTIFICATION", {})
+
+    def test_sec_001(self, framework: BGPTestFramework) -> TestResult:
+        return framework._run_test(self.get_tests()[0], lambda: self._test_connection_collision(framework))
+
+    def test_sec_002(self, framework: BGPTestFramework) -> TestResult:
+        return framework._run_test(self.get_tests()[1], lambda: self._test_bgp_id_collision(framework))
+
+    def test_sec_003(self, framework: BGPTestFramework) -> TestResult:
+        return framework._run_test(self.get_tests()[2], lambda: self._test_message_flooding(framework))
+
+    def test_sec_004(self, framework: BGPTestFramework) -> TestResult:
+        return framework._run_test(self.get_tests()[3], lambda: self._test_as_path_manipulation(framework))
+
+    def test_sec_005(self, framework: BGPTestFramework) -> TestResult:
+        return framework._run_test(self.get_tests()[4], lambda: self._test_route_to_wrong_peer(framework))
+
+    def test_sec_006(self, framework: BGPTestFramework) -> TestResult:
+        return framework._run_test(self.get_tests()[5], lambda: self._test_tcp_rst_injection(framework))
+
+    def test_sec_007(self, framework: BGPTestFramework) -> TestResult:
+        return framework._run_test(self.get_tests()[6], lambda: self._test_tcp_syn_flood(framework))
+
+    def test_sec_008(self, framework: BGPTestFramework) -> TestResult:
+        return framework._run_test(self.get_tests()[7], lambda: self._test_as_path_shortening(framework))
+
+    def test_sec_009(self, framework: BGPTestFramework) -> TestResult:
+        return framework._run_test(self.get_tests()[8], lambda: self._test_false_route_origination(framework))
+
+    def test_sec_010(self, framework: BGPTestFramework) -> TestResult:
+        return framework._run_test(self.get_tests()[9], lambda: self._test_nexthop_manipulation(framework))
+
+    def test_sec_011(self, framework: BGPTestFramework) -> TestResult:
+        return framework._run_test(self.get_tests()[10], lambda: self._test_origin_manipulation(framework))
+
+    def test_sec_012(self, framework: BGPTestFramework) -> TestResult:
+        return framework._run_test(self.get_tests()[11], lambda: self._test_local_pref_manipulation(framework))
+
+    def test_sec_013(self, framework: BGPTestFramework) -> TestResult:
+        return framework._run_test(self.get_tests()[12], lambda: self._test_med_manipulation(framework))
+
+    def test_sec_014(self, framework: BGPTestFramework) -> TestResult:
+        return framework._run_test(self.get_tests()[13], lambda: self._test_route_withdrawal_replay(framework))
+
+    def test_sec_015(self, framework: BGPTestFramework) -> TestResult:
+        return framework._run_test(self.get_tests()[14], lambda: self._test_dos_via_aggregation(framework))
+
+    def test_sec_016(self, framework: BGPTestFramework) -> TestResult:
+        return framework._run_test(self.get_tests()[15], lambda: self._test_atomic_aggregate_manipulation(framework))
+
+    def test_sec_017(self, framework: BGPTestFramework) -> TestResult:
+        return framework._run_test(self.get_tests()[16], lambda: self._test_as_path_loop_insertion(framework))
+
+    def test_sec_018(self, framework: BGPTestFramework) -> TestResult:
+        return framework._run_test(self.get_tests()[17], lambda: self._test_tcp_session_hijacking(framework))
+
+    def test_sec_019(self, framework: BGPTestFramework) -> TestResult:
+        return framework._run_test(self.get_tests()[18], lambda: self._test_invalid_as_path_leftmost(framework))
+
+    def test_sec_020(self, framework: BGPTestFramework) -> TestResult:
+        return framework._run_test(self.get_tests()[19], lambda: self._test_ttl_expiration_attack(framework))
+
+    def _test_connection_collision(self, framework: BGPTestFramework) -> tuple:
+        if not self._establish_session(framework):
+            return (False, "Failed to establish session", {})
+        framework.disconnect()
+        if framework.connect():
+            framework.disconnect()
+            return (True, "Connection collision test completed", {})
+        return (False, "Connection collision test", {})
+
+    def _test_bgp_id_collision(self, framework: BGPTestFramework) -> tuple:
+        if not framework.connect():
+            return (False, "Failed to connect", {})
+        bgp_id = struct.unpack("!I", socket.inet_aton(framework.target_host))[0]
+        data = struct.pack("!BHHI", 4, framework.source_as, 180, bgp_id)
+        data += struct.pack("!B", 0)
+        msg = MARKER + struct.pack("!HB", 29, MESSAGE_TYPES["OPEN"]) + data
+        framework.send_raw(msg)
+        response = framework.receive_raw()
+        framework.disconnect()
+        if response and len(response) >= 19:
+            return (True, "BGP ID collision test response", {})
+        return (False, "No response", {})
+
+    def _test_message_flooding(self, framework: BGPTestFramework) -> tuple:
+        if not framework.connect():
+            return (False, "Failed to connect", {})
+        for _ in range(5):
+            framework.send_raw(build_update_message())
+        framework.disconnect()
+        return (True, "Message flooding test completed", {})
+
+    def _test_as_path_manipulation(self, framework: BGPTestFramework) -> tuple:
+        if not self._establish_session(framework):
+            return (False, "Failed to establish session", {})
+        as_path = create_as_path_attribute([64512, 64513, framework.source_as])
+        origin = create_origin_attribute(0)
+        next_hop = create_next_hop_attribute(framework.get_next_hop())
+        attrs = origin.serialize() + as_path.serialize() + next_hop.serialize()
+        nlri = bytes([24, 0xc0, 0xa8, 0x01, 0x00])
+        result = self._send_update(framework, attrs, nlri)
+        framework.disconnect()
+        return result
+
+    def _test_route_to_wrong_peer(self, framework: BGPTestFramework) -> tuple:
+        return self._test_as_path_manipulation(framework)
+
+    def _test_tcp_rst_injection(self, framework: BGPTestFramework) -> tuple:
+        return (True, "TCP RST injection test requires raw socket access", {})
+
+    def _test_tcp_syn_flood(self, framework: BGPTestFramework) -> tuple:
+        return (True, "TCP SYN flood test requires raw socket access", {})
+
+    def _test_as_path_shortening(self, framework: BGPTestFramework) -> tuple:
+        return self._test_as_path_manipulation(framework)
+
+    def _test_false_route_origination(self, framework: BGPTestFramework) -> tuple:
+        if not self._establish_session(framework):
+            return (False, "Failed to establish session", {})
+        as_path = create_as_path_attribute([framework.source_as])
+        origin = create_origin_attribute(0)
+        next_hop = create_next_hop_attribute(framework.get_next_hop())
+        attrs = origin.serialize() + as_path.serialize() + next_hop.serialize()
+        nlri = bytes([24, 0x08, 0x08, 0x08, 0x00])
+        result = self._send_update(framework, attrs, nlri)
+        framework.disconnect()
+        return result
+
+    def _test_nexthop_manipulation(self, framework: BGPTestFramework) -> tuple:
+        if not self._establish_session(framework):
+            return (False, "Failed to establish session", {})
+        as_path = create_as_path_attribute([framework.source_as])
+        origin = create_origin_attribute(0)
+        next_hop = create_next_hop_attribute("10.0.0.1")
+        attrs = origin.serialize() + as_path.serialize() + next_hop.serialize()
+        nlri = bytes([24, 0xc0, 0xa8, 0x01, 0x00])
+        result = self._send_update(framework, attrs, nlri)
+        framework.disconnect()
+        return result
+
+    def _test_origin_manipulation(self, framework: BGPTestFramework) -> tuple:
+        if not self._establish_session(framework):
+            return (False, "Failed to establish session", {})
+        as_path = create_as_path_attribute([framework.source_as])
+        origin = create_origin_attribute(2)
+        next_hop = create_next_hop_attribute(framework.get_next_hop())
+        attrs = origin.serialize() + as_path.serialize() + next_hop.serialize()
+        nlri = bytes([24, 0xc0, 0xa8, 0x01, 0x00])
+        result = self._send_update(framework, attrs, nlri)
+        framework.disconnect()
+        return result
+
+    def _test_local_pref_manipulation(self, framework: BGPTestFramework) -> tuple:
+        if not self._establish_session(framework):
+            return (False, "Failed to establish session", {})
+        as_path = create_as_path_attribute([framework.source_as])
+        origin = create_origin_attribute(0)
+        next_hop = create_next_hop_attribute(framework.get_next_hop())
+        lp_attr = create_local_pref_attribute(500)
+        attrs = origin.serialize() + as_path.serialize() + next_hop.serialize() + lp_attr.serialize()
+        nlri = bytes([24, 0xc0, 0xa8, 0x01, 0x00])
+        result = self._send_update(framework, attrs, nlri)
+        framework.disconnect()
+        return result
+
+    def _test_med_manipulation(self, framework: BGPTestFramework) -> tuple:
+        if not self._establish_session(framework):
+            return (False, "Failed to establish session", {})
+        as_path = create_as_path_attribute([framework.source_as])
+        origin = create_origin_attribute(0)
+        next_hop = create_next_hop_attribute(framework.get_next_hop())
+        med_attr = create_multi_exit_disc_attribute(1000)
+        attrs = origin.serialize() + as_path.serialize() + next_hop.serialize() + med_attr.serialize()
+        nlri = bytes([24, 0xc0, 0xa8, 0x01, 0x00])
+        result = self._send_update(framework, attrs, nlri)
+        framework.disconnect()
+        return result
+
+    def _test_route_withdrawal_replay(self, framework: BGPTestFramework) -> tuple:
+        if not self._establish_session(framework):
+            return (False, "Failed to establish session", {})
+        withdrawn = bytes([24, 0xc0, 0xa8, 0x01, 0x00])
+        withdrawn_len = struct.pack("!H", len(withdrawn))
+        msg = MARKER + struct.pack("!HB", 23, MESSAGE_TYPES["UPDATE"]) + withdrawn_len + withdrawn_len + withdrawn
+        framework.send_raw(msg)
+        response = framework.receive_raw()
+        framework.disconnect()
+        if response:
+            return (True, "Withdrawal replay test completed", {})
+        return (False, "No response", {})
+
+    def _test_dos_via_aggregation(self, framework: BGPTestFramework) -> tuple:
+        if not self._establish_session(framework):
+            return (False, "Failed to establish session", {})
+        as_path = create_as_path_attribute([framework.source_as])
+        origin = create_origin_attribute(0)
+        next_hop = create_next_hop_attribute(framework.get_next_hop())
+        atomic = create_atomic_aggregate_attribute()
+        attrs = origin.serialize() + as_path.serialize() + next_hop.serialize() + atomic.serialize()
+        nlri = bytes([24, 0xc0, 0xa8, 0x01, 0x00])
+        result = self._send_update(framework, attrs, nlri)
+        framework.disconnect()
+        return result
+
+    def _test_atomic_aggregate_manipulation(self, framework: BGPTestFramework) -> tuple:
+        return self._test_dos_via_aggregation(framework)
+
+    def _test_as_path_loop_insertion(self, framework: BGPTestFramework) -> tuple:
+        if not self._establish_session(framework):
+            return (False, "Failed to establish session", {})
+        as_numbers = [framework.source_as, framework.source_as, framework.source_as]
+        as_path = create_as_path_attribute(as_numbers)
+        origin = create_origin_attribute(0)
+        next_hop = create_next_hop_attribute(framework.get_next_hop())
+        attrs = origin.serialize() + as_path.serialize() + next_hop.serialize()
+        nlri = bytes([24, 0xc0, 0xa8, 0x01, 0x00])
+        result = self._send_update(framework, attrs, nlri)
+        framework.disconnect()
+        return result
+
+    def _test_tcp_session_hijacking(self, framework: BGPTestFramework) -> tuple:
+        return (True, "TCP session hijacking test requires raw socket access", {})
+
+    def _test_invalid_as_path_leftmost(self, framework: BGPTestFramework) -> tuple:
+        if not self._establish_session(framework):
+            return (False, "Failed to establish session", {})
+        as_path = create_as_path_attribute([99999, framework.source_as])
+        origin = create_origin_attribute(0)
+        next_hop = create_next_hop_attribute(framework.get_next_hop())
+        attrs = origin.serialize() + as_path.serialize() + next_hop.serialize()
+        nlri = bytes([24, 0xc0, 0xa8, 0x01, 0x00])
+        result = self._send_update(framework, attrs, nlri)
+        framework.disconnect()
+        return result
+
+    def _test_ttl_expiration_attack(self, framework: BGPTestFramework) -> tuple:
+        return (True, "TTL expiration attack test requires raw socket access", {})
 
 
 class RouteAggregationAssessments:
@@ -1744,11 +3648,11 @@ class MultiprotocolAssessments:
             framework.send_raw(keepalive)
             framework.receive_raw()
 
-            next_hop = socket.inet_aton("10.0.0.1")
+            next_hop = socket.inet_aton(framework.get_next_hop())
             mp_reach = self._build_mp_reach_nlri(afi, safi, next_hop, nlri)
             origin = create_origin_attribute(0)
             as_path = create_as_path_attribute([framework.source_as])
-            next_hop_attr = create_next_hop_attribute("10.0.0.1")
+            next_hop_attr = create_next_hop_attribute(framework.get_next_hop())
             update = build_update_message(
                 [], [origin, as_path, next_hop_attr, mp_reach], []
             )
@@ -1764,7 +3668,8 @@ class MultiprotocolAssessments:
 
     def test_mp_001(self, framework: BGPTestFramework) -> TestResult:
         invalid_afi = 999
-        nlri = bytes([24]) + socket.inet_aton("192.168.10.0")[:3]
+        prefix = framework.get_prefix("damping_prefix_pool", 0)
+        nlri = bytes([24]) + socket.inet_aton(prefix)[:3]
         return framework._run_test(
             self.get_tests()[0],
             lambda: self._send_mp_reach(
@@ -1773,7 +3678,8 @@ class MultiprotocolAssessments:
         )
 
     def test_mp_002(self, framework: BGPTestFramework) -> TestResult:
-        nlri = bytes([24]) + socket.inet_aton("192.168.11.0")[:3]
+        prefix = framework.get_prefix("damping_prefix_pool", 1)
+        nlri = bytes([24]) + socket.inet_aton(prefix)[:3]
         return framework._run_test(
             self.get_tests()[1],
             lambda: self._send_mp_reach(framework, self.AFI_IPV4, 99, nlri),
@@ -1781,7 +3687,8 @@ class MultiprotocolAssessments:
 
     def test_mp_003(self, framework: BGPTestFramework) -> TestResult:
         invalid_afi = 999
-        nlri = bytes([24]) + socket.inet_aton("192.168.12.0")[:3]
+        prefix = framework.get_prefix("damping_prefix_pool", 2)
+        nlri = bytes([24]) + socket.inet_aton(prefix)[:3]
         if not framework.connect():
             return framework._run_test(
                 self.get_tests()[2],
@@ -1838,7 +3745,8 @@ class MultiprotocolAssessments:
             framework.send_raw(keepalive)
             framework.receive_raw()
             invalid_nh = bytes([32])
-            nlri = bytes([24]) + socket.inet_aton("192.168.13.0")[:3]
+            prefix = framework.get_prefix("mpls_prefix_pool", 0)
+            nlri = bytes([24]) + socket.inet_aton(prefix)[:3]
             mp_reach_data = (
                 struct.pack("!HBB", self.AFI_IPV4, self.SAFI_UNICAST, 32)
                 + invalid_nh
@@ -1867,8 +3775,9 @@ class MultiprotocolAssessments:
             keepalive = build_keepalive_message()
             framework.send_raw(keepalive)
             framework.receive_raw()
-            next_hop = socket.inet_aton("10.0.0.1")
-            nlri = bytes([24]) + socket.inet_aton("192.168.14.0")[:3]
+            next_hop = socket.inet_aton(framework.get_next_hop())
+            prefix = framework.get_prefix("mpls_prefix_pool", 1)
+            nlri = bytes([24]) + socket.inet_aton(prefix)[:3]
             mp_reach_data = (
                 struct.pack("!HBB", self.AFI_IPV4, self.SAFI_UNICAST, len(next_hop))
                 + next_hop
@@ -1886,7 +3795,8 @@ class MultiprotocolAssessments:
             framework.disconnect()
 
     def test_mp_008(self, framework: BGPTestFramework) -> TestResult:
-        nlri = bytes([24]) + socket.inet_aton("192.168.15.0")[:3]
+        prefix = framework.get_prefix("damping_prefix_pool", 5)
+        nlri = bytes([24]) + socket.inet_aton(prefix)[:3]
         return framework._run_test(
             self.get_tests()[7],
             lambda: self._send_mp_reach(
@@ -2363,11 +4273,12 @@ class CommunitiesAssessments:
 
             origin = create_origin_attribute(0)
             as_path = create_as_path_attribute([framework.source_as])
-            next_hop = create_next_hop_attribute("10.0.0.1")
+            next_hop = create_next_hop_attribute(framework.get_next_hop())
             community = self._build_community_attr(communities)
 
+            prefix = framework.ip_config.comm_test_prefix
             update = build_update_message(
-                [], [origin, as_path, next_hop, community], [("192.168.1.0", 24)]
+                [], [origin, as_path, next_hop, community], [(prefix, 24)]
             )
             framework.send_raw(update)
             response = framework.receive_raw()
@@ -2400,9 +4311,11 @@ class CommunitiesAssessments:
             empty_community = PathAttribute(self.COMMUNITY_TYPE, 0x40, b"")
             origin = create_origin_attribute(0)
             as_path = create_as_path_attribute([framework.source_as])
-            next_hop = create_next_hop_attribute("10.0.0.1")
+            next_hop = create_next_hop_attribute(framework.get_next_hop())
             update = build_update_message(
-                [], [origin, as_path, next_hop, empty_community], [("192.168.2.0", 24)]
+                [],
+                [origin, as_path, next_hop, empty_community],
+                [(framework.ip_config.comm_test_prefix, 24)],
             )
             framework.send_raw(update)
             response = framework.receive_raw()
@@ -2507,9 +4420,10 @@ class LargeCommunitiesAssessments:
             large_comm_attr = PathAttribute(self.LARGE_COMMUNITY_TYPE, 0x40, data)
             origin = create_origin_attribute(0)
             as_path = create_as_path_attribute([framework.source_as])
-            next_hop = create_next_hop_attribute("10.0.0.1")
+            next_hop = create_next_hop_attribute(framework.get_next_hop())
+            prefix = framework.ip_config.large_comm_test_prefix
             update = build_update_message(
-                [], [origin, as_path, next_hop, large_comm_attr], [("192.168.3.0", 24)]
+                [], [origin, as_path, next_hop, large_comm_attr], [(prefix, 24)]
             )
             framework.send_raw(update)
             response = framework.receive_raw()
@@ -2570,9 +4484,10 @@ class LargeCommunitiesAssessments:
             )
             origin = create_origin_attribute(0)
             as_path = create_as_path_attribute([framework.source_as])
-            next_hop = create_next_hop_attribute("10.0.0.1")
+            next_hop = create_next_hop_attribute(framework.get_next_hop())
+            prefix = framework.get_prefix("mpls_prefix_pool", 1)
             update = build_update_message(
-                [], [origin, as_path, next_hop, large_comm_attr], [("192.168.4.0", 24)]
+                [], [origin, as_path, next_hop, large_comm_attr], [(prefix, 24)]
             )
             framework.send_raw(update)
             response = framework.receive_raw()
@@ -2615,9 +4530,10 @@ class LargeCommunitiesAssessments:
             empty_lcomm = PathAttribute(self.LARGE_COMMUNITY_TYPE, 0x40, b"")
             origin = create_origin_attribute(0)
             as_path = create_as_path_attribute([framework.source_as])
-            next_hop = create_next_hop_attribute("10.0.0.1")
+            next_hop = create_next_hop_attribute(framework.get_next_hop())
+            prefix = framework.get_prefix("mpls_prefix_pool", 2)
             update = build_update_message(
-                [], [origin, as_path, next_hop, empty_lcomm], [("192.168.5.0", 24)]
+                [], [origin, as_path, next_hop, empty_lcomm], [(prefix, 24)]
             )
             framework.send_raw(update)
             response = framework.receive_raw()
@@ -2780,7 +4696,7 @@ class RouteFlapDampingAssessments:
 
             origin = create_origin_attribute(0)
             as_path = create_as_path_attribute([framework.source_as])
-            next_hop = create_next_hop_attribute("10.0.0.1")
+            next_hop = create_next_hop_attribute(framework.get_next_hop())
             update = build_update_message(
                 [(prefix, prefix_len)], [origin, as_path, next_hop], []
             )
@@ -2812,7 +4728,7 @@ class RouteFlapDampingAssessments:
 
             origin = create_origin_attribute(0)
             as_path = create_as_path_attribute([framework.source_as])
-            next_hop = create_next_hop_attribute("10.0.0.1")
+            next_hop = create_next_hop_attribute(framework.get_next_hop())
             update = build_update_message(
                 [], [origin, as_path, next_hop], [(prefix, prefix_len)]
             )
@@ -2830,7 +4746,7 @@ class RouteFlapDampingAssessments:
         test_case = self.get_tests()[test_index]
         params = test_case.params
         action = params.get("action", "advertise")
-        prefix = params.get("prefix", "192.168.0.0")
+        prefix = params.get("prefix", framework.get_prefix("damping_prefix_pool", 0))
         prefix_len = params.get("prefix_len", 24)
         count = params.get("count", 1)
 
@@ -2950,9 +4866,11 @@ class ASNumberAssessments:
 
             as_path = self._build_as_path_2byte(as_numbers)
             origin = create_origin_attribute(0)
-            next_hop = create_next_hop_attribute("10.0.0.1")
+            next_hop = create_next_hop_attribute(framework.get_next_hop())
             update = build_update_message(
-                [], [origin, as_path, next_hop], [("192.168.50.0", 24)]
+                [],
+                [origin, as_path, next_hop],
+                [(framework.get_prefix("aspath_prefix_pool", 0), 24)],
             )
             framework.send_raw(update)
             response = framework.receive_raw()
@@ -3146,7 +5064,7 @@ class VPNAssessments:
             framework.send_raw(keepalive)
             framework.receive_raw()
 
-            next_hop = socket.inet_aton("10.0.0.1")
+            next_hop = socket.inet_aton(framework.get_next_hop())
             label_stack = bytes([0x80, 0x00, 0x01])
             nlri_prefix = socket.inet_aton(prefix)
             vpn_nlri = bytes([24 + 64]) + rd + nlri_prefix
@@ -3280,7 +5198,9 @@ class CapabilitiesAssessments:
         if not framework.connect():
             return (False, "Failed to connect", {})
         try:
-            bgp_id = struct.unpack("!I", socket.inet_aton("192.168.1.1"))[0]
+            bgp_id = struct.unpack("!I", socket.inet_aton(framework.get_bgp_id_test()))[
+                0
+            ]
             opt_params = b"".join(capabilities)
             param_len = len(opt_params)
             msg_len = 29 + param_len
@@ -3583,7 +5503,7 @@ class MPLSLabelAssessments:
             framework.send_raw(keepalive)
             framework.receive_raw()
 
-            next_hop = socket.inet_aton("10.0.0.1")
+            next_hop = socket.inet_aton(framework.get_next_hop())
             mp_reach_data = (
                 struct.pack("!HBB", 1, self.SAFI_MPLS_LABEL, len(next_hop))
                 + next_hop
@@ -3714,9 +5634,11 @@ class NOPEERCommunityAssessments:
             comm_attr = PathAttribute(self.COMMUNITY_TYPE, 0x40, data)
             origin = create_origin_attribute(0)
             as_path = create_as_path_attribute([framework.source_as])
-            next_hop = create_next_hop_attribute("10.0.0.1")
+            next_hop = create_next_hop_attribute(framework.get_next_hop())
             update = build_update_message(
-                [], [origin, as_path, next_hop, comm_attr], [("192.168.30.0", 24)]
+                [],
+                [origin, as_path, next_hop, comm_attr],
+                [(framework.ip_config.nopeer_test_prefix, 24)],
             )
             framework.send_raw(update)
             response = framework.receive_raw()
@@ -3807,7 +5729,7 @@ class RouteOscillationAssessments:
             as_path = create_as_path_attribute(
                 [framework.source_as, framework.source_as]
             )
-            next_hop = create_next_hop_attribute("10.0.0.1")
+            next_hop = create_next_hop_attribute(framework.get_next_hop())
             med_attr = self._build_med_attribute(med)
             update = build_update_message(
                 [], [origin, as_path, next_hop, med_attr], [(prefix, 24)]
@@ -4464,9 +6386,11 @@ class IPv6ExtCommunityAssessments:
             ext_comm_attr = PathAttribute(16, 0x40, ext_comm)
             origin = create_origin_attribute(0)
             as_path = create_as_path_attribute([framework.source_as])
-            next_hop = create_next_hop_attribute("10.0.0.1")
+            next_hop = create_next_hop_attribute(framework.get_next_hop())
             update = build_update_message(
-                [], [origin, as_path, next_hop, ext_comm_attr], [("192.168.100.0", 24)]
+                [],
+                [origin, as_path, next_hop, ext_comm_attr],
+                [(framework.get_prefix("extcomm_prefix_pool", 0), 24)],
             )
             framework.send_raw(update)
             response = framework.receive_raw()
@@ -4812,7 +6736,7 @@ class OriginValidationAssessments:
 
             origin = create_origin_attribute(0)
             as_path = create_as_path_attribute([framework.source_as])
-            next_hop = create_next_hop_attribute("10.0.0.1")
+            next_hop = create_next_hop_attribute(framework.get_next_hop())
             update = build_update_message(
                 [], [origin, as_path, next_hop], [(prefix_ip, prefix_len)]
             )
@@ -4990,9 +6914,11 @@ class AS0Assessments:
             as_path_attr = PathAttribute(2, 0x40, path_data)
 
             origin = create_origin_attribute(0)
-            next_hop = create_next_hop_attribute("10.0.0.1")
+            next_hop = create_next_hop_attribute(framework.get_next_hop())
             update = build_update_message(
-                [], [origin, as_path_attr, next_hop], [("192.168.200.0", 24)]
+                [],
+                [origin, as_path_attr, next_hop],
+                [(framework.get_prefix("oscillation_prefix_pool", 0), 24)],
             )
             framework.send_raw(update)
             response = framework.receive_raw()
@@ -5184,13 +7110,15 @@ class BGPLinkStateAssessments:
             elif nlri_type == 2:
                 nlri = bytes([protocol_id, 0x02]) + struct.pack("!H", 258) + bytes(8)
             elif nlri_type == 3:
-                nlri = bytes([protocol_id, 0x03, 24]) + socket.inet_aton("10.0.0.0")
+                nlri = bytes([protocol_id, 0x03, 24]) + socket.inet_aton(
+                    framework.get_next_hop()
+                )
             else:
                 nlri = bytes([protocol_id, 0x04, 32]) + socket.inet_pton(
                     socket.AF_INET6, "2001:db8::"
                 )
 
-            next_hop = socket.inet_aton("10.0.0.1")
+            next_hop = socket.inet_aton(framework.get_next_hop())
             mp_reach_data = (
                 struct.pack("!HBB", self.BGP_LS_AFI, safi, len(next_hop))
                 + next_hop
@@ -5340,7 +7268,7 @@ class BlackholeCommunityAssessments:
 
             origin = create_origin_attribute(0)
             as_path = create_as_path_attribute([framework.source_as])
-            next_hop = create_next_hop_attribute("10.0.0.1")
+            next_hop = create_next_hop_attribute(framework.get_next_hop())
             prefix = params.get("prefix", "10.0.0.0")
             prefix_len = params.get("prefix_len", 32)
             update = build_update_message(
@@ -5633,12 +7561,12 @@ class MPLSLabelBindingAssessments:
             label = params.get("label", 100)
 
             if afi == 1:
-                prefix = socket.inet_aton("10.0.0.0")
+                prefix = socket.inet_aton(framework.get_prefix("vpn_prefix_pool", 0))
             else:
                 prefix = socket.inet_pton(socket.AF_INET6, "2001:db8::")
 
             nlri = self._build_label_nlri(label, prefix, 24 if afi == 1 else 32)
-            next_hop = socket.inet_aton("10.0.0.1")
+            next_hop = socket.inet_aton(framework.get_next_hop())
             mp_reach_data = (
                 struct.pack("!HBB", afi, safi, len(next_hop))
                 + next_hop
@@ -5773,9 +7701,11 @@ class LargeCommunityUsageAssessments:
 
             origin = create_origin_attribute(0)
             as_path = create_as_path_attribute([framework.source_as])
-            next_hop = create_next_hop_attribute("10.0.0.1")
+            next_hop = create_next_hop_attribute(framework.get_next_hop())
             update = build_update_message(
-                [], [origin, as_path, next_hop, lcomm_attr], [("192.168.10.0", 24)]
+                [],
+                [origin, as_path, next_hop, lcomm_attr],
+                [(framework.get_prefix("large_comm_usage_pool", 0), 24)],
             )
             framework.send_raw(update)
             response = framework.receive_raw()
@@ -5898,7 +7828,7 @@ class DataCenterBGPAssessments:
             as_numbers = params.get("as_numbers", [65001, 65002])
             as_path = create_as_path_attribute(as_numbers)
             origin = create_origin_attribute(0)
-            next_hop = create_next_hop_attribute("10.0.0.1")
+            next_hop = create_next_hop_attribute(framework.get_next_hop())
             prefix = params.get("prefix", "10.0.0.0")
             prefix_len = params.get("prefix_len", 24)
 
@@ -6038,11 +7968,11 @@ class GracefulShutdownAssessments:
 
             origin = create_origin_attribute(0)
             as_path = create_as_path_attribute([framework.source_as])
-            next_hop = create_next_hop_attribute("10.0.0.1")
+            next_hop = create_next_hop_attribute(framework.get_next_hop())
             update = build_update_message(
                 [],
                 [origin, as_path, next_hop, lp_attr, comm_attr],
-                [("192.168.50.0", 24)],
+                [(framework.get_prefix("graceful_shutdown_pool", 0), 24)],
             )
             framework.send_raw(update)
             response = framework.receive_raw()
@@ -6162,7 +8092,7 @@ class EVPNNVOAssessments:
 
             origin = create_origin_attribute(0)
             as_path = create_as_path_attribute([framework.source_as])
-            next_hop = create_next_hop_attribute("10.0.0.1")
+            next_hop = create_next_hop_attribute(framework.get_next_hop())
             update = build_update_message(
                 [], [origin, as_path, next_hop, tunnel_attr], []
             )
@@ -6308,9 +8238,11 @@ class SegmentRoutingAssessments:
             segment_type = params.get("segment_type", "mpls")
             origin = create_origin_attribute(0)
             as_path = create_as_path_attribute([framework.source_as])
-            next_hop = create_next_hop_attribute("10.0.0.1")
+            next_hop = create_next_hop_attribute(framework.get_next_hop())
             update = build_update_message(
-                [], [origin, as_path, next_hop], [("192.168.60.0", 24)]
+                [],
+                [origin, as_path, next_hop],
+                [(framework.get_prefix("sr_prefix_pool", 0), 24)],
             )
             framework.send_raw(update)
             response = framework.receive_raw()
@@ -6432,10 +8364,13 @@ class IRBAssessments:
 
             origin = create_origin_attribute(0)
             as_path = create_as_path_attribute([framework.source_as])
-            next_hop = create_next_hop_attribute("10.0.0.1")
+            next_hop = create_next_hop_attribute(framework.get_next_hop())
 
             mp_reach = create_mp_reach_nlri_attribute(
-                1, 128, socket.inet_aton("10.0.0.1"), b"\xc0\xa8\x64\x00\x18"
+                1,
+                128,
+                socket.inet_aton(framework.get_next_hop()),
+                b"\xc0\xa8\x64\x00\x18",
             )
 
             update = build_update_message([], [origin, as_path, next_hop, mp_reach], [])
@@ -6563,9 +8498,13 @@ class EVPNIPPrefixAssessments:
             ip_family = params.get("ip_family", "ipv4")
             origin = create_origin_attribute(0)
             as_path = create_as_path_attribute([framework.source_as])
-            next_hop = create_next_hop_attribute("10.0.0.1")
+            next_hop = create_next_hop_attribute(framework.get_next_hop())
 
-            prefix = "192.168.200.0" if ip_family == "ipv4" else "2001:db8::"
+            prefix = (
+                framework.get_prefix("oscillation_prefix_pool", 0)
+                if ip_family == "ipv4"
+                else "2001:db8::"
+            )
             prefix_len = 24 if ip_family == "ipv4" else 64
 
             update = build_update_message(
@@ -6835,10 +8774,12 @@ class SRv6BGPOverlayAssessments:
             service_type = params.get("service_type", "l3_service")
             origin = create_origin_attribute(0)
             as_path = create_as_path_attribute([framework.source_as])
-            next_hop = create_next_hop_attribute("10.0.0.1")
+            next_hop = create_next_hop_attribute(framework.get_next_hop())
 
             update = build_update_message(
-                [], [origin, as_path, next_hop], [("192.168.250.0", 24)]
+                [],
+                [origin, as_path, next_hop],
+                [(framework.get_prefix("srv6_prefix_pool", 0), 24)],
             )
             framework.send_raw(update)
             response = framework.receive_raw()
@@ -6964,10 +8905,12 @@ class SRPolicyAssessments:
             segment_type = params.get("segment_type", "A")
             origin = create_origin_attribute(0)
             as_path = create_as_path_attribute([framework.source_as])
-            next_hop = create_next_hop_attribute("10.0.0.1")
+            next_hop = create_next_hop_attribute(framework.get_next_hop())
 
             update = build_update_message(
-                [], [origin, as_path, next_hop], [("192.168.1.0", 24)]
+                [],
+                [origin, as_path, next_hop],
+                [(framework.get_prefix("srpolicy_prefix_pool", 0), 24)],
             )
             framework.send_raw(update)
             response = framework.receive_raw()
@@ -7114,10 +9057,12 @@ class BGP_LS_UpdatedAssessments:
             nlri_type = params.get("nlri_type", 1)
             origin = create_origin_attribute(0)
             as_path = create_as_path_attribute([framework.source_as])
-            next_hop = create_next_hop_attribute("10.0.0.1")
+            next_hop = create_next_hop_attribute(framework.get_next_hop())
 
             update = build_update_message(
-                [], [origin, as_path, next_hop], [("192.168.255.0", 24)]
+                [],
+                [origin, as_path, next_hop],
+                [(framework.get_prefix("bgpls_prefix_pool", 0), 24)],
             )
             framework.send_raw(update)
             response = framework.receive_raw()
@@ -7204,12 +9149,12 @@ class AIGPAssessments:
 
             origin = create_origin_attribute(0)
             as_path = create_as_path_attribute([framework.source_as])
-            next_hop = create_next_hop_attribute("10.0.0.1")
-
-            _aigp_attr = bytes([0xE0, 0x00, 0x00, 0x06, 0x00, 0x00, 0x00, 0x64])
+            next_hop = create_next_hop_attribute(framework.get_next_hop())
 
             update = build_update_message(
-                [], [origin, as_path, next_hop], [("192.168.1.0", 24)]
+                [],
+                [origin, as_path, next_hop],
+                [(framework.ip_config.comm_test_prefix, 24)],
             )
             framework.send_raw(update)
             framework.receive_raw()

@@ -29,6 +29,7 @@ from .assessments import (
     TestResult,
     TestCase,
     TEST_CLASSES,
+    TestIPConfig,
 )
 from .runner import TestConfiguration, TestRunner, ComplianceMetrics
 
@@ -43,6 +44,7 @@ class BGPTestConfig:
     hold_time: int = 180
     timeout: float = 5.0
     retry_count: int = 3
+    ip_config: "TestIPConfig" = field(default_factory=lambda: TestIPConfig())
 
 
 @dataclass
@@ -67,6 +69,7 @@ class BGPTestHarness:
             source_ip=config.source_ip,
             timeout=config.timeout,
             debug=debug,
+            ip_config=config.ip_config,
         )
 
     def get_all_tests(self, category: Optional[str] = None) -> List[TestCase]:

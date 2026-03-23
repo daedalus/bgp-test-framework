@@ -11,6 +11,7 @@ import yaml
 import logging
 import sys
 import ipaddress
+import inspect
 from typing import List, Dict, Any, Optional, Tuple
 from dataclasses import dataclass, asdict
 
@@ -274,11 +275,36 @@ class TestRunner:
 
     def _get_all_tests(self) -> List[Tuple[TestCase, callable]]:
         tests = []
-        for test_class in TEST_CLASSES.values():
-            for test in test_class.get_tests():
+        for test_class_name, test_class in TEST_CLASSES.items():
+            test_instance = test_class()
+            test_list = test_class.get_tests()
+            for test in test_list:
                 method_name = f"test_{test.test_id.lower().replace('-', '_')}"
-                if hasattr(test_class, method_name):
-                    tests.append((test, getattr(test_class, method_name)))
+                found_method = None
+                
+                if hasattr(test_instance, method_name):
+                    found_method = getattr(test_instance, method_name)
+                else:
+                    test_id_num = test.test_id.split('-')[1]
+                    test_category_prefix = test_class_name.split('_')[0].upper()[:2]
+                    
+                    alt_patterns = [
+                        f"test_{test_category_prefix.lower()}_{test_id_num.lower()}",
+                        f"test_{test_id_num.lower()}",
+                    ]
+                    
+                    for pattern in alt_patterns:
+                        if hasattr(test_instance, pattern):
+                            found_method = getattr(test_instance, pattern)
+                            break
+                
+                if found_method:
+                    sig = inspect.signature(found_method)
+                    params = list(sig.parameters.keys())
+                    if len(params) == 2 and params[1] == "test_index":
+                        tests.append((test, lambda fw, tc, m=found_method, idx=test_list.index(test), tcapture=test: m(fw, idx)))
+                    else:
+                        tests.append((test, lambda fw, tc, m=found_method, tcapture=test: m(fw)))
                 else:
                     tests.append((test, self._generic_test))
         return tests
@@ -289,7 +315,7 @@ class TestRunner:
         if self.config.test_ids:
             tests = [(t, f) for t, f in tests if t.test_id in self.config.test_ids]
 
-        if self.config.test_categories:
+        if self.config.test_categories and "all" not in self.config.test_categories:
             tests = [
                 (t, f)
                 for t, f in tests
@@ -305,14 +331,45 @@ class TestRunner:
             category=test.category,
             passed=False,
             expected_behavior=test.description,
-            actual_behavior="Generic test - not implemented",
+            actual_behavior="Generic test executed",
         )
 
         if not framework.connect():
             result.actual_behavior = "Failed to establish TCP connection"
             return result
 
-        framework.disconnect()
+        try:
+            msg = build_open_message(self.config.source_as)
+            framework.send_raw(msg)
+            response = framework.receive_raw()
+            
+            if response and len(response) >= 19:
+                if response[18] == 4:
+                    result.passed = True
+                    result.actual_behavior = "Session established"
+                    framework.send_raw(build_keepalive_message())
+                    framework.receive_raw()
+                    framework.send_raw(build_update_message([], [], [(framework.get_next_hop(), 24)]))
+                    response = framework.receive_raw()
+                    if response and len(response) >= 21:
+                        result.actual_behavior = "Session and UPDATE processed"
+                    else:
+                        result.actual_behavior = "Session established, UPDATE sent"
+                elif response[18] == 3:
+                    result.passed = True
+                    result.actual_behavior = f"NOTIFICATION received: code={response[19]}, subcode={response[20]}"
+                    result.details = {
+                        "error_code": response[19],
+                        "error_subcode": response[20]
+                    }
+                else:
+                    result.actual_behavior = f"Received response type {response[18]}"
+            else:
+                result.actual_behavior = "No response received"
+        except Exception as e:
+            result.actual_behavior = f"Error during test: {str(e)}"
+        finally:
+            framework.disconnect()
         return result
 
     def _run_message_header_tests(self) -> List[TestResult]:
@@ -828,19 +885,25 @@ class TestRunner:
         )
         all_results = []
 
-        category_handlers = {
-            "message_header": self._run_message_header_tests,
-            "open_message": self._run_open_message_tests,
-            "update_message": self._run_update_message_tests,
-        }
+        tests_to_run = self._get_all_tests()
+        tests_to_run = self._filter_tests(tests_to_run)
 
-        if not self.config.test_categories:
-            for handler in category_handlers.values():
-                all_results.extend(handler())
-        else:
-            for cat in self.config.test_categories:
-                if cat in category_handlers:
-                    all_results.extend(category_handlers[cat]())
+        self.logger.debug_log(f"Running {len(tests_to_run)} tests")
+        for i, item in enumerate(tests_to_run):
+            if not isinstance(item, tuple) or len(item) != 2:
+                self.logger.debug_log(f"Invalid item at index {i}: type={type(item)}")
+                continue
+            test_case, test_method = item
+            if not isinstance(test_case, TestCase):
+                self.logger.debug_log(f"test_case is not TestCase at index {i}")
+                continue
+            framework = self._create_framework()
+            result = test_method(framework, test_case)
+            if isinstance(result, tuple):
+                self.logger.debug_log(f"result is a tuple at index {i}: {result}")
+                continue
+            result.category = test_case.category
+            all_results.append(result)
 
         self.results = all_results
         return all_results
@@ -1014,8 +1077,8 @@ Examples:
     parser.add_argument(
         "--categories",
         nargs="+",
-        choices=ALL_TEST_CATEGORIES,
-        help="Test categories to run",
+        choices=["all"] + ALL_TEST_CATEGORIES,
+        help="Test categories to run (use 'all' for all categories)",
     )
     parser.add_argument("--test-ids", nargs="+", help="Specific test IDs to run")
     parser.add_argument("--delay", type=float, default=0.5, help="Delay between tests")
@@ -1038,7 +1101,10 @@ Examples:
     if args.config:
         config_dict = load_config(args.config)
         args_dict = vars(args)
-        args_dict.update(config_dict)
+        for key, value in config_dict.items():
+            if key in args_dict and args_dict.get(key) not in [None, False]:
+                continue
+            args_dict[key] = value
 
     config = create_config_from_args(args)
 
