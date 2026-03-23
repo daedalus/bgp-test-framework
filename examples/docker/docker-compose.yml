@@ -15,9 +15,10 @@ services:
         sed -i 's/zebra=no/zebra=yes/' /etc/frr/daemons &&
         echo 'service integrated-vtysh-config' > /etc/frr/frr.conf &&
         echo 'router bgp 65001' >> /etc/frr/frr.conf &&
-        echo ' bgp router-id 10.0.0.1' >> /etc/frr/frr.conf &&
-        echo ' no bgp ebgp-requires-policy' >> /etc/frr/frr.conf &&
-        echo ' neighbor 172.16.0.3 remote-as 65000' >> /etc/frr/frr.conf &&
+        echo ' bgp router-id 172.16.0.2' >> /etc/frr/frr.conf &&
+        echo ' neighbor 172.16.0.1 remote-as 65000' >> /etc/frr/frr.conf &&
+        echo 'neighbor 172.16.0.3 remote-as 65000' >> /etc/frr/frr.conf &&
+        echo 'neighbor 172.16.0.4 remote-as 65000' >> /etc/frr/frr.conf &&
         echo ' address-family ipv4 unicast' >> /etc/frr/frr.conf &&
         echo '  network 10.0.0.0/8' >> /etc/frr/frr.conf &&
         echo ' exit-address-family' >> /etc/frr/frr.conf &&
