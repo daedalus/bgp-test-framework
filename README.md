@@ -999,6 +999,54 @@ Tests for BGP-LS Updated per RFC 9552:
 - BGPLS-UNKNOWN-001: BGP-LS Unknown NLRI Type Handling
 - BGPLS-ORDER-001: BGP-LS TLV Ordering
 
+### aigp
+Tests for Accumulated IGP Metric Attribute per RFC 7311:
+- AIGP-001: AIGP Attribute Type
+- AIGP-002: AIGP Attribute Transitive
+- AIGP-003: AIGP Metric TLV
+- AIGP-004: AIGP Metric 32-bit
+- AIGP-005: AIGP Originator
+- AIGP-006: AIGP EBGP Rule
+- AIGP-007: AIGP IBGP Only
+- AIGP-008: AIGP Metric Accumulation
+- AIGP-009: AIGP Decision Process
+- AIGP-010: AIGP Next-Hop Self
+
+### extended_optional_parameters
+Tests for Extended Optional Parameters Length per RFC 9072:
+- EOP-001: Extended Length Type 255
+- EOP-002: Extended OP Length Field
+- EOP-003: Extended Parm Length Field
+- EOP-004: Non-Ext OP Len 255
+- EOP-005: Non-Ext OP Type 255
+- EOP-006: Backward Compatibility
+- EOP-007: Extended < 256 Bytes
+- EOP-008: Extended > 256 Bytes
+
+### fsm_error_subcodes
+Tests for FSM Error Subcodes per RFC 6608:
+- FSMS-001: FSM Unspecified Error (0)
+- FSMS-002: FSM OpenSent Unexpected (1)
+- FSMS-003: FSM OpenConfirm Unexpected (2)
+- FSMS-004: FSM Established Unexpected (3)
+- FSMS-005: Unexpected Keepalive in OpenSent
+- FSMS-006: Unexpected Update in OpenConfirm
+- FSMS-007: Unexpected Open in Established
+- FSMS-008: FSM Subcode Data Field
+
+### bgp_identifier
+Tests for AS-Wide Unique BGP Identifier per RFC 6286:
+- BGPI-001: BGP ID 4-Octet Unsigned
+- BGPI-002: BGP ID Non-Zero
+- BGPI-003: BGP ID Zero Rejection
+- BGPI-004: BGP ID AS-Wide Unique
+- BGPI-005: BGP ID Collision Detection
+- BGPI-006: BGP ID Same ID EBGP
+- BGPI-007: BGP ID Same ID IBGP
+- BGPI-008: BGP ID Connection Collision
+- BGPI-009: BGP ID IPv6 Support
+- BGPI-010: BGP ID Aggregator Attribute
+
 ## References
 
 - [RFC 4271 - A Border Gateway Protocol 4 (BGP-4)](https://www.rfc-editor.org/rfc/rfc4271)
@@ -1037,16 +1085,29 @@ Tests for BGP-LS Updated per RFC 9552:
 - [RFC 8195 - Use of BGP Large Communities](https://www.rfc-editor.org/rfc/rfc8195)
 - [RFC 8203 - BGP Administrative Shutdown Communication](https://www.rfc-editor.org/rfc/rfc8203)
 - [RFC 8277 - Using BGP to Bind MPLS Labels to Address Prefixes](https://www.rfc-editor.org/rfc/rfc8277)
+- [RFC 6286 - AS-Wide Unique BGP Identifier for BGP-4](https://www.rfc-editor.org/rfc/rfc6286)
+- [RFC 6608 - Subcodes for BGP Finite State Machine Error](https://www.rfc-editor.org/rfc/rfc6608)
+- [RFC 7311 - The Accumulated IGP Metric Attribute for BGP](https://www.rfc-editor.org/rfc/rfc7311)
 - [RFC 8326 - Graceful Shutdown of BGP Sessions](https://www.rfc-editor.org/rfc/rfc8326)
 - [RFC 8365 - A Network Virtualization Overlay Solution Using EVPN](https://www.rfc-editor.org/rfc/rfc8365)
 - [RFC 8402 - Segment Routing Architecture](https://www.rfc-editor.org/rfc/rfc8402)
-- [RFC 9029 - Carrying MPLS Labels in the BGP-LS Address Family](https://www.rfc-editor.org/rfc/rfc9029)
+- [RFC 8895 - Dissemination of Flow Specification Rules Update](https://www.rfc-editor.org/rfc/rfc8895)
+- [RFC 9029 - Updates to Allocation Policy for BGP-LS Parameters](https://www.rfc-editor.org/rfc/rfc9029)
+- [RFC 9072 - Extended Optional Parameters Length for BGP OPEN Message](https://www.rfc-editor.org/rfc/rfc9072)
+- [RFC 9076 - DNS Privacy Considerations](https://www.rfc-editor.org/rfc/rfc9076)
+- [RFC 9083 - BGP-LS Node and Link Descriptor Extensions for Diffserv-Aware TE](https://www.rfc-editor.org/rfc/rfc9083)
 - [RFC 9135 - Integrated Routing and Bridging in EVPN](https://www.rfc-editor.org/rfc/rfc9135)
 - [RFC 9136 - EVPN IP Prefix Advertisement](https://www.rfc-editor.org/rfc/rfc9136)
+- [RFC 9161 - BGP-LS IS-IS SR IGP Algorithm and Extensions](https://www.rfc-editor.org/rfc/rfc9161)
 - [RFC 9234 - The BGP Role AS-In Attribute and Service Oriented BGP](https://www.rfc-editor.org/rfc/rfc9234)
 - [RFC 9252 - BGP Overlay for SRv6](https://www.rfc-editor.org/rfc/rfc9252)
 - [RFC 9256 - BGP SR Policy](https://www.rfc-editor.org/rfc/rfc9256)
+- [RFC 9289 - BGPsec Considerations](https://www.rfc-editor.org/rfc/rfc9289)
+- [RFC 9315 - Security Considerations for BGP](https://www.rfc-editor.org/rfc/rfc9315)
+- [RFC 9344 - BGP Keychain Security](https://www.rfc-editor.org/rfc/rfc9344)
+- [RFC 9485 - FlowSpec Port Matching Update](https://www.rfc-editor.org/rfc/rfc9485)
 - [RFC 9552 - Updated Specification for BGP-LS](https://www.rfc-editor.org/rfc/rfc9552)
+- [RFC 9642 - YANG Data Model for Keystore](https://www.rfc-editor.org/rfc/rfc9642)
 - [RFC 1105 - BGP (obsolete)](https://www.rfc-editor.org/rfc/rfc1105)
 - [RFC 1163 - BGP-2 (obsolete)](https://www.rfc-editor.org/rfc/rfc1163)
 - [RFC 1267 - BGP-3 (obsolete)](https://www.rfc-editor.org/rfc/rfc1267)

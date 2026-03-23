@@ -205,7 +205,7 @@ class TestSecurityAssessments:
 
 class TestTestCategories:
     def test_all_categories_defined(self):
-        assert len(TestCategory) == 55
+        assert len(TestCategory) == 59
         assert TestCategory.MESSAGE_HEADER.value == "message_header"
         assert TestCategory.OPEN_MESSAGE.value == "open_message"
         assert TestCategory.UPDATE_MESSAGE.value == "update_message"
@@ -895,3 +895,94 @@ class TestNewTESTCLASSESEVPNSR:
         assert "srv6_bgp_overlay" in TEST_CLASSES
         assert "sr_policy" in TEST_CLASSES
         assert "bgp_ls_updated" in TEST_CLASSES
+
+
+class TestAIGPAssessments:
+    def test_get_tests(self):
+        from bgp_test_framework.assessments import AIGPAssessments
+
+        tests = AIGPAssessments.get_tests()
+        assert len(tests) == 10
+        assert all(t.category == TestCategory.AIGP for t in tests)
+
+    def test_specific_tests_exist(self):
+        from bgp_test_framework.assessments import AIGPAssessments
+
+        tests = {t.test_id: t for t in AIGPAssessments.get_tests()}
+        assert "AIGP-001" in tests
+        assert "AIGP-005" in tests
+        assert "AIGP-010" in tests
+
+
+class TestExtendedOptionalParametersAssessments:
+    def test_get_tests(self):
+        from bgp_test_framework.assessments import ExtendedOptionalParametersAssessments
+
+        tests = ExtendedOptionalParametersAssessments.get_tests()
+        assert len(tests) == 8
+        assert all(
+            t.category == TestCategory.EXTENDED_OPTIONAL_PARAMETERS for t in tests
+        )
+
+    def test_specific_tests_exist(self):
+        from bgp_test_framework.assessments import ExtendedOptionalParametersAssessments
+
+        tests = {
+            t.test_id: t for t in ExtendedOptionalParametersAssessments.get_tests()
+        }
+        assert "EOP-001" in tests
+        assert "EOP-005" in tests
+        assert "EOP-008" in tests
+
+
+class TestFSMErrorSubcodeAssessments:
+    def test_get_tests(self):
+        from bgp_test_framework.assessments import FSMErrorSubcodeAssessments
+
+        tests = FSMErrorSubcodeAssessments.get_tests()
+        assert len(tests) == 8
+        assert all(t.category == TestCategory.FSM_ERROR_SUBCODES for t in tests)
+
+    def test_specific_tests_exist(self):
+        from bgp_test_framework.assessments import FSMErrorSubcodeAssessments
+
+        tests = {t.test_id: t for t in FSMErrorSubcodeAssessments.get_tests()}
+        assert "FSMS-001" in tests
+        assert "FSMS-004" in tests
+        assert "FSMS-008" in tests
+
+
+class TestBGPIdentifierAssessments:
+    def test_get_tests(self):
+        from bgp_test_framework.assessments import BGPIdentifierAssessments
+
+        tests = BGPIdentifierAssessments.get_tests()
+        assert len(tests) == 10
+        assert all(t.category == TestCategory.BGP_IDENTIFIER for t in tests)
+
+    def test_specific_tests_exist(self):
+        from bgp_test_framework.assessments import BGPIdentifierAssessments
+
+        tests = {t.test_id: t for t in BGPIdentifierAssessments.get_tests()}
+        assert "BGPI-001" in tests
+        assert "BGPI-005" in tests
+        assert "BGPI-010" in tests
+
+
+class TestNewTESTCLASSESCore:
+    def test_new_categories_registered(self):
+        assert "aigp" in TEST_CLASSES
+        assert "extended_optional_parameters" in TEST_CLASSES
+        assert "fsm_error_subcodes" in TEST_CLASSES
+        assert "bgp_identifier" in TEST_CLASSES
+
+
+class TestTestCategoryNewCoreEntries:
+    def test_new_categories_defined(self):
+        assert TestCategory.AIGP.value == "aigp"
+        assert (
+            TestCategory.EXTENDED_OPTIONAL_PARAMETERS.value
+            == "extended_optional_parameters"
+        )
+        assert TestCategory.FSM_ERROR_SUBCODES.value == "fsm_error_subcodes"
+        assert TestCategory.BGP_IDENTIFIER.value == "bgp_identifier"

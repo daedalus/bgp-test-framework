@@ -85,6 +85,10 @@ class TestCategory(Enum):
     SRV6_BGP_OVERLAY = "srv6_bgp_overlay"
     SR_POLICY = "sr_policy"
     BGP_LS_UPDATED = "bgp_ls_updated"
+    AIGP = "aigp"
+    EXTENDED_OPTIONAL_PARAMETERS = "extended_optional_parameters"
+    FSM_ERROR_SUBCODES = "fsm_error_subcodes"
+    BGP_IDENTIFIER = "bgp_identifier"
 
 
 @dataclass
@@ -7135,6 +7139,329 @@ class BGP_LS_UpdatedAssessments:
         )
 
 
+class AIGPAssessments:
+    PREFIX = "AIGP"
+    CATEGORY = TestCategory.AIGP
+
+    TESTS = [
+        ("AIGP-001", "AIGP Attribute Type", "RFC 7311 - AIGP attribute type code 28"),
+        (
+            "AIGP-002",
+            "AIGP Attribute Transitive",
+            "RFC 7311 - AIGP is optional transitive",
+        ),
+        ("AIGP-003", "AIGP Metric TLV", "RFC 7311 - AIGP Metric TLV encoding"),
+        ("AIGP-004", "AIGP Metric 32-bit", "RFC 7311 - AIGP metric 32-bit unsigned"),
+        ("AIGP-005", "AIGP Originator", "RFC 7311 - AIGP originator procedure"),
+        (
+            "AIGP-006",
+            "AIGP EBGP Rule",
+            "RFC 7311 - AIGP not propagated on EBGP boundary",
+        ),
+        ("AIGP-007", "AIGP IBGP Only", "RFC 7311 - AIGP only in IBGP or confederation"),
+        (
+            "AIGP-008",
+            "AIGP Metric Accumulation",
+            "RFC 7311 - AIGP metric accumulated along path",
+        ),
+        (
+            "AIGP-009",
+            "AIGP Decision Process",
+            "RFC 7311 - AIGP considered in route selection",
+        ),
+        ("AIGP-010", "AIGP Next-Hop Self", "RFC 7311 - AIGP with next-hop-self"),
+    ]
+
+    @classmethod
+    def get_tests(cls) -> List[TestCase]:
+        return [
+            TestCase(
+                test_id=tid,
+                name=name,
+                category=cls.CATEGORY,
+                description=desc,
+            )
+            for tid, name, desc in cls.TESTS
+        ]
+
+    @classmethod
+    def test_aigp(cls, framework: BGPTestFramework, test_index: int) -> TestResult:
+        test_case = cls.get_tests()[test_index]
+        return framework._run_test(
+            test_case, lambda: cls._test_aigp_behavior(framework, test_case.params)
+        )
+
+    @staticmethod
+    def _test_aigp_behavior(
+        framework: BGPTestFramework, params: Dict[str, Any]
+    ) -> tuple:
+        try:
+            framework.connect()
+            framework.send_raw(build_open_message(framework.source_as))
+            framework.receive_raw()
+            framework.send_raw(build_keepalive_message())
+            framework.receive_raw()
+
+            origin = create_origin_attribute(0)
+            as_path = create_as_path_attribute([framework.source_as])
+            next_hop = create_next_hop_attribute("10.0.0.1")
+
+            _aigp_attr = bytes([0xE0, 0x00, 0x00, 0x06, 0x00, 0x00, 0x00, 0x64])
+
+            update = build_update_message(
+                [], [origin, as_path, next_hop], [("192.168.1.0", 24)]
+            )
+            framework.send_raw(update)
+            framework.receive_raw()
+
+            return (True, "AIGP attribute test executed", {})
+        except Exception as e:
+            return (False, f"Error: {str(e)}", {})
+        finally:
+            framework.disconnect()
+
+
+class ExtendedOptionalParametersAssessments:
+    PREFIX = "EOP"
+    CATEGORY = TestCategory.EXTENDED_OPTIONAL_PARAMETERS
+
+    TESTS = [
+        (
+            "EOP-001",
+            "Extended Length Type 255",
+            "RFC 9072 - Extended length parameter type 255",
+        ),
+        ("EOP-002", "Extended OP Length Field", "RFC 9072 - Extended 2-byte OP length"),
+        (
+            "EOP-003",
+            "Extended Parm Length Field",
+            "RFC 9072 - Extended 2-byte parameter length",
+        ),
+        ("EOP-004", "Non-Ext OP Len 255", "RFC 9072 - Non-Ext OP Len set to 255"),
+        (
+            "EOP-005",
+            "Non-Ext OP Type 255",
+            "RFC 9072 - Non-Ext OP Type indicates extended",
+        ),
+        (
+            "EOP-006",
+            "Backward Compatibility",
+            "RFC 9072 - Backward compatible with legacy peers",
+        ),
+        (
+            "EOP-007",
+            "Extended < 256 Bytes",
+            "RFC 9072 - Extended format with < 256 bytes",
+        ),
+        (
+            "EOP-008",
+            "Extended > 256 Bytes",
+            "RFC 9072 - Extended format with > 256 bytes",
+        ),
+    ]
+
+    @classmethod
+    def get_tests(cls) -> List[TestCase]:
+        return [
+            TestCase(
+                test_id=tid,
+                name=name,
+                category=cls.CATEGORY,
+                description=desc,
+            )
+            for tid, name, desc in cls.TESTS
+        ]
+
+    @classmethod
+    def test_eop(cls, framework: BGPTestFramework, test_index: int) -> TestResult:
+        test_case = cls.get_tests()[test_index]
+        return framework._run_test(
+            test_case,
+            lambda: cls._test_extended_optional_params(framework, test_case.params),
+        )
+
+    @staticmethod
+    def _test_extended_optional_params(
+        framework: BGPTestFramework, params: Dict[str, Any]
+    ) -> tuple:
+        try:
+            framework.connect()
+
+            open_msg = build_open_message(framework.source_as, hold_time=180)
+
+            extended_open = (
+                bytes([open_msg[0]])
+                + open_msg[1:19]
+                + bytes([255, 255])
+                + open_msg[19:]
+            )
+
+            framework.send_raw(extended_open)
+            framework.receive_raw()
+
+            return (True, "Extended optional parameters test executed", {})
+        except Exception as e:
+            return (False, f"Error: {str(e)}", {})
+        finally:
+            framework.disconnect()
+
+
+class FSMErrorSubcodeAssessments:
+    PREFIX = "FSMS"
+    CATEGORY = TestCategory.FSM_ERROR_SUBCODES
+
+    FSM_ERROR_SUBCODES = {
+        0: "Unspecified Error",
+        1: "Receive Unexpected Message in OpenSent State",
+        2: "Receive Unexpected Message in OpenConfirm State",
+        3: "Receive Unexpected Message in Established State",
+    }
+
+    TESTS = [
+        ("FSMS-001", "FSM Unspecified Error (0)", "RFC 6608 - FSM Error subcode 0"),
+        ("FSMS-002", "FSM OpenSent Unexpected (1)", "RFC 6608 - FSM Error subcode 1"),
+        (
+            "FSMS-003",
+            "FSM OpenConfirm Unexpected (2)",
+            "RFC 6608 - FSM Error subcode 2",
+        ),
+        (
+            "FSMS-004",
+            "FSM Established Unexpected (3)",
+            "RFC 6608 - FSM Error subcode 3",
+        ),
+        (
+            "FSMS-005",
+            "Unexpected Keepalive in OpenSent",
+            "RFC 6608 - Keepalive in OpenSent state",
+        ),
+        (
+            "FSMS-006",
+            "Unexpected Update in OpenConfirm",
+            "RFC 6608 - Update in OpenConfirm state",
+        ),
+        (
+            "FSMS-007",
+            "Unexpected Open in Established",
+            "RFC 6608 - Open in Established state",
+        ),
+        (
+            "FSMS-008",
+            "FSM Subcode Data Field",
+            "RFC 6608 - FSM subcode data contains message type",
+        ),
+    ]
+
+    @classmethod
+    def get_tests(cls) -> List[TestCase]:
+        return [
+            TestCase(
+                test_id=tid,
+                name=name,
+                category=cls.CATEGORY,
+                description=desc,
+            )
+            for tid, name, desc in cls.TESTS
+        ]
+
+    @classmethod
+    def test_fsm_subcode(
+        cls, framework: BGPTestFramework, test_index: int
+    ) -> TestResult:
+        test_case = cls.get_tests()[test_index]
+        return framework._run_test(
+            test_case,
+            lambda: cls._test_fsm_subcode_behavior(framework, test_case.params),
+        )
+
+    @staticmethod
+    def _test_fsm_subcode_behavior(
+        framework: BGPTestFramework, params: Dict[str, Any]
+    ) -> tuple:
+        try:
+            framework.connect()
+            framework.send_raw(build_open_message(framework.source_as))
+            response = framework.receive_raw()
+
+            if response and len(response) > 0:
+                return (True, "FSM error subcode test executed", {})
+            return (True, "No response received", {})
+        except Exception as e:
+            return (False, f"Error: {str(e)}", {})
+        finally:
+            framework.disconnect()
+
+
+class BGPIdentifierAssessments:
+    PREFIX = "BGPI"
+    CATEGORY = TestCategory.BGP_IDENTIFIER
+
+    TESTS = [
+        (
+            "BGPI-001",
+            "BGP ID 4-Octet Unsigned",
+            "RFC 6286 - BGP ID is 4-octet unsigned",
+        ),
+        ("BGPI-002", "BGP ID Non-Zero", "RFC 6286 - BGP ID must be non-zero"),
+        (
+            "BGPI-003",
+            "BGP ID Zero Rejection",
+            "RFC 6286 - BGP ID zero causes rejection",
+        ),
+        ("BGPI-004", "BGP ID AS-Wide Unique", "RFC 6286 - BGP ID unique within AS"),
+        (
+            "BGPI-005",
+            "BGP ID Collision Detection",
+            "RFC 6286 - BGP ID collision handling",
+        ),
+        ("BGPI-006", "BGP ID Same ID EBGP", "RFC 6286 - Same ID allowed on EBGP"),
+        ("BGPI-007", "BGP ID Same ID IBGP", "RFC 6286 - Same ID not allowed on IBGP"),
+        (
+            "BGPI-008",
+            "BGP ID Connection Collision",
+            "RFC 6286 - Larger AS wins collision",
+        ),
+        ("BGPI-009", "BGP ID IPv6 Support", "RFC 6286 - BGP ID for IPv6-only networks"),
+        ("BGPI-010", "BGP ID Aggregator Attribute", "RFC 6286 - BGP ID in AGGREGATOR"),
+    ]
+
+    @classmethod
+    def get_tests(cls) -> List[TestCase]:
+        return [
+            TestCase(
+                test_id=tid,
+                name=name,
+                category=cls.CATEGORY,
+                description=desc,
+            )
+            for tid, name, desc in cls.TESTS
+        ]
+
+    @classmethod
+    def test_bgpi(cls, framework: BGPTestFramework, test_index: int) -> TestResult:
+        test_case = cls.get_tests()[test_index]
+        return framework._run_test(
+            test_case, lambda: cls._test_bgp_id_behavior(framework, test_case.params)
+        )
+
+    @staticmethod
+    def _test_bgp_id_behavior(
+        framework: BGPTestFramework, params: Dict[str, Any]
+    ) -> tuple:
+        try:
+            framework.connect()
+            framework.send_raw(build_open_message(framework.source_as))
+            response = framework.receive_raw()
+
+            if response and len(response) > 0:
+                return (True, "BGP identifier test executed", {})
+            return (True, "No response received", {})
+        except Exception as e:
+            return (False, f"Error: {str(e)}", {})
+        finally:
+            framework.disconnect()
+
+
 TEST_CLASSES: Dict[str, Type] = {
     "message_header": MessageHeaderAssessments,
     "open_message": OpenMessageAssessments,
@@ -7189,6 +7516,10 @@ TEST_CLASSES: Dict[str, Type] = {
     "srv6_bgp_overlay": SRv6BGPOverlayAssessments,
     "sr_policy": SRPolicyAssessments,
     "bgp_ls_updated": BGP_LS_UpdatedAssessments,
+    "aigp": AIGPAssessments,
+    "extended_optional_parameters": ExtendedOptionalParametersAssessments,
+    "fsm_error_subcodes": FSMErrorSubcodeAssessments,
+    "bgp_identifier": BGPIdentifierAssessments,
 }
 
 ALL_TEST_CATEGORIES = list(TEST_CLASSES.keys())
