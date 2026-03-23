@@ -1,159 +1,29 @@
 # BGP Adversarial Test Framework
 
-A comprehensive adversarial testing framework for BGP v1 to v4 implementations based on RFC specifications.
+A comprehensive RFC compliance testing framework for BGP v1 to v4 implementations.
 
 ## Intended Use
 
-This tool is designed as an RFC compliance testing utility for researchers and network engineers evaluating BGP implementation conformance. While it includes tests for security-related protocol behaviors, it is primarily intended to assist in compliance verification and protocol analysis rather than security auditing or penetration testing activities.
+This tool is designed as an RFC compliance testing utility for researchers and network engineers evaluating BGP implementation conformance. While it includes tests for security-related protocol behaviors, it is primarily intended to assist in compliance verification and protocol analysis.
 
-**Caveat**: This is an RFC compliance testing tool. It may assist security researchers in evaluating BGP implementations, but security assessment is not its primary purpose, and it is not intended for use in penetration testing activities.
+**Caveat**: This is an RFC compliance testing tool. It may assist security researchers in evaluating BGP implementations, but security assessment is not its primary purpose.
 
 ## Overview
 
-This framework provides automated testing capabilities to identify vulnerabilities and protocol violations in BGPv4 implementations. It includes tests for:
-
-- Message header validation (RFC 4271 Section 4.1, 6.1)
-- OPEN message handling (RFC 4271 Section 4.2, 6.2)
-- UPDATE message processing (RFC 4271 Section 4.3, 6.3)
-- Path attribute validation (RFC 4271 Section 5)
-- Finite State Machine behavior (RFC 4271 Section 8)
-- Timing and Keepalive behavior (RFC 4271 Section 4.4, 10)
-- Route aggregation (RFC 4271 Section 9.2.2)
-- Decision process (RFC 4271 Section 9.1)
-- Security considerations (RFC 4271 Section 6, RFC 4272)
+This framework provides automated testing capabilities to identify protocol violations in BGPv4 implementations. It includes tests for message validation, path attributes, FSM behavior, security, and extensions like VPNs, EVPN, SR, and more.
 
 ## Features
 
-- **Comprehensive Test Coverage**: Tests based on RFC 4271 and RFC 4272 requirements
-- **Security Vulnerability Testing**: Tests for BGP security attacks from RFC 4272
-- **Configurable Testing**: YAML configuration for complex test scenarios
+- **59 Test Categories** with 500+ test cases
+- **Comprehensive Coverage**: Tests based on 53+ RFC specifications
 - **Multiple Output Formats**: JSON and YAML report generation
-- **Detailed Reporting**: Pass/fail status with expected vs actual behavior
+- **Configurable Testing**: YAML configuration for complex scenarios
 - **Selective Test Execution**: Run specific tests or categories
 
 ## Installation
 
 ```bash
 pip install -e .
-```
-
-## Testing Setup
-
-This framework requires a BGP peer to test against. Below are options for setting up a test environment.
-
-### Option 1: Containerlab (Recommended)
-
-Containerlab provides a quick way to deploy containerized BGP routers:
-
-```bash
-# Install containerlab
-curl -L https://containerlab.dev/install/ | bash
-
-# Create topology file (topology.yml)
-cat > topology.yml << 'EOF'
-name: bgp_test
-topology:
-  kinds:
-    linux:
-      image: frrouting/frr:latest
-  nodes:
-    router1:
-      kind: linux
-      image: frrouting/frr:latest
-      bgp:
-        as: 65001
-        neighbors:
-          - name: router2
-            as: 65002
-    router2:
-      kind: linux
-      image: frrouting/frr:latest
-      bgp:
-        as: 65002
-        neighbors:
-          - name: router1
-            as: 65001
-  links:
-    - endpoints: ["router1:eth1", "router2:eth1"]
-EOF
-
-# Deploy the lab
-containerlab deploy -t topology.yml
-
-# Get router IP
-containerlab inspect -t topology.yml
-
-# Test the framework
-bgp-test --target <router_ip> --as-number 65001
-
-# Destroy the lab when done
-containerlab destroy -t topology.yml
-```
-
-### Option 2: Docker Containers
-
-```bash
-# Run FRR container
-docker run -d --name bgp-peer frrouting/frr:latest
-
-# Enter the container and configure BGP
-docker exec -it bgp-peer vtysh -c "configure terminal"
-docker exec -it bgp-peer vtysh -c "router bgp 65001"
-docker exec -it bgp-peer vtysh -c "neighbor 192.168.1.1 remote-as 65001"
-docker exec -it bgp-peer vtysh -c "end"
-docker exec -it bgp-peer vtysh -c "write memory"
-
-# Get container IP
-docker inspect -f '{{range.NetworkSettings.Networks}}{{.IPAddress}}{{end}}' bgp-peer
-
-# Test
-bgp-test --target <container_ip> --as-number 65001
-```
-
-### Option 3: System Packages (Linux)
-
-```bash
-# Install FRR or BIRD
-sudo apt install frr    # Debian/Ubuntu
-sudo apt install bird    # Alternative
-
-# Configure FRR
-sudo vtysh -c "configure terminal"
-sudo vtysh -c "router bgp 65001"
-sudo vtysh -c "neighbor 192.168.1.1 remote-as 65001"
-sudo vtysh -c "end"
-sudo vtysh -c "write memory"
-
-# Test
-bgp-test --target 127.0.0.1 --as-number 65001
-```
-
-### Option 4: Virtual Machines
-
-Download and install:
-- **FRR**: https://frrouting.org/
-- **BIRD**: https://bird.network.cz/
-- **Cisco CSR1000V**: Commercial option
-- **Juniper vSRX**: Commercial option
-
-### Quick Test Without a BGP Peer
-
-Use the programmatic API to validate message generation:
-
-```python
-from bgp_test_framework.api import BGPMessageBuilder, BGPParser
-
-# Test message building
-msg = BGPMessageBuilder.create_open(my_as=65001)
-parsed = BGPParser.parse_header(msg)
-print(f"Message type: {parsed['type']}")
-
-# Test compliance scoring
-from bgp_test_framework.api import BGPTestHarness, BGPTestConfig
-config = BGPTestConfig(target_host="192.168.1.1", source_as=65001)
-harness = BGPTestHarness(config)
-tests = harness.get_all_tests("message_header")
-print(f"Available tests: {len(tests)}")
 ```
 
 ## Quick Start
@@ -164,16 +34,10 @@ print(f"Available tests: {len(tests)}")
 bgp-test --target 192.168.1.1 --as-number 65001
 ```
 
-### With Configuration File
-
-```bash
-bgp-test --config config.yaml
-```
-
 ### Run Specific Tests
 
 ```bash
-bgp-test --target 192.168.1.1 --test-ids MH-001 MH-002 MH-003
+bgp-test --target 192.168.1.1 --test-ids MH-001 MH-002
 ```
 
 ### Run Test Categories
@@ -182,59 +46,10 @@ bgp-test --target 192.168.1.1 --test-ids MH-001 MH-002 MH-003
 bgp-test --target 192.168.1.1 --categories message_header open_message
 ```
 
-## Programmatic API
+### With Configuration File
 
-The framework provides a Python API for programmatic testing:
-
-```python
-from bgp_test_framework.api import run_bgp_tests, BGPTestHarness, BGPTestConfig
-
-# Quick start - run all tests
-result = run_bgp_tests("192.168.1.1", 65001)
-print(f"Compliance Score: {result['compliance_score']}%")
-print(f"Grade: {result['compliance_grade']}")
-
-# Run specific categories
-result = run_bgp_tests(
-    "192.168.1.1",
-    65001,
-    categories=["message_header", "open_message"]
-)
-
-# Use the test harness for more control
-config = BGPTestConfig(
-    target_host="192.168.1.1",
-    source_as=65001,
-    hold_time=180
-)
-harness = BGPTestHarness(config)
-tests = harness.get_all_tests("message_header")
-results = harness.run_category("message_header")
-report = harness.get_compliance_report(results)
-```
-
-### Message Builder API
-
-Build BGP messages programmatically:
-
-```python
-from bgp_test_framework.api import BGPMessageBuilder
-
-# Build messages
-open_msg = BGPMessageBuilder.create_open(my_as=65001, hold_time=180)
-keepalive = BGPMessageBuilder.create_keepalive()
-notification = BGPMessageBuilder.create_notification(1, 1)
-route_refresh = BGPMessageBuilder.create_route_refresh(afi=1, safi=1)
-
-# Build path attributes
-origin = BGPMessageBuilder.create_origin_attribute("IGP")
-as_path = BGPMessageBuilder.create_as_path_attribute([65001, 65002])
-next_hop = BGPMessageBuilder.create_next_hop_attribute("192.168.1.1")
-
-# Build multiprotocol attributes
-mp_reach = BGPMessageBuilder.create_mp_reach(2, 1, b"\xc0\xa8\x01\x01", nlri)
-originator_id = BGPMessageBuilder.create_originator_id(0x0A000001)
-cluster_list = BGPMessageBuilder.create_cluster_list([1, 2, 3])
+```bash
+bgp-test --config config.yaml
 ```
 
 ## Command Line Options
@@ -254,162 +69,147 @@ cluster_list = BGPMessageBuilder.create_cluster_list([1, 2, 3])
 | `--output`, `-o` | Output file for results |
 | `--format` | Output format (json/yaml) |
 | `--verbose`, `-v` | Verbose output |
-| `--debug`, `-d` | Debug output |
 
 ## Test Categories
 
-### message_header
-Tests for BGP message header validation per RFC 4271 Section 4.1 and 6.1:
-- MH-001: Invalid Marker
-- MH-003: Message Length Too Short
-- MH-004: Message Length Too Large
-- MH-006: Invalid Message Type
-- MH-009: OPEN Message Length Too Short
-- MH-010: UPDATE Message Length Too Short
-- MH-011: KEEPALIVE Message Wrong Length
-- MH-012: NOTIFICATION Message Length Too Short
+### Core BGP (RFC 4271)
 
-### graceful_restart
-Tests for Graceful Restart per RFC 4724:
-- GR-001: Graceful Restart Capability
-- GR-002: Graceful Restart Timer
-- GR-003: End-of-RIB Marker
-- GR-004: Graceful Restart State
-- GR-005: Graceful Restart AFI/SAFI
+| Category | RFC | Tests |
+|----------|-----|-------|
+| `message_header` | 4271 §4.1, 6.1 | Message header validation |
+| `open_message` | 4271 §4.2, 6.2 | OPEN message handling |
+| `update_message` | 4271 §4.3, 6.3 | UPDATE message processing |
+| `attribute` | 4271 §5 | Path attribute validation |
+| `fsm` | 4271 §8 | Finite State Machine behavior |
+| `timing` | 4271 §10 | Keepalive timing behavior |
+| `security` | 4271 §6, 4272 | Security considerations |
+| `route_aggregation` | 4271 §9.2.2 | Route aggregation |
+| `decision_process` | 4271 §9.1 | Decision process |
+| `keepalive_message` | 4271 §4.4 | KEEPALIVE handling |
+| `notification_message` | 4271 §4.5 | NOTIFICATION handling |
+| `version_negotiation` | 4271 §7 | Version negotiation |
+| `connection_collision` | 4271 §6.8 | Collision detection |
 
-### enhanced_route_refresh
-Tests for Enhanced Route Refresh per RFC 7313:
-- ERR-001: Enhanced Route Refresh Capability
-- ERR-002: Outbound Route Refresh
-- ERR-003: Inbound Route Refresh
-- ERR-004: Route Refresh with ORF Prefix
-- ERR-005: Route Refresh AFI/SAFI
+### BGP Extensions
 
-### extended_messages
-Tests for Extended Message support per RFC 7606:
-- EXT-001: Extended Message Capability
-- EXT-002: Extended Message Size
-- EXT-003: Message Length Overflow
-- EXT-004: Extended Message Type
-- EXT-005: Extended Keepalive
+| Category | RFC | Tests |
+|----------|-----|-------|
+| `multiprotocol` | 2858 | Multiprotocol Extensions |
+| `route_refresh` | 2918 | Route Refresh Capability |
+| `graceful_restart` | 4724 | Graceful Restart Mechanism |
+| `enhanced_route_refresh` | 7313 | Enhanced Route Refresh |
+| `extended_messages` | 7606 | Extended Message Support |
+| `orf_filtering` | 5291 | Outbound Route Filtering |
+| `dynamic_capability` | 6724 | Dynamic Capability |
+| `capabilities` | 2842 | Capability Advertisement |
+| `route_reflection` | 4456 | Route Reflection |
+| `confederation` | 3065 | AS Confederations |
 
-### orf_filtering
-Tests for Outbound Route Filtering per RFC 5291:
-- ORF-001: ORF Capability
-- ORF-002: ORF Send Receive
-- ORF-003: ORF Prefix Filter
-- ORF-004: ORF Route Refresh
-- ORF-005: ORF Multiple Entries
+### Address Families & VPNs
 
-### dynamic_capability
-Tests for Dynamic Capability per RFC 6724:
-- DC-001: Dynamic Capability Advertisement
-- DC-002: Capability Refresh
-- DC-003: Unknown Capability
-- DC-004: Capability Length Error
-- DC-005: Multiple Capabilities
+| Category | RFC | Tests |
+|----------|-----|-------|
+| `vpn` | 4364 | BGP/MPLS VPNs |
+| `ipv6_vpn` | 4659 | IPv6 VPN Extension |
+| `bgp_ls` | 7752 | Link-State Distribution |
+| `bgp_ls_updated` | 9552 | BGP-LS Updated |
+| `mpls_labels` | 3107 | MPLS Label Distribution |
+| `mpls_label_binding` | 8277 | MPLS Label Binding |
 
-### open_message
-Tests for OPEN message handling per RFC 4271 Section 4.2 and 6.2:
-- OP-001: Unsupported BGP Version
-- OP-005: Hold Time One (MUST reject)
-- OP-008: Invalid BGP Identifier - All Zeros
-- OP-011: Unknown Optional Parameter
+### Communities & Attributes
 
-### update_message
-Tests for UPDATE message processing per RFC 4271 Section 4.3 and 6.3:
-- UP-001: Missing ORIGIN Attribute
-- UP-002: Missing AS_PATH Attribute
-- UP-003: Missing NEXT_HOP Attribute
-- UP-004: Invalid ORIGIN Value
-- UP-005: Malformed AS_PATH
-- UP-011: Attribute Length Mismatch
-- UP-012: Duplicate Attribute
+| Category | RFC | Tests |
+|----------|-----|-------|
+| `communities` | 1997 | BGP Communities |
+| `large_communities` | 8092 | Large Communities |
+| `large_community_usage` | 8195 | Large Community Usage |
+| `ipv6_extended_community` | 5701 | IPv6 Extended Community |
+| `blackhole_community` | 7999 | BLACKHOLE Community |
+| `nopeer` | 3765 | NOPEER Community |
 
-### attribute
-Tests for path attribute validation per RFC 4271 Section 5:
-- ATTR-001: AS_PATH Loop Detection
-- ATTR-005: LOCAL_PREF on EBGP
-- ATTR-007: AGGREGATOR Invalid Length
+### Security & Validation
 
-### fsm
-Tests for Finite State Machine behavior per RFC 4271 Section 8:
-- FSM-001: UPDATE in Idle State
-- FSM-002: UPDATE in Connect State
-- FSM-005: KEEPALIVE in Idle State
+| Category | RFC | Tests |
+|----------|-----|-------|
+| `as_number` | 1930, 6996 | AS Number handling |
+| `as0_processing` | 7607 | AS 0 Processing |
+| `as0_processing` | 7607 | AS 0 Processing |
+| `origin_validation` | 6811 | Prefix Origin Validation |
+| `rpki_router` | 6810 | RPKI to Router Protocol |
+| `route_flap_damping` | 2439, 3345 | Route Flap Damping |
+| `gtsm` | 5082 | TTL Security Mechanism |
+| `flow_spec` | 5575 | Flow Specification |
+| `admin_shutdown` | 8203 | Admin Shutdown Communication |
+| `cease_notification` | 4486 | Cease Notification Subcodes |
+| `route_oscillation` | 3345 | Route Oscillation |
 
-### timing
-Tests for timing behavior per RFC 4271 Section 10:
-- TIM-001: Hold Timer Expiry
-- TIM-002: KEEPALIVE Rate Limit
-- TIM-003: Zero Hold Time No KEEPALIVE
+### Advanced Features
 
-### security
-Tests for security considerations per RFC 4271 Section 6:
-- SEC-001: Connection Collision Detection
-- SEC-002: BGP Identifier Collision
-- SEC-006: TCP RST Injection
-- SEC-008: AS_PATH Shortening Attack
-- SEC-009: False Route Origination
-- SEC-010: NEXT_HOP Manipulation
-- SEC-011: ORIGIN Attribute Manipulation
-- SEC-012: LOCAL_PREF Manipulation
-- SEC-014: Route Withdrawal Replay
-- SEC-016: ATOMIC_AGGREGATE Manipulation
-- SEC-019: Invalid AS_PATH Leftmost AS
+| Category | RFC | Tests |
+|----------|-----|-------|
+| `graceful_shutdown` | 8326 | Graceful Shutdown |
+| `evpn_nvo` | 8365 | EVPN NVO |
+| `segment_routing` | 8402 | Segment Routing |
+| `evpn_irb` | 9135 | EVPN IRB |
+| `evpn_ip_prefix` | 9136 | EVPN IP Prefix (RT-5) |
+| `bgp_role` | 9234 | BGP Role/OTC |
+| `srv6_bgp_overlay` | 9252 | SRv6 BGP Overlay |
+| `sr_policy` | 9256 | SR Policy |
+| `datacenter_bgp` | 7938 | Data Center BGP |
 
-### route_aggregation
-Tests for route aggregation per RFC 4271 Section 9.2.2:
-- AGG-001: AS_SET Sorting
-- AGG-002: Aggregation Without AS_SET
-- AGG-005: ATOMIC_AGGREGATE Restriction
-- AGG-006: Complex AS_PATH Aggregation
+### Protocol Updates
 
-### decision_process
-Tests for BGP decision process per RFC 4271 Section 9.1:
-- DEC-001: Route Selection - Highest LOCAL_PREF
-- DEC-002: Route Selection - Shortest AS_PATH
-- DEC-003: Route Selection - ORIGIN Priority
-- DEC-008: Route Resolvability
-- DEC-010: AS_PATH with Own AS Loop
+| Category | RFC | Tests |
+|----------|-----|-------|
+| `aigp` | 7311 | Accumulated IGP Metric |
+| `extended_optional_parameters` | 9072 | Extended OP Length |
+| `fsm_error_subcodes` | 6608 | FSM Error Subcodes |
+| `bgp_identifier` | 6286 | AS-Wide Unique BGP ID |
 
-### confederation
-Tests for AS confederations per RFC 3065:
-- CONFED-001: AS_CONFED_SEQUENCE Path Attribute
-- CONFED-002: AS_CONFED_SET Path Attribute
-- CONFED-003: Confederation Identifier Loop Detection
-- CONFED-004: Member-AS Loop Detection
+## Programmatic API
 
-### keepalive_message
-Tests for KEEPALIVE message handling per RFC 4271 Section 4.4:
-- KA-001: KEEPALIVE in Wrong State
-- KA-002: KEEPALIVE Wrong Length
-- KA-004: KEEPALIVE in Connect State
-- KA-005: KEEPALIVE in OpenSent State
+```python
+from bgp_test_framework.api import run_bgp_tests, BGPTestHarness, BGPTestConfig
 
-### notification_message
-Tests for NOTIFICATION message handling per RFC 4271 Section 4.5 and 6.4:
-- NOT-001: NOTIFICATION in Idle State
-- NOT-002: NOTIFICATION Message Too Short
-- NOT-005: Cease Notification
+# Quick start - run all tests
+result = run_bgp_tests("192.168.1.1", 65001)
+print(f"Compliance Score: {result['compliance_score']}%")
 
-### version_negotiation
-Tests for BGP version negotiation per RFC 4271 Section 7:
-- VN-001: BGP Version 1
-- VN-002: BGP Version 2
-- VN-003: BGP Version 3
-- VN-004: BGP Version 0
-- VN-005: BGP Version 5 (Future)
+# Run specific categories
+result = run_bgp_tests(
+    "192.168.1.1",
+    65001,
+    categories=["message_header", "open_message"]
+)
 
-### connection_collision
-Tests for BGP connection collision detection per RFC 4271 Section 6.8:
-- COL-001: Simultaneous Connection Open
-- COL-002: Same BGP Identifier
-- COL-003: Higher BGP Identifier Wins
+# Use the test harness for more control
+config = BGPTestConfig(
+    target_host="192.168.1.1",
+    source_as=65001,
+    hold_time=180
+)
+harness = BGPTestHarness(config)
+tests = harness.get_all_tests("message_header")
+results = harness.run_category("message_header")
+```
+
+### Message Builder API
+
+```python
+from bgp_test_framework.api import BGPMessageBuilder
+
+# Build messages
+open_msg = BGPMessageBuilder.create_open(my_as=65001, hold_time=180)
+keepalive = BGPMessageBuilder.create_keepalive()
+route_refresh = BGPMessageBuilder.create_route_refresh(afi=1, safi=1)
+
+# Build path attributes
+origin = BGPMessageBuilder.create_origin_attribute("IGP")
+as_path = BGPMessageBuilder.create_as_path_attribute([65001, 65002])
+next_hop = BGPMessageBuilder.create_next_hop_attribute("192.168.1.1")
+```
 
 ## Configuration File
-
-Example YAML configuration:
 
 ```yaml
 # Target configuration
@@ -425,26 +225,18 @@ timeout: 5.0
 test_categories:
   - message_header
   - open_message
-  - update_message
 
 test_ids:
   - MH-001
   - OP-001
 
-# Test behavior
-delay_between_tests: 0.5
-retry_count: 1
-
 # Output
 output: "results.json"
 format: "json"
 verbose: true
-debug: false
 ```
 
 ## Output Format
-
-### JSON Output
 
 ```json
 {
@@ -456,8 +248,7 @@ debug: false
     "target": "192.168.1.1:179",
     "source_as": 65001,
     "by_category": {
-      "message_header": {"total": 14, "passed": 14, "failed": 0},
-      "open_message": {"total": 15, "passed": 13, "failed": 2}
+      "message_header": {"total": 14, "passed": 14, "failed": 0}
     }
   },
   "results": [
@@ -467,43 +258,62 @@ debug: false
       "category": "message_header",
       "passed": true,
       "expected_behavior": "Send OPEN with invalid marker",
-      "actual_behavior": "NOTIFICATION received: code=1, subcode=1"
+      "actual_behavior": "NOTIFICATION received"
     }
   ]
 }
 ```
 
-## Testing Considerations
+## Testing Setup
 
-### Legal and Ethical Use
+This framework requires a BGP peer to test against.
 
-This framework is intended for:
-- Security research and vulnerability assessment
-- Protocol compliance testing
-- Network device validation
-- Educational purposes
+### Option 1: Containerlab (Recommended)
 
-**WARNING**: Only test systems you own or have explicit permission to test. Unauthorized testing may be illegal.
+```bash
+# Install containerlab
+curl -L https://containerlab.dev/install/ | bash
 
-### Test Prerequisites
+# Deploy FRR containers
+containerlab deploy -t topology.yml
 
-1. Network connectivity to target BGP peer
-2. Target BGP speaker must be reachable on TCP port 179
-3. No firewall blocking the connection
+# Test the framework
+bgp-test --target <router_ip> --as-number 65001
+
+# Cleanup
+containerlab destroy -t topology.yml
+```
+
+### Option 2: Docker
+
+```bash
+docker run -d --name bgp-peer frrouting/frr:latest
+docker exec -it bgp-peer vtysh -c "configure terminal"
+docker exec -it bgp-peer vtysh -c "router bgp 65001"
+docker exec -it bgp-peer vtysh -c "neighbor 192.168.1.1 remote-as 65001"
+bgp-test --target <container_ip> --as-number 65001
+```
+
+### Quick Test Without a BGP Peer
+
+```python
+from bgp_test_framework.api import BGPMessageBuilder, BGPTestHarness, BGPTestConfig
+
+# Validate message generation
+msg = BGPMessageBuilder.create_open(my_as=65001)
+
+# Get available tests
+config = BGPTestConfig(target_host="192.168.1.1", source_as=65001)
+harness = BGPTestHarness(config)
+tests = harness.get_all_tests("message_header")
+```
 
 ## Development
 
 ### Running Tests
 
 ```bash
-# Unit tests
 pytest tests/unit/
-
-# Functional tests
-pytest tests/functional/
-
-# All tests
-pytest tests/
 ```
 
 ### Project Structure
@@ -511,607 +321,78 @@ pytest tests/
 ```
 bgp_test_framework/
 ├── src/bgp_test_framework/
-│   ├── __init__.py
-│   ├── constants.py       # RFC 4271/4272 constants
+│   ├── constants.py       # RFC constants
 │   ├── messages.py        # BGP message parsing/building
-│   ├── assessments.py     # Assessment case definitions (250+ tests)
-│   ├── runner.py          # Test execution engine
+│   ├── assessments.py     # Assessment cases (59 categories)
+│   ├── runner.py           # Test execution engine
 │   ├── api.py             # Programmatic API
 │   └── cli.py             # CLI entry point
-├── tests/
-│   ├── unit/              # Unit tests
-│   └── functional/         # Functional tests
-├── examples/              # Example setups
-│   ├── containerlab/       # Containerlab topology
-│   ├── docker/             # Docker Compose setup
-│   └── test_example.py     # Python API example
-├── RFCs/                  # RFC specification documents
-│   ├── rfc1105.txt        # RFC 1105 (BGP v1, obsolete)
-│   ├── rfc1163.txt        # RFC 1163 (BGP-2, obsolete)
-│   ├── rfc1267.txt        # RFC 1267 (BGP-3, obsolete)
-│   ├── rfc1771.txt        # RFC 1771 (BGP-4, obsolete)
-│   ├── rfc1930.txt        # RFC 1930 (AS Number Guidelines)
-│   ├── rfc1997.txt        # RFC 1997 (BGP Communities)
-│   ├── rfc1998.txt        # RFC 1998 (Community in Multi-home)
-│   ├── rfc2439.txt        # RFC 2439 (Route Flap Damping)
-│   ├── rfc2858.txt        # RFC 2858 (Multiprotocol Extensions)
-│   ├── rfc2918.txt        # RFC 2918 (Route Refresh)
-│   ├── rfc3065.txt        # RFC 3065 (AS Confederations)
-│   ├── rfc3345.txt        # RFC 3345 (Route Flap Damping)
-│   ├── rfc4271.txt        # RFC 4271 (BGP-4)
-│   ├── rfc4272.txt        # RFC 4272 (BGP Security)
-│   └── rfc8092.txt        # RFC 8092 (BGP Large Communities)
+├── tests/unit/            # Unit tests
+├── RFCs/                  # 53 BGP RFC specifications
 ├── config.yaml            # Example configuration
-├── pyproject.toml        # Project configuration
 └── README.md
 ```
 
-### communities
-Tests for BGP Communities attribute per RFC 1997:
-- COMM-001: Well-Known NO_EXPORT Community
-- COMM-002: Well-Known NO_ADVERTISE Community
-- COMM-003: Well-Known NO_EXPORT_SUBCONFED Community
-- COMM-004: Custom Community Format
-- COMM-005: Multiple Communities
-- COMM-006: Community Attribute Length Zero
-- COMM-007: Community Value Reserved Range
-- COMM-008: Community Value Reserved Upper Range
-- COMM-009: Community Aggregation
-- COMM-010: Community Propagation
+## Supported RFCs
 
-### large_communities
-Tests for BGP Large Communities attribute per RFC 8092:
-- LCOMM-001: Large Community Attribute
-- LCOMM-002: Large Community 12-Byte Value
-- LCOMM-003: Multiple Large Communities
-- LCOMM-004: Large Community Length Not Multiple of 12
-- LCOMM-005: Large Community Reserved AS in Global Admin
-- LCOMM-006: Large Community Duplicate Values
-- LCOMM-007: Large Community Aggregation
-- LCOMM-008: Large Community Attribute Zero Length
-- LCOMM-009: Large Community Global Administrator AS4
-- LCOMM-010: Large Community with Local Data Parts
+### Core BGP
+- RFC 4271 - BGP-4
+- RFC 4272 - BGP Security
 
-### route_flap_damping
-Tests for Route Flap Damping per RFC 2439 and RFC 3345:
-- DAMP-001: Route Withdrawal Increment
-- DAMP-002: Route Re-advertisement
-- DAMP-003: Damping Threshold Exceeded
-- DAMP-004: Route Reuse After Stability
-- DAMP-005: Maximum Hold Time
-- DAMP-006: Exponential Decay While Reachable
-- DAMP-007: Exponential Decay While Unreachable
-- DAMP-008: Rapid Route Flapping
-- DAMP-009: IBGP vs EBGP Damping
-- DAMP-010: Damping Parameter Persistence
+### Multiprotocol & Extensions
+- RFC 2858, 4760 - Multiprotocol Extensions
+- RFC 2918 - Route Refresh
+- RFC 4724 - Graceful Restart
+- RFC 7313 - Enhanced Route Refresh
+- RFC 7606 - Extended Messages
+- RFC 5291 - ORF Filtering
+- RFC 6724 - Dynamic Capability
+- RFC 2842 - Capabilities
 
-### as_number
-Tests for AS Number handling per RFC 1930 and RFC 6996:
-- AS-001: AS 0 Rejection
-- AS-002: Private AS 16-bit Range
-- AS-003: Private AS 32-bit Range
-- AS-004: AS 65535 Reserved
-- AS-005: AS 4294967295 Reserved
-- AS-006: Four-Octet AS Capability
-- AS-007: AS_PATH with 4-Byte AS Numbers
-- AS-008: AS4_AGGREGATOR Attribute
-- AS-009: AS_PATH Loop with 4-Byte AS
-- AS-010: Private AS Removal on EBGP
+### VPNs & MPLS
+- RFC 2547, 4364 - BGP/MPLS VPNs
+- RFC 4659 - IPv6 VPN
+- RFC 3107 - MPLS Labels
+- RFC 8277 - MPLS Label Binding
 
-### multiprotocol
-Tests for Multiprotocol Extensions per RFC 2858:
-- MP-001: MP_REACH_NLRI Invalid AFI
-- MP-002: MP_REACH_NLRI Invalid SAFI
-- MP-003: MP_UNREACH_NLRI Invalid AFI
-- MP-004: MP_REACH_NLRI IPv6
-- MP-005: MP_REACH_NLRI VPNv4
-- MP-006: MP_REACH_NLRI Next Hop Length Error
-- MP-007: MP_REACH_NLRI Reserved SNPA
-- MP-008: MP_REACH_NLRI Without Capability
+### Link-State
+- RFC 7752 - BGP-LS
+- RFC 9552 - BGP-LS Updated
+- RFC 9161 - BGP-LS IS-IS SR
 
-### vpn
-Tests for BGP/MPLS VPNs per RFC 2547 and RFC 4364:
-- VPN-001: Route Distinguisher Type 0 Format
-- VPN-002: Route Distinguisher Type 1 Format
-- VPN-003: Route Distinguisher Type 2 Format
-- VPN-004: VPN-IPv4 Address Encoding
-- VPN-005: Route Target Extended Community
-- VPN-006: Site of Origin Extended Community
-- VPN-007: VPN Route With MPLS Label
-- VPN-008: VPN-IPv4 AFI/SAFI Encoding
-- VPN-009: VPN Route Distribution via IBGP
-- VPN-010: Multiple Route Targets
+### Security & Validation
+- RFC 6810 - RPKI to Router
+- RFC 6811 - Origin Validation
+- RFC 7607 - AS 0 Processing
+- RFC 5082 - GTSM
+- RFC 5575 - FlowSpec
+- RFC 8203 - Admin Shutdown
+- RFC 4486 - Cease Notification
 
-### capabilities
-Tests for Capability Advertisement per RFC 2842:
-- CAP-001: Multiple Capabilities in Single OPEN
-- CAP-002: Reserved Capability Code 0
-- CAP-003: Capability with Wrong Length
-- CAP-004: Duplicate Capability Codes
-- CAP-005: Unsupported Capability Subcode
-- CAP-006: Unknown Capability Code Handling
-- CAP-007: Private Use Capability Codes
-- CAP-008: 4-Byte AS Capability Code 65
+### Communities
+- RFC 1997 - Communities
+- RFC 8092 - Large Communities
+- RFC 8195 - Large Community Usage
+- RFC 5701 - IPv6 Extended Community
+- RFC 7999 - BLACKHOLE Community
+- RFC 3765 - NOPEER
 
-### route_refresh
-Tests for Route Refresh Capability per RFC 2918:
-- RFR-001: Route Refresh Message Format
-- RFR-002: Route Refresh with AFI/SAFI
-- RFR-003: Route Refresh for IPv4 Unicast
-- RFR-004: Route Refresh for IPv6 Unicast
-- RFR-005: Route Refresh with Route Target ORF
-- RFR-006: Route Refresh Response
-- RFR-007: Route Refresh Without Capability
-- RFR-008: Multiple Route Refresh Requests
-- RFR-009: Route Refresh AFI/SAFI Not Advertised
-- RFR-010: Route Refresh End-of-RIB
+### EVPN & SR
+- RFC 8365 - EVPN NVO
+- RFC 9135 - EVPN IRB
+- RFC 9136 - EVPN IP Prefix
+- RFC 8402 - Segment Routing
+- RFC 9252 - SRv6 Overlay
+- RFC 9256 - SR Policy
 
-### mpls_labels
-Tests for MPLS Label Distribution in BGP per RFC 3107:
-- LABEL-001: MPLS Label in MP_REACH_NLRI SAFI-4
-- LABEL-002: MPLS Label 3-Byte Encoding
-- LABEL-003: MPLS Label Stack Depth
-- LABEL-004: MPLS Label Reserved Range 0-15
-- LABEL-005: MPLS Label Implicit NULL
-- LABEL-006: MPLS Label Withdrawal Value
-- LABEL-007: MPLS Label Next Hop Self
-- LABEL-008: MPLS Label Preservation on Redistribute
-- LABEL-009: MPLS Label NLRI Length Field
-- LABEL-010: MPLS Label Capability Advertisement
-
-### nopeer
-Tests for NOPEER Community per RFC 3765:
-- NOPEER-001: NOPEER Community Value (0xFFFFFF04)
-- NOPEER-002: NOPEER Route Scope Control
-- NOPEER-003: NOPEER vs NO_EXPORT Comparison
-- NOPEER-004: NOPEER Well-Known Transitive
-- NOPEER-005: NOPEER Filtering Implementation
-
-### route_oscillation
-Tests for BGP Route Oscillation Conditions per RFC 3345:
-- OSCIL-001: Type I Oscillation with Route Reflection
-- OSCIL-002: Type I Oscillation with Confederation
-- OSCIL-003: MED Non-Deterministic Ordering
-- OSCIL-004: Type II Oscillation Conditions
-- OSCIL-005: MED Comparison Same AS Only
-
-### cease_notification
-Tests for BGP Cease Notification Message Subcodes per RFC 4486:
-- CEASE-001: Maximum Number of Prefixes Reached
-- CEASE-002: Administrative Shutdown
-- CEASE-003: Peer De-configured
-- CEASE-004: Administrative Reset
-- CEASE-005: Connection Rejected
-- CEASE-006: Other Configuration Change
-- CEASE-007: Connection Collision Resolution
-- CEASE-008: Out of Resources
-- CEASE-009: Cease with Optional Data (Max Prefixes)
-- CEASE-010: Cease Unknown Subcode
-
-### ipv6_vpn
-Tests for BGP-MPLS IP VPN Extension for IPv6 VPN per RFC 4659:
-- V6VPN-001: VPN-IPv6 Route Advertisement
-- V6VPN-002: VPN-IPv6 Labeled Route
-- V6VPN-003: VPN-IPv6 with Unspecified Address
-- V6VPN-004: VPN-IPv6 Prefix Encoding
-- V6VPN-RD-*: Route Distinguisher Type 0/1/2 tests
-- V6VPN-NH-*: Next Hop Encoding tests (Global, Link-Local, IPv4-mapped)
-
-### gtsm
-Tests for Generalized TTL Security Mechanism per RFC 5082:
-- GTSM-255: TTL=255 for Single Hop
-- GTSM-254: TTL=254 Multi-Hop Rejection
-- GTSM-001: GTSM Single Hop Verification
-- GTSM-002: GTSM Multi-Hop Rejection
-- GTSM-003: GTSM ICMP Error Handling
-- GTSM-*: Various TTL Values (0, 1, 64, 254, 255)
-
-### flow_spec
-Tests for Dissemination of Flow Specification Rules per RFC 5575:
-- FSPEC-001: FlowSpec Basic Match (Destination Prefix)
-- FSPEC-002: FlowSpec Port Match
-- FSPEC-003: FlowSpec Protocol Match
-- FSPEC-004: FlowSpec TCP Flags Match
-- FSPEC-005: FlowSpec DSCP Match
-- FSPEC-006: FlowSpec Fragment Match
-- FSPEC-007: FlowSpec Combined Match
-- FSPEC-008: FlowSpec Validation
-- FSPEC-133: IPv4 FlowSpec (AFI=1, SAFI=133)
-- FSPEC-134: VPNv4 FlowSpec (AFI=1, SAFI=134)
-- FSPEC-COMP-*: Component Type Tests (Types 1-12)
-- FSPEC-ACTION-*: Action Type Tests (traffic-rate, traffic-action, redirect, traffic-marking)
-
-### ipv6_extended_community
-Tests for IPv6 Address Specific Extended Community per RFC 5701:
-- V6EC-0002: IPv6 Extended Community: Route Target
-- V6EC-0003: IPv6 Extended Community: Route Origin
-- V6EC-001: IPv6 Extended Community Length Validation (20 octets)
-- V6EC-002: IPv6 Route Target with 2-byte AS Specific
-- V6EC-003: IPv6 Route Target with 4-byte AS
-- V6EC-004: IPv6 Route Origin with 2-byte AS Specific
-- V6EC-005: IPv6 Route Origin with 4-byte AS
-- V6EC-006: IPv6 Extended Community Global Administrator Field
-- V6EC-007: IPv6 Extended Community Reserved Subtype
-
-### rpki_router
-Tests for RPKI to Router Protocol per RFC 6810:
-- RPKI-000: Serial Notify PDU
-- RPKI-001: Serial Query PDU
-- RPKI-002: Reset Query PDU
-- RPKI-003: Cache Response PDU
-- RPKI-004: IPv4 Prefix PDU
-- RPKI-006: IPv6 Prefix PDU
-- RPKI-007: End of Data PDU
-- RPKI-008: Error Report PDU
-- RPKI-009: RPKI PDU Header Format
-- RPKI-010: RPKI Length Field Validation
-
-### origin_validation
-Tests for BGP Prefix Origin Validation per RFC 6811:
-- OV-000: Origin Validation State: NOT_FOUND
-- OV-001: Origin Validation State: VALID
-- OV-002: Origin Validation State: INVALID
-- OV-003: Origin Validation Route with Validated ROA
-- OV-004: Origin Validation Route without ROA (NOT_FOUND)
-- OV-005: Origin Validation Invalid Origin AS
-- OV-006: Origin Validation Max Length Exceeded
-- OV-007: Origin Validation Exact Match
-- OV-008: Origin Validation with AS_PATH
-
-### as0_processing
-Tests for AS 0 Processing per RFC 7607:
-- AS0-001: AS 0 in OPEN Message (must reject)
-- AS0-002: AS 0 in AS_PATH (must reject)
-- AS0-003: AS 0 in AS4_AGGREGATOR
-- AS0-004: AS 0 in AGGREGATOR Attribute
-- AS0-005: AS 0 Leading in AS_PATH
-- AS0-006: AS 0 in AS_SET
-- AS0-007: AS 0 in AS_CONFED_SEQUENCE
-- AS0-008: AS 0 in AS_CONFED_SET
-- AS0-009: AS 0 Propagation Prevention
-- AS0-010: AS 0 with Valid Routes
-
-### bgp_ls
-Tests for BGP Link-State Distribution per RFC 7752:
-- BGPLS-001: BGP-LS AFI/SAFI Values (AFI=16388, SAFI=71/72)
-- BGPLS-002: BGP-LS Node NLRI
-- BGPLS-003: BGP-LS Link NLRI
-- BGPLS-004: BGP-LS IPv4 Prefix NLRI
-- BGPLS-005: BGP-LS IPv6 Prefix NLRI
-- BGPLS-006: BGP-LS Node Descriptor TLVs
-- BGPLS-007: BGP-LS Link Descriptor TLVs
-- BGPLS-008: BGP-LS Prefix Descriptor TLVs
-- BGPLS-009: BGP-LS Capability Advertisement
-- BGPLS-010: BGP-LS VPN SAFI
-- BGPLS-NLRI-*: NLRI Type Tests (Node=1, Link=2, IPv4 Prefix=3, IPv6 Prefix=4)
-- BGPLS-PROT-*: Protocol ID Tests (IS-IS, OSPF, Direct, Static, OSPFv3)
-
-### blackhole_community
-Tests for BLACKHOLE Community per RFC 7999:
-- BH-001: BLACKHOLE Community Value (0xFFFF029A)
-- BH-002: BLACKHOLE IPv4 /32 Prefix
-- BH-003: BLACKHOLE IPv6 /128 Prefix
-- BH-004: BLACKHOLE with NO_EXPORT Scope
-- BH-005: BLACKHOLE with NO_ADVERTISE Scope
-- BH-006: BLACKHOLE with NO_EXPORT_SUBCONFED
-- BH-007: BLACKHOLE Action Implementation
-- BH-008: BLACKHOLE Prefix Length /24 IPv4
-- BH-009: BLACKHOLE Authorization Validation
-- BH-010: BLACKHOLE with Multiple Scoping Communities
-
-### admin_shutdown
-Tests for BGP Administrative Shutdown Communication per RFC 8203:
-- AS-001: Admin Shutdown with UTF-8 Message
-- AS-002: Admin Shutdown Zero Length
-- AS-003: Admin Shutdown Max Length (128)
-- AS-004: Admin Reset with Message
-- AS-005: Admin Shutdown Multiline UTF-8
-- AS-006: Admin Shutdown Unicode Content
-- AS-007: Admin Shutdown Reserved Subcode
-- AS-008: Admin Shutdown Syslog Format
-- AS-009: Admin Shutdown with Error Data
-- AS-010: Admin Reset Backward Compatibility
-
-### mpls_label_binding
-Tests for MPLS Label Binding to Address Prefixes per RFC 8277:
-- MLB-001: Single MPLS Label SAFI-4
-- MLB-002: Single MPLS Label SAFI-128
-- MLB-003: Multiple Labels Capability
-- MLB-004: Label Binding Advertisement
-- MLB-005: Label Withdrawal with Compatibility
-- MLB-006: Label Encoding Single Label
-- MLB-007: Label Propagation No NH Change
-- MLB-008: Label Propagation NH Change
-- MLB-009: IPv6 Labeled Unicast SAFI-4
-- MLB-010: Label Count Min Validation
-
-### large_community_usage
-Tests for BGP Large Community Usage per RFC 8195:
-- LCU-FUNC-01: Large Community Function: ISO 3166-1 Country
-- LCU-FUNC-02: Large Community Function: UN M49 Region
-- LCU-FUNC-03: Large Community Function: Relation
-- LCU-FUNC-04: Large Community Function: ASN Selective NO_EXPORT
-- LCU-FUNC-05: Large Community Function: Location Selective NO_EXPORT
-- LCU-FUNC-06: Large Community Function: ASN Prepend
-- LCU-FUNC-07: Large Community Function: Location Prepend
-- LCU-001: Selective NO_EXPORT by ASN
-- LCU-002: Selective NO_EXPORT by Country
-- LCU-003: AS Prepend by ASN
-- LCU-004: Route Server Control
-- LCU-005: Route Preference Communities
-
-### datacenter_bgp
-Tests for BGP in Large-Scale Data Centers per RFC 7938:
-- DCB-001: Single-Hop EBGP Session
-- DCB-002: Private ASN Usage
-- DCB-003: Four-Octet ASN in Data Center
-- DCB-004: Allowas-in Feature
-- DCB-005: Remove Private AS Feature
-- DCB-006: Basic ECMP Behavior
-- DCB-007: Multipath Relax
-- DCB-008: AS_PATH Loop Detection DC
-- DCB-009: Route Advertisement No Summarization
-- DCB-010: ECMP with Link Bandwidth
-
-### graceful_shutdown
-Tests for BGP Graceful Shutdown per RFC 8326:
-- GSD-001: Graceful Shutdown Community Value (0xFFFF0000)
-- GSD-002: Graceful Shutdown LOCAL_PREF 0
-- GSD-003: Graceful Shutdown with NO_EXPORT
-- GSD-004: Graceful Shutdown Route Selection
-- GSD-005: Graceful Shutdown Maintenance Window
-- GSD-006: Graceful Shutdown Traffic Rerouting
-- GSD-007: Graceful Shutdown Restoration
-- GSD-008: Graceful Shutdown in EBGP
-- GSD-009: Graceful Shutdown in IBGP
-- GSD-010: Graceful Shutdown Community Recognition
-
-### evpn_nvo
-Tests for EVPN Network Virtualization Overlay per RFC 8365:
-- EVPN-TUN-08: Tunnel Type VXLAN
-- EVPN-TUN-09: Tunnel Type NVGRE
-- EVPN-TUN-10: Tunnel Type MPLS
-- EVPN-TUN-11: Tunnel Type MPLS in GRE
-- EVPN-TUN-12: Tunnel Type VXLAN-GPE
-- EVPN-001: EVPN VXLAN Encapsulation
-- EVPN-002: EVPN VXLAN-GPE Encapsulation
-- EVPN-003: VNI Encoding 24-bit
-- EVPN-004: RT Auto-Derivation VID
-- EVPN-005: RT Auto-Derivation VXLAN
-
-### segment_routing
-Tests for Segment Routing per RFC 8402:
-- SR-ALGO-0: SR Algorithm SPF
-- SR-ALGO-1: SR Algorithm Strict SPF
-- SR-PEER-1: Peering Segment PeerNode
-- SR-PEER-2: Peering Segment PeerAdj
-- SR-PEER-3: Peering Segment PeerSet
-- SR-001: SR-MPLS SID Label
-- SR-002: SR-MPLS SID within SRGB
-- SR-003: BGP-Prefix Segment
-- SR-004: PeerNode SID
-- SR-005: PeerAdj SID
-- SR-006: PeerSet SID
-
-### evpn_irb
-Tests for EVPN Integrated Routing and Bridging per RFC 9135:
-- IRB-SYMMETRIC-001: IRB Symmetric MAC/IP Route with Label2
-- IRB-SYMMETRIC-002: IRB Symmetric Subnet Route (RT-5)
-- IRB-SYMMETRIC-003: IRB Symmetric Default Gateway Extended Community
-- IRB-ASYMMETRIC-001: IRB Asymmetric MAC/IP Route with Label2
-- IRB-ASYMMETRIC-002: IRB Asymmetric Subnet Route (RT-5)
-- IRB-ASYMMETRIC-003: IRB Asymmetric Default Gateway Extended Community
-- IRB-ANYCAST-001: Anycast MAC Address Derivation
-- IRB-MOBILITY-001: MAC/IP Mobility Procedures
-- IRB-EVPN-ROUTER-MAC-001: EVPN Router's MAC Extended Community
-- IRB-TTL-001: TTL/Hop Limit Decrement
-
-### evpn_ip_prefix
-Tests for EVPN IP Prefix Advertisement (RT-5) per RFC 9136:
-- RT5-IPv4-001: EVPN IP Prefix IPv4 Route Encoding
-- RT5-IPv4-002: EVPN IP Prefix IPv4 with Overlay Index (GW IP)
-- RT5-IPv4-003: EVPN IP Prefix IPv4 with Overlay Index (ESI)
-- RT5-IPv4-004: EVPN IP Prefix IPv4 with Overlay Index (MAC)
-- RT5-IPv6-001: EVPN IP Prefix IPv6 Route Encoding
-- RT5-IPv6-002: EVPN IP Prefix IPv6 with Overlay Index (GW IP)
-- RT5-IPv6-003: EVPN IP Prefix IPv6 with Overlay Index (ESI)
-- RT5-IPv6-004: EVPN IP Prefix IPv6 with Overlay Index (MAC)
-- RT5-RECURSIVE-001: RT-5 Recursive Lookup Resolution
-- RT5-INVALID-001: RT-5 Invalid Combination (ESI + GW IP Non-Zero)
-- RT5-LABEL-001: RT-5 MPLS Label Zero with Overlay Index
-
-### bgp_role
-Tests for BGP Role per RFC 9234:
-- ROLE-PROVIDER: BGP Role Capability: Provider (0)
-- ROLE-ROUTE_SERVER: BGP Role Capability: Route Server (1)
-- ROLE-ROUTE_SERVER_CLIENT: BGP Role Capability: Route Server Client (2)
-- ROLE-CUSTOMER: BGP Role Capability: Customer (3)
-- ROLE-PEER: BGP Role Capability: Peer (4)
-- ROLE-PROVIDER-CUSTOMER: Role Pair Provider -> Customer
-- ROLE-CUSTOMER-PROVIDER: Role Pair Customer -> Provider
-- ROLE-ROUTE_SERVER-ROUTE_SERVER_CLIENT: Role Pair RS -> RSC
-- ROLE-ROUTE_SERVER_CLIENT-ROUTE_SERVER: Role Pair RSC -> RS
-- ROLE-PEER-PEER: Role Pair Peer -> Peer
-- ROLE-OTC-001: OTC Attribute Present from Customer
-- ROLE-OTC-002: OTC Attribute Added on Egress to Customer
-- ROLE-OTC-003: OTC Attribute Not Propagated to Provider
-- ROLE-MISMATCH-001: Role Mismatch Notification
-- ROLE-STRICT-001: Strict Mode - Role Required
-
-### srv6_bgp_overlay
-Tests for SRv6 BGP Overlay per RFC 9252:
-- SRV6-L3_SERVICE-001: SRv6 L3 Service TLV Encoding
-- SRV6-L2_SERVICE-001: SRv6 L2 Service TLV Encoding
-- SRV6-SID-END_DX4: SRv6 SID Endpoint Behavior END_DX4
-- SRV6-SID-END_DT4: SRv6 SID Endpoint Behavior END_DT4
-- SRV6-SID-END_DX6: SRv6 SID Endpoint Behavior END_DX6
-- SRV6-SID-END_DT6: SRv6 SID Endpoint Behavior END_DT6
-- SRV6-SID-END_DX2: SRv6 SID Endpoint Behavior END_DX2
-- SRV6-SID-END_DT2U: SRv6 SID Endpoint Behavior END_DT2U
-- SRV6-SID-END_DT2M: SRv6 SID Endpoint Behavior END_DT2M
-- SRV6-SID-END_DT46: SRv6 SID Endpoint Behavior END_DT46
-- SRV6-SID-INFO-001: SRv6 SID Information Sub-TLV
-- SRV6-STRUCTURE-001: SRv6 SID Structure Sub-Sub-TLV
-- SRV6-TRANSPOSITION-001: SRv6 SID Transposition Scheme
-- SRV6-L3VPN-001: IPv4 VPN over SRv6 Core
-- SRV6-L3VPN-002: IPv6 VPN over SRv6 Core
-- SRV6-EVPN-001: EVPN MAC/IP over SRv6 Core
-- SRV6-EVPN-002: EVPN IP Prefix (RT-5) over SRv6 Core
-
-### sr_policy
-Tests for BGP SR Policy per RFC 9256:
-- SRPOL-SEG-A: SR Policy Segment Type A (SR-MPLS Label)
-- SRPOL-SEG-B: SR Policy Segment Type B (SRv6 SID)
-- SRPOL-SEG-C: SR Policy Segment Type C (IPv4 Prefix Algo)
-- SRPOL-SEG-D: SR Policy Segment Type D (IPv6 Prefix Algo MPLS)
-- SRPOL-SEG-E: SR Policy Segment Type E (IPv4 Prefix Local Intf)
-- SRPOL-SEG-F: SR Policy Segment Type F (IPv4 Link Local Remote)
-- SRPOL-SEG-G: SR Policy Segment Type G (IPv6 Prefix Local Intf MPLS)
-- SRPOL-SEG-H: SR Policy Segment Type H (IPv6 Link Local Remote MPLS)
-- SRPOL-SEG-I: SR Policy Segment Type I (IPv6 Prefix Algo SRv6)
-- SRPOL-SEG-J: SR Policy Segment Type J (IPv6 Prefix Local Intf SRv6)
-- SRPOL-SEG-K: SR Policy Segment Type K (IPv6 Link Local Remote SRv6)
-- SRPOL-IDENT-001: SR Policy Identification (Headend, Color, Endpoint)
-- SRPOL-CP-001: SR Policy Candidate Path Preference
-- SRPOL-CP-002: SR Policy Candidate Path Protocol-Origin
-- SRPOL-BSID-001: SR Policy Binding SID (BSID)
-- SRPOL-STEER-001: Steering into SR Policy
-- SRPOL-VALID-001: SR Policy Validity
-- SRPOL-DROP-001: Drop-Upon-Invalid SR Policy
-
-### bgp_ls_updated
-Tests for BGP-LS Updated per RFC 9552:
-- BGPLS-NODE: BGP-LS NLRI Type: NODE (1)
-- BGPLS-LINK: BGP-LS NLRI Type: LINK (2)
-- BGPLS-IPV4_PREFIX: BGP-LS NLRI Type: IPV4_PREFIX (3)
-- BGPLS-IPV6_PREFIX: BGP-LS NLRI Type: IPV6_PREFIX (4)
-- BGPLS-PROTO-IS_IS_LEVEL_1: BGP-LS Protocol ID: IS_IS_LEVEL_1
-- BGPLS-PROTO-IS_IS_LEVEL_2: BGP-LS Protocol ID: IS_IS_LEVEL_2
-- BGPLS-PROTO-OSPFV2: BGP-LS Protocol ID: OSPFV2
-- BGPLS-PROTO-DIRECT: BGP-LS Protocol ID: DIRECT
-- BGPLS-PROTO-STATIC: BGP-LS Protocol ID: STATIC
-- BGPLS-PROTO-OSPFV3: BGP-LS Protocol ID: OSPFV3
-- BGPLS-NODE-DESC-001: BGP-LS Node Descriptor TLVs
-- BGPLS-LINK-DESC-001: BGP-LS Link Descriptor TLVs
-- BGPLS-PREFIX-DESC-001: BGP-LS Prefix Descriptor TLVs
-- BGPLS-ATTR-001: BGP-LS Attribute TLVs
-- BGPLS-VPN-001: BGP-LS VPN (SAFI 72)
-- BGPLS-UNKNOWN-001: BGP-LS Unknown NLRI Type Handling
-- BGPLS-ORDER-001: BGP-LS TLV Ordering
-
-### aigp
-Tests for Accumulated IGP Metric Attribute per RFC 7311:
-- AIGP-001: AIGP Attribute Type
-- AIGP-002: AIGP Attribute Transitive
-- AIGP-003: AIGP Metric TLV
-- AIGP-004: AIGP Metric 32-bit
-- AIGP-005: AIGP Originator
-- AIGP-006: AIGP EBGP Rule
-- AIGP-007: AIGP IBGP Only
-- AIGP-008: AIGP Metric Accumulation
-- AIGP-009: AIGP Decision Process
-- AIGP-010: AIGP Next-Hop Self
-
-### extended_optional_parameters
-Tests for Extended Optional Parameters Length per RFC 9072:
-- EOP-001: Extended Length Type 255
-- EOP-002: Extended OP Length Field
-- EOP-003: Extended Parm Length Field
-- EOP-004: Non-Ext OP Len 255
-- EOP-005: Non-Ext OP Type 255
-- EOP-006: Backward Compatibility
-- EOP-007: Extended < 256 Bytes
-- EOP-008: Extended > 256 Bytes
-
-### fsm_error_subcodes
-Tests for FSM Error Subcodes per RFC 6608:
-- FSMS-001: FSM Unspecified Error (0)
-- FSMS-002: FSM OpenSent Unexpected (1)
-- FSMS-003: FSM OpenConfirm Unexpected (2)
-- FSMS-004: FSM Established Unexpected (3)
-- FSMS-005: Unexpected Keepalive in OpenSent
-- FSMS-006: Unexpected Update in OpenConfirm
-- FSMS-007: Unexpected Open in Established
-- FSMS-008: FSM Subcode Data Field
-
-### bgp_identifier
-Tests for AS-Wide Unique BGP Identifier per RFC 6286:
-- BGPI-001: BGP ID 4-Octet Unsigned
-- BGPI-002: BGP ID Non-Zero
-- BGPI-003: BGP ID Zero Rejection
-- BGPI-004: BGP ID AS-Wide Unique
-- BGPI-005: BGP ID Collision Detection
-- BGPI-006: BGP ID Same ID EBGP
-- BGPI-007: BGP ID Same ID IBGP
-- BGPI-008: BGP ID Connection Collision
-- BGPI-009: BGP ID IPv6 Support
-- BGPI-010: BGP ID Aggregator Attribute
-
-## References
-
-- [RFC 4271 - A Border Gateway Protocol 4 (BGP-4)](https://www.rfc-editor.org/rfc/rfc4271)
-- [RFC 4272 - BGP Security Vulnerabilities Analysis](https://www.rfc-editor.org/rfc/rfc4272)
-- [RFC 2918 - Route Refresh Capability for BGP-4](https://www.rfc-editor.org/rfc/rfc2918)
-- [RFC 3065 - Autonomous System Confederations for BGP](https://www.rfc-editor.org/rfc/rfc3065)
-- [RFC 4724 - Graceful Restart Mechanism for BGP](https://www.rfc-editor.org/rfc/rfc4724)
-- [RFC 7313 - Enhanced Route Refresh Capability for BGP-4](https://www.rfc-editor.org/rfc/rfc7313)
-- [RFC 4760 - Multiprotocol Extensions for BGP-4](https://www.rfc-editor.org/rfc/rfc4760)
-- [RFC 2858 - Multiprotocol Extensions for BGP-4](https://www.rfc-editor.org/rfc/rfc2858)
-- [RFC 4456 - Route Reflection](https://www.rfc-editor.org/rfc/rfc4456)
-- [RFC 4893 - BGP Support for Four-Octet AS Number Space](https://www.rfc-editor.org/rfc/rfc4893)
-- [RFC 1997 - BGP Communities Attribute](https://www.rfc-editor.org/rfc/rfc1997)
-- [RFC 8092 - BGP Large Communities Attribute](https://www.rfc-editor.org/rfc/rfc8092)
-- [RFC 1930 - Guidelines for Creation, Selection, and Registration of an AS](https://www.rfc-editor.org/rfc/rfc1930)
-- [RFC 2439 - BGP Route Flap Damping](https://www.rfc-editor.org/rfc/rfc2439)
-- [RFC 3345 - Border Gateway Protocol Route Flap Damping](https://www.rfc-editor.org/rfc/rfc3345)
-- [RFC 6996 - Private Autonomous System (AS) Numbers for BGP](https://www.rfc-editor.org/rfc/rfc6996)
-- [RFC 2547 - BGP/MPLS IP Virtual Private Networks (VPNs)](https://www.rfc-editor.org/rfc/rfc2547)
-- [RFC 4364 - BGP/MPLS IP Virtual Private Networks (VPNs)](https://www.rfc-editor.org/rfc/rfc4364)
-- [RFC 2842 - Capabilities Advertisement with BGP-4](https://www.rfc-editor.org/rfc/rfc2842)
-- [RFC 5492 - Extensions to BGP-4 for Capabilities Advertisement](https://www.rfc-editor.org/rfc/rfc5492)
-- [RFC 3107 - Carrying Label Information in BGP-4](https://www.rfc-editor.org/rfc/rfc3107)
-- [RFC 3765 - NOPEER Community for BGP Route Scope Control](https://www.rfc-editor.org/rfc/rfc3765)
-- [RFC 4486 - Subcodes for BGP Cease Notification Message](https://www.rfc-editor.org/rfc/rfc4486)
-- [RFC 4659 - BGP-MPLS IP VPN Extension for IPv6 VPN](https://www.rfc-editor.org/rfc/rfc4659)
-- [RFC 5082 - The Generalized TTL Security Mechanism (GTSM)](https://www.rfc-editor.org/rfc/rfc5082)
-- [RFC 5575 - Dissemination of Flow Specification Rules](https://www.rfc-editor.org/rfc/rfc5575)
-- [RFC 5701 - IPv6 Address Specific Extended Community](https://www.rfc-editor.org/rfc/rfc5701)
-- [RFC 6810 - The RPKI to Router Protocol](https://www.rfc-editor.org/rfc/rfc6810)
-- [RFC 6811 - BGP Prefix Origin Validation](https://www.rfc-editor.org/rfc/rfc6811)
-- [RFC 7607 - Codification of AS 0 Processing](https://www.rfc-editor.org/rfc/rfc7607)
-- [RFC 7752 - North-Bound Distribution of Link-State and TE Information](https://www.rfc-editor.org/rfc/rfc7752)
-- [RFC 7938 - Use of BGP for Routing in Large-Scale Data Centers](https://www.rfc-editor.org/rfc/rfc7938)
-- [RFC 7999 - BLACKHOLE Community](https://www.rfc-editor.org/rfc/rfc7999)
-- [RFC 8195 - Use of BGP Large Communities](https://www.rfc-editor.org/rfc/rfc8195)
-- [RFC 8203 - BGP Administrative Shutdown Communication](https://www.rfc-editor.org/rfc/rfc8203)
-- [RFC 8277 - Using BGP to Bind MPLS Labels to Address Prefixes](https://www.rfc-editor.org/rfc/rfc8277)
-- [RFC 6286 - AS-Wide Unique BGP Identifier for BGP-4](https://www.rfc-editor.org/rfc/rfc6286)
-- [RFC 6608 - Subcodes for BGP Finite State Machine Error](https://www.rfc-editor.org/rfc/rfc6608)
-- [RFC 7311 - The Accumulated IGP Metric Attribute for BGP](https://www.rfc-editor.org/rfc/rfc7311)
-- [RFC 8326 - Graceful Shutdown of BGP Sessions](https://www.rfc-editor.org/rfc/rfc8326)
-- [RFC 8365 - A Network Virtualization Overlay Solution Using EVPN](https://www.rfc-editor.org/rfc/rfc8365)
-- [RFC 8402 - Segment Routing Architecture](https://www.rfc-editor.org/rfc/rfc8402)
-- [RFC 8895 - Dissemination of Flow Specification Rules Update](https://www.rfc-editor.org/rfc/rfc8895)
-- [RFC 9029 - Updates to Allocation Policy for BGP-LS Parameters](https://www.rfc-editor.org/rfc/rfc9029)
-- [RFC 9072 - Extended Optional Parameters Length for BGP OPEN Message](https://www.rfc-editor.org/rfc/rfc9072)
-- [RFC 9076 - DNS Privacy Considerations](https://www.rfc-editor.org/rfc/rfc9076)
-- [RFC 9083 - BGP-LS Node and Link Descriptor Extensions for Diffserv-Aware TE](https://www.rfc-editor.org/rfc/rfc9083)
-- [RFC 9135 - Integrated Routing and Bridging in EVPN](https://www.rfc-editor.org/rfc/rfc9135)
-- [RFC 9136 - EVPN IP Prefix Advertisement](https://www.rfc-editor.org/rfc/rfc9136)
-- [RFC 9161 - BGP-LS IS-IS SR IGP Algorithm and Extensions](https://www.rfc-editor.org/rfc/rfc9161)
-- [RFC 9234 - The BGP Role AS-In Attribute and Service Oriented BGP](https://www.rfc-editor.org/rfc/rfc9234)
-- [RFC 9252 - BGP Overlay for SRv6](https://www.rfc-editor.org/rfc/rfc9252)
-- [RFC 9256 - BGP SR Policy](https://www.rfc-editor.org/rfc/rfc9256)
-- [RFC 9289 - BGPsec Considerations](https://www.rfc-editor.org/rfc/rfc9289)
-- [RFC 9315 - Security Considerations for BGP](https://www.rfc-editor.org/rfc/rfc9315)
-- [RFC 9344 - BGP Keychain Security](https://www.rfc-editor.org/rfc/rfc9344)
-- [RFC 9485 - FlowSpec Port Matching Update](https://www.rfc-editor.org/rfc/rfc9485)
-- [RFC 9552 - Updated Specification for BGP-LS](https://www.rfc-editor.org/rfc/rfc9552)
-- [RFC 9642 - YANG Data Model for Keystore](https://www.rfc-editor.org/rfc/rfc9642)
-- [RFC 1105 - BGP (obsolete)](https://www.rfc-editor.org/rfc/rfc1105)
-- [RFC 1163 - BGP-2 (obsolete)](https://www.rfc-editor.org/rfc/rfc1163)
-- [RFC 1267 - BGP-3 (obsolete)](https://www.rfc-editor.org/rfc/rfc1267)
-- [RFC 1771 - BGP-4 (obsolete)](https://www.rfc-editor.org/rfc/rfc1771)
+### Other
+- RFC 8326 - Graceful Shutdown
+- RFC 9234 - BGP Role
+- RFC 7311 - AIGP
+- RFC 9072 - Extended OP Length
+- RFC 6608 - FSM Error Subcodes
+- RFC 6286 - BGP Identifier
+- RFC 7938 - Data Center BGP
 
 ## License
 
